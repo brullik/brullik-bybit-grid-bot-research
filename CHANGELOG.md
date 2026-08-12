@@ -31,6 +31,8 @@ All notable project-governance and architecture changes are recorded here.
   benchmark harnesses.
 - CI checks for lint, formatting, strict typing, tests, schema/evidence validation, manifest
   integrity, and slim live installation.
+- Staged ADR-0010 shortlist protocol with reboot-separated cold-read legs, post-timing content
+  verification, immutable monthly repair/compaction probes, and fail-closed smoke classification.
 
 ### Safety
 

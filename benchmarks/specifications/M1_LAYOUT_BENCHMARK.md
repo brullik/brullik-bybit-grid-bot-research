@@ -97,3 +97,8 @@ python -m benchmarks.exact_capacity_projection `
 This projection retains the independent 24/40/64-byte planning envelopes and the provisional
 2 TiB recommendation. Synthetic compression and write-rate extrapolations do not replace a
 reference-hardware run, real-market skew, filesystem overhead, compaction, or backup sizing.
+
+The reboot-separated reference rerun and immutable monthly repair/compaction procedure are
+specified in [M1_REFERENCE_LAYOUT_PROTOCOL.md](M1_REFERENCE_LAYOUT_PROTOCOL.md). Its v1 local
+artifact is explicitly `local-smoke-only` and does not supply the missing real-market-skew or
+reference-hardware evidence.

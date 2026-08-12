@@ -106,6 +106,16 @@ def test_history_source_assessment_matches_schema_hash_and_receipt() -> None:
     assert verify_evidence(artifact)
 
 
+def test_reference_layout_protocol_smoke_matches_schema_and_receipt() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m1-reference-layout-protocol-smoke.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "reference-layout-benchmark.schema.json"
+    )
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(load_json(artifact))
+    assert verify_evidence(artifact)
+
+
 class FakeValidateTransport:
     environment = "testnet"
 

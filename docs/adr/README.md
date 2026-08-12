@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0011 — Staged reference layout benchmark](ADR-0011-staged-reference-layout-benchmark.md)
 - [ADR-0010 — Density-derived exact monthly layout matrix](ADR-0010-density-derived-exact-layout-matrix.md)
 
 - [ADR-0001 — Separate deployable applications](ADR-0001-separate-deployable-applications.md)

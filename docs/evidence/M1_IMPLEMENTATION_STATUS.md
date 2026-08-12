@@ -32,6 +32,9 @@
 - Allowlisted, unauthenticated inspection of the official Historical Market Data product catalog,
   with fail-closed response validation and per-symbol REST capacity estimates linked to the
   verified current inventory.
+- Staged ADR-0010 shortlist benchmark protocol with reboot-separated engine/query legs,
+  post-timing content verification, immutable monthly repair, fragmented-input compaction, and
+  cross-engine exact logical parity. Unverified local timing is forced to `local-smoke-only`.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -160,6 +163,14 @@
   documented 24/40/64-byte planning envelopes remain 176.72/294.53/471.25 GB. Neither includes
   raw archives, derived stores, experiments, compaction headroom, backup, or filesystem overhead;
   the 2 TiB recommendation is intentionally not reduced from smoke compression.
+- The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
+  rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
+  file metadata before timing, content hashes afterward, expected row counts, and cross-engine
+  result hashes. Its cache mode was explicitly unverified and its status is `local-smoke-only`.
+- For the first monthly bucket in each shortlist layout, immutable repair and eight-fragment
+  compaction preserved exact schema, row count, timestamp bounds, and OHLC/volume/turnover sums in
+  both DuckDB and Polars. Source tree hashes were unchanged. These small synthetic maintenance
+  timings validate the protocol only; they are not reference-hardware or real-market evidence.
 
 ## Validate-only readiness
 
@@ -192,8 +203,10 @@
 
 ## Evidence still required to close Gate 1
 
-- Rerun the ADR-0010 exact shortlist on declared reference hardware with documented cold-cache,
-  real-market-skew, monthly repair, and compaction evidence, then decide P-001 through P-005.
+- Run the staged ADR-0010 shortlist protocol on declared reference hardware with four distinct
+  reboot-separated measurement legs, add receipt-verified real-market-skew evidence, then decide
+  P-001 through P-005. The local maintenance/cold-read harness is implemented but its smoke result
+  satisfies none of those reference claims.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

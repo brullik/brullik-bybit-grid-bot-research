@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,6 +10,7 @@ import pytest
 from grid_data.evidence import verify_evidence
 from polars.testing import assert_frame_equal
 
+import benchmarks.reference_layout_benchmark as reference_benchmark
 from benchmarks.capacity_projection import projected_bytes
 from benchmarks.exact_capacity_projection import selected_layout_projections
 from benchmarks.feature_benchmark import (
@@ -36,6 +39,12 @@ from benchmarks.layout_benchmark import (
 from benchmarks.mainnet_validate_candidates import build_shortlist
 from benchmarks.redact_mainnet_validate_discovery import build_mainnet_conclusion
 from benchmarks.redact_validate_probe import build_redacted_conclusion
+from benchmarks.reference_layout_benchmark import (
+    _boot_marker,
+    finalize_reference_evidence,
+    measure_leg,
+    prepare_reference_workdir,
+)
 from benchmarks.workstation_snapshot import storage_identity
 
 
@@ -342,6 +351,114 @@ def test_exact_capacity_projection_uses_only_verified_shortlist() -> None:
     assert all(
         projection["observed_write_rows_per_second"] == "10.000000000" for projection in projections
     )
+
+
+def test_staged_reference_layout_smoke_proves_immutable_maintenance(
+    tmp_path: Path,
+) -> None:
+    work_dir = tmp_path / "reference-layout"
+    preparation = prepare_reference_workdir(
+        work_dir=work_dir,
+        decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+        profile="smoke",
+        rows=20_000,
+        instruments=10,
+        row_group_rows=1_000,
+        generation_chunk_rows=2_000,
+    )
+    assert verify_evidence(preparation)
+    assert datetime.fromisoformat(_boot_marker().removesuffix("Z") + "+00:00").microsecond == 0
+
+    for engine in ("duckdb", "polars"):
+        for query_shape in ("single-symbol", "universe-month"):
+            measurement = measure_leg(
+                work_dir=work_dir,
+                engine=engine,
+                query_shape=query_shape,
+                cache_proof="unverified-smoke",
+            )
+            assert verify_evidence(measurement)
+
+    output = tmp_path / "reference-layout-smoke.json"
+    finalize_reference_evidence(work_dir=work_dir, output=output)
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert payload["status"] == "local-smoke-only"
+    assert len(payload["measurements"]) == 4
+    assert all(
+        dataset["maintenance"]["logical_parity_verified"]
+        and dataset["maintenance"]["source_tree_unchanged"]
+        for dataset in payload["preparation"]["datasets"]
+    )
+    assert all(
+        dataset["maintenance"]["compaction"]["input_fragment_count"] >= 2
+        for dataset in payload["preparation"]["datasets"]
+    )
+
+
+def test_reference_measurement_rejects_dataset_metadata_change(tmp_path: Path) -> None:
+    work_dir = tmp_path / "reference-layout"
+    prepare_reference_workdir(
+        work_dir=work_dir,
+        decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+        profile="smoke",
+        rows=20_000,
+        instruments=10,
+        row_group_rows=1_000,
+        generation_chunk_rows=2_000,
+    )
+    parquet = next((work_dir / "datasets").rglob("*.parquet"))
+    parquet.touch()
+
+    with pytest.raises(ValueError, match="metadata changed"):
+        measure_leg(
+            work_dir=work_dir,
+            engine="duckdb",
+            query_shape="single-symbol",
+            cache_proof="unverified-smoke",
+        )
+
+
+def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work_dir = tmp_path / "reference-layout"
+    boot_markers = iter(
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-01-02T00:00:00Z",
+            "2026-01-03T00:00:00Z",
+            "2026-01-04T00:00:00Z",
+            "2026-01-05T00:00:00Z",
+        ]
+    )
+    monkeypatch.setattr(reference_benchmark, "FULL_MINIMUM_EFFECTIVE_ROWS", 20_000)
+    monkeypatch.setattr(reference_benchmark, "FULL_INSTRUMENTS", 10)
+    monkeypatch.setattr(reference_benchmark, "_boot_marker", lambda: next(boot_markers))
+    prepare_reference_workdir(
+        work_dir=work_dir,
+        decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+        profile="reference",
+        rows=20_000,
+        instruments=10,
+        row_group_rows=1_000,
+        generation_chunk_rows=2_000,
+    )
+    for engine in ("duckdb", "polars"):
+        for query_shape in ("single-symbol", "universe-month"):
+            measure_leg(
+                work_dir=work_dir,
+                engine=engine,
+                query_shape=query_shape,
+                cache_proof="reboot",
+            )
+
+    output = tmp_path / "reference-layout-result.json"
+    finalize_reference_evidence(work_dir=work_dir, output=output)
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert payload["status"] == "reference-synthetic-protocol-candidate"
+    assert len({item["boot_marker"] for item in payload["measurements"]}) == 4
 
 
 def test_validate_conclusion_redacts_prices_and_requires_safe_demo_result() -> None:
