@@ -2,18 +2,18 @@
 .env
 .env.*
 !.env.example
-secrets/
-credentials/
+/secrets/
+/credentials/
 
 # Runtime and account state
-data/
-market-data/
-artifacts/
-releases/private/
-runtime/
-state/
-logs/
-reports/private/
+/data/
+/market-data/
+/artifacts/
+/releases/private/
+/runtime/
+/state/
+/logs/
+/reports/private/
 *.db
 *.db-*
 *.sqlite
@@ -29,6 +29,8 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
+.benchmark-work/
+*.egg-info/
 
 # IDE / OS
 .vscode/
@@ -47,6 +49,12 @@ Thumbs.db
 *.tar.gz
 *.bin
 *.model
+
+# Benchmark evidence is small JSON only; generated Parquet stays ignored above.
+benchmarks/results/*
+!benchmarks/results/.gitkeep
+!benchmarks/results/*.json
+
 
 # Keep documentation archives out of nested Git history
 *.bundle

@@ -2,7 +2,9 @@
 
 Documentation-first architecture for a high-throughput Bybit Futures Grid Bot research-to-live platform.
 
-> **Repository state:** architecture and governance baseline only. No trading code is included in this initial package.
+> **Repository state:** M1 feasibility implementation is in progress. Public-data tooling,
+> versioned contracts, isolated application packages, and benchmark harnesses are present;
+> trading execution remains intentionally absent and all live entries are blocked.
 
 [Русская версия](README.ru.md)
 

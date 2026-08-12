@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/dataset/v1/manifest.schema.json",
+  "title": "Immutable dataset manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "dataset_type", "schema_version", "semantic_version", "status", "parent_dataset_ids", "instrument_count", "row_count", "min_time_ms", "max_time_ms", "files", "source_evidence_sha256", "build_config_sha256", "software_identity", "audit_report_sha256", "committed_at_ms"],
+  "properties": {
+    "dataset_id": {"type": "string", "minLength": 1},
+    "dataset_type": {"enum": ["instrument_snapshot", "trade_kline_1m", "mark_kline_1m", "funding_event"]},
+    "schema_version": {"type": "string", "minLength": 1},
+    "semantic_version": {"type": "string", "minLength": 1},
+    "status": {"enum": ["building", "failed", "complete"]},
+    "parent_dataset_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "instrument_count": {"type": "integer", "minimum": 0},
+    "row_count": {"type": "integer", "minimum": 0},
+    "min_time_ms": {"type": ["integer", "null"], "minimum": 0},
+    "max_time_ms": {"type": ["integer", "null"], "minimum": 0},
+    "files": {"type": "array", "items": {"$ref": "#/$defs/file"}},
+    "source_evidence_sha256": {"type": "array", "items": {"$ref": "#/$defs/sha256"}, "uniqueItems": true},
+    "build_config_sha256": {"$ref": "#/$defs/sha256"},
+    "software_identity": {"type": "string", "minLength": 1},
+    "audit_report_sha256": {"type": "array", "items": {"$ref": "#/$defs/sha256"}, "uniqueItems": true},
+    "committed_at_ms": {"type": ["integer", "null"], "minimum": 0}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes", "row_count", "min_time_ms", "max_time_ms", "min_instrument_id", "max_instrument_id"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "row_count": {"type": "integer", "minimum": 0},
+        "min_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "max_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "min_instrument_id": {"type": ["integer", "null"], "minimum": 1},
+        "max_instrument_id": {"type": ["integer", "null"], "minimum": 1}
+      }
+    }
+  }
+}

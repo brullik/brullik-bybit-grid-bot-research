@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid-release"
+version = "0.2.0"
+description = "Strategy release control-plane application boundary"
+requires-python = ">=3.12"
+dependencies = ["grid-contracts==0.2.0"]
+
+[project.scripts]
+grid-release = "grid_release.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

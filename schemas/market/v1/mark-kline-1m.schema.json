@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/mark-kline-1m.schema.json",
+  "title": "Canonical mark-price 1m candle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["category", "instrument_id", "open_time_ms", "open", "high", "low", "close", "source_id", "ingestion_id", "quality_flags"],
+  "properties": {
+    "category": {"type": "string", "minLength": 1},
+    "instrument_id": {"type": "integer", "minimum": 1},
+    "open_time_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "open": {"$ref": "#/$defs/positiveDecimal"},
+    "high": {"$ref": "#/$defs/positiveDecimal"},
+    "low": {"$ref": "#/$defs/positiveDecimal"},
+    "close": {"$ref": "#/$defs/positiveDecimal"},
+    "source_id": {"type": "string", "minLength": 1},
+    "ingestion_id": {"type": "string", "minLength": 1},
+    "quality_flags": {"type": "integer", "minimum": 0}
+  },
+  "$defs": {
+    "positiveDecimal": {"type": "string", "pattern": "^(?:0*[1-9][0-9]*)(?:\\.[0-9]+)?$|^0*\\.0*[1-9][0-9]*$"}
+  }
+}

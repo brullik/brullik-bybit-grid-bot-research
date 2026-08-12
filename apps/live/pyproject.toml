@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid-live"
+version = "0.2.0"
+description = "Slim fail-closed live application boundary"
+requires-python = ">=3.12"
+dependencies = ["grid-contracts==0.2.0"]
+
+[project.scripts]
+grid-live = "grid_live.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
