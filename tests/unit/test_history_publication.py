@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
 )
+from grid_data.history_pilot_evidence import build_history_pilot_evidence
 from grid_data.history_publication import (
     HISTORY_PUBLICATION_CONTRACT,
     preflight_completed_history_publication,
@@ -21,6 +23,7 @@ from grid_data.history_publication import (
 )
 from grid_data.instrument_registry import build_instrument_registry
 from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostSnapshot
+from jsonschema import Draft202012Validator, FormatChecker
 
 JANUARY_1_2026_MS = 1_767_225_600_000
 ACTIVE_BUILDING_BYTES = 90_000_000_000
@@ -267,3 +270,77 @@ def test_publication_requires_immutable_git_commit_identity(tmp_path: Path) -> N
             now_ms=2_001,
             software_identity="worktree:uncommitted",
         )
+
+
+def test_verified_publication_builds_sanitized_pilot_evidence(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(tmp_path)
+    store_root = tmp_path / "market-store"
+    initial = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    with pytest.raises(HistoryAcquisitionError, match="existing immutable commit"):
+        build_history_pilot_evidence(
+            initial,
+            publish_preflighted_history(
+                initial,
+                lambda: snapshot(tmp_path, observed_at_ms=2_002),
+                lambda: 2_003,
+            ),
+            generated_at_utc="2026-08-12T19:51:08Z",
+        )
+
+    rerun = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=3_000),
+        now_ms=3_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    published = publish_preflighted_history(
+        rerun,
+        lambda: snapshot(tmp_path, observed_at_ms=3_002),
+        lambda: 3_003,
+    )
+    payload = build_history_pilot_evidence(
+        rerun,
+        published,
+        generated_at_utc="2026-08-12T19:51:08Z",
+    )
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "phase2-public-1m-pilot.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert payload["scope"] == {
+        "category": "linear",
+        "exact_requested_coverage": True,
+        "interval_minutes": 1,
+        "requested_minute_count": 1,
+        "series": [
+            {
+                "end_ms": JANUARY_1_2026_MS,
+                "instrument_id": 1,
+                "requested_minute_count": 1,
+                "start_ms": JANUARY_1_2026_MS,
+                "symbol": "AAAUSDT",
+            }
+        ],
+    }
+    rendered = json.dumps(payload)
+    assert str(tmp_path) not in rendered
+    assert "100.00000001" not in rendered

@@ -125,3 +125,25 @@ verified commit. A conflicting identity or incomplete directory fails closed and
 
 Canonical publication does not accept missing lifecycle ranges. Gap/lifecycle classification,
 repair, compaction, and catalog registration remain later Phase 2 steps; Gate 2 remains closed.
+
+## 8. Publish a sanitized pilot evidence summary to GitHub
+
+For a deliberately bounded pilot, build the small public artifact only after canonical verification
+and an idempotent existing-commit preflight:
+
+```powershell
+.venv\Scripts\grid-data.exe history-pilot-evidence `
+  --job-root data\history\.landing\trade-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-commit-sha> `
+  --output benchmarks\results\m2-public-1m-canonical-pilot-<date>.json
+```
+
+Commit the JSON, its `.receipt.json`, schema, status documentation, and generator in one reviewed
+PR. The summary contains hashes, ranges, counts, source policy, layout, and limitations. It rejects
+an incomplete range and never contains candle values, local paths, host/device identity, account
+data, or credentials. Runtime Landing and Parquet artifacts remain ignored; GitHub is authoritative
+through their cryptographic bindings, not by storing the market lake. Existing evidence and its
+receipt cannot be overwritten; a later run uses a new output identity.

@@ -76,6 +76,13 @@ bounds, and binds an explicit software identity. Dataset identity is the candle 
 and coverage evidence. Publication receipt does not imply that gaps or lifecycle coverage are
 accepted.
 
+`grid.phase2-public-1m-pilot/v1` is a small GitHub-safe evidence contract for a bounded completed
+pilot. It binds Landing, registry, capacity, input-table, build-configuration, and canonical
+manifest hashes; records requested ranges and aggregate counts; and proves consecutive exact 1m
+coverage inside each requested series. It explicitly contains no candle values, account data,
+local paths, device identity, or credentials. Its `existing_commit_verified` fact proves an
+idempotent publication preflight, not full lifecycle/gap acceptance or Gate 2 completion.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

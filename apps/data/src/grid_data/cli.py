@@ -7,6 +7,7 @@ import json
 import shlex
 import sys
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -31,6 +32,7 @@ from grid_data.history_acquisition import (
     preflight_history_job,
     verify_completed_history_job,
 )
+from grid_data.history_pilot_evidence import build_history_pilot_evidence
 from grid_data.history_publication import (
     preflight_completed_history_publication,
     publish_preflighted_history,
@@ -200,6 +202,18 @@ def parser() -> argparse.ArgumentParser:
     )
     canonical_verify.add_argument("dataset_root", type=Path)
     canonical_verify.set_defaults(handler=_verify_canonical_candle)
+
+    pilot_evidence = commands.add_parser(
+        "history-pilot-evidence",
+        help="publish GitHub-safe hashes/counts for one verified canonical public 1m pilot",
+    )
+    pilot_evidence.add_argument("--job-root", type=Path, required=True)
+    pilot_evidence.add_argument("--instrument-registry", type=Path, required=True)
+    pilot_evidence.add_argument("--capacity-evidence", type=Path, required=True)
+    pilot_evidence.add_argument("--store-root", type=Path, required=True)
+    pilot_evidence.add_argument("--software-identity", required=True)
+    pilot_evidence.add_argument("--output", type=Path, required=True)
+    pilot_evidence.set_defaults(handler=_history_pilot_evidence)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -377,6 +391,42 @@ def _verify_canonical_candle(args: argparse.Namespace) -> int:
                 "manifest_sha256": published.receipt.manifest_sha256,
                 "row_count": published.manifest.row_count,
                 "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _history_pilot_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_completed_history_publication(
+        args.store_root,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    if not resolved.plan.existing_commit:
+        raise ValueError("pilot evidence requires the exact canonical publication to exist")
+    published = verify_committed_candle_dataset(resolved.plan.paths.dataset_root)
+    payload = build_history_pilot_evidence(
+        resolved,
+        published,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "canonical": payload["canonical"],
+                "receipt": str(receipt),
+                "scope": payload["scope"],
+                "status": payload["status"],
             }
         )
     )
