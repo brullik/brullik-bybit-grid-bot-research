@@ -386,3 +386,32 @@ def test_host_probe_builds_fresh_snapshot_from_platform_observation(
     assert observed.storage_kind == "nvme"
     assert observed.volume_root == tmp_path
     assert observed.volume_free_bytes == 20 * 1024**3
+
+
+def test_execute_captures_each_snapshot_before_comparing_current_time(tmp_path: Path) -> None:
+    plan = preflight(tmp_path)
+    current_snapshot_ms = 2_000
+    events: list[str] = []
+
+    def snapshot_provider() -> HostSnapshot:
+        nonlocal current_snapshot_ms
+        events.append("snapshot")
+        current_snapshot_ms += 1
+        return snapshot(
+            plan.paths.staging_root.parent,
+            observed_at_ms=current_snapshot_ms,
+        )
+
+    def now_ms() -> int:
+        events.append("now")
+        return current_snapshot_ms
+
+    completed = execute_history_job(
+        plan,
+        lambda: FakeKlineClient(),
+        snapshot_provider,
+        now_ms=now_ms,
+    )
+
+    assert completed.row_count == 6
+    assert events == ["snapshot", "now", "snapshot", "now"]
