@@ -28,6 +28,8 @@ from benchmarks.layout_benchmark import (
     validate_configuration,
     write_layout,
 )
+from benchmarks.mainnet_validate_candidates import build_shortlist
+from benchmarks.redact_mainnet_validate_discovery import build_mainnet_conclusion
 from benchmarks.redact_validate_probe import build_redacted_conclusion
 from benchmarks.workstation_snapshot import storage_identity
 
@@ -198,6 +200,129 @@ def test_validate_conclusion_redacts_prices_and_requires_safe_demo_result() -> N
     }
     with pytest.raises(ValueError, match="validate-only"):
         build_redacted_conclusion(unsafe_report)
+
+
+def _mainnet_report(symbol: str, minimum: str) -> dict[str, object]:
+    ranges = {
+        "DOGEUSDT": ("0.069", "0.074", "0.068", "0.075"),
+        "LINKUSDT": ("8.4", "8.9", "8.3", "9"),
+        "XRPUSDT": ("0.99", "1.04", "0.98", "1.05"),
+    }
+    lower, upper, stop, take = ranges[symbol]
+    return {
+        "created_at_utc": "2026-08-12T12:00:00Z",
+        "endpoint": "/v5/fgridbot/validate",
+        "environment": "mainnet",
+        "request": {
+            "cell_number": "2",
+            "grid_mode": "1",
+            "grid_type": "2",
+            "leverage": "1",
+            "max_price": upper,
+            "min_price": lower,
+            "stop_loss_price": stop,
+            "symbol": symbol,
+            "take_profit_price": take,
+        },
+        "response": {"retCode": 0, "result": {"investment": {"from": minimum}}},
+        "result": {
+            "check_code": "FGRID_CHECK_CODE_UNSPECIFIED",
+            "ret_code": 0,
+            "successful": True,
+        },
+        "safety": {
+            "credentials_persisted": False,
+            "mutating_endpoint_called": False,
+            "validate_only": True,
+        },
+    }
+
+
+def test_mainnet_conclusion_is_ranked_redacted_and_keeps_create_unexercised() -> None:
+    reports = [
+        _mainnet_report("XRPUSDT", "0.1389"),
+        _mainnet_report("DOGEUSDT", "0.0989"),
+        _mainnet_report("LINKUSDT", "1.1887"),
+    ]
+
+    conclusion = build_mainnet_conclusion(reports)
+
+    assert [row["symbol"] for row in conclusion["candidates"]] == [
+        "DOGEUSDT",
+        "XRPUSDT",
+        "LINKUSDT",
+    ]
+    assert conclusion["create_capability"]["exercised"] is False
+    assert conclusion["safety"]["mutating_endpoint_called"] is False
+    assert "retMsg" not in repr(conclusion)
+    assert "retExtInfo" not in repr(conclusion)
+    unsafe = list(reports)
+    unsafe[0] = dict(unsafe[0])
+    unsafe[0]["safety"] = {
+        "credentials_persisted": False,
+        "mutating_endpoint_called": True,
+        "validate_only": True,
+    }
+    with pytest.raises(ValueError, match="validate-only"):
+        build_mainnet_conclusion(unsafe)
+
+
+def _instrument(symbol: str, *, minimum_notional: str = "5") -> dict[str, object]:
+    return {
+        "contractType": "LinearPerpetual",
+        "lotSizeFilter": {"minNotionalValue": minimum_notional, "minOrderQty": "0.1"},
+        "priceFilter": {"tickSize": "0.001"},
+        "quoteCoin": "USDT",
+        "status": "Trading",
+        "symbol": symbol,
+    }
+
+
+def _ticker(symbol: str, *, mark: str, turnover: str) -> dict[str, str]:
+    return {
+        "ask1Price": mark,
+        "bid1Price": mark,
+        "highPrice24h": str(Decimal(mark) * Decimal("1.02")),
+        "lowPrice24h": str(Decimal(mark) * Decimal("0.98")),
+        "markPrice": mark,
+        "symbol": symbol,
+        "turnover24h": turnover,
+    }
+
+
+def test_public_mainnet_shortlist_filters_ranks_and_tick_rounds() -> None:
+    instruments = [
+        _instrument("AAAUSDT", minimum_notional="1"),
+        _instrument("BBBUSDT", minimum_notional="2"),
+        _instrument("CCCUSDT", minimum_notional="3"),
+        _instrument("ILLIQUIDUSDT", minimum_notional="1"),
+    ]
+    tickers = [
+        _ticker("AAAUSDT", mark="1", turnover="60000000"),
+        _ticker("BBBUSDT", mark="1", turnover="90000000"),
+        _ticker("CCCUSDT", mark="1", turnover="80000000"),
+        _ticker("ILLIQUIDUSDT", mark="1", turnover="1000"),
+    ]
+
+    result = build_shortlist(
+        instruments,
+        tickers,
+        observed_at_utc="2026-08-12T12:00:00Z",
+    )
+
+    assert [row["symbol"] for row in result["candidates"]] == [
+        "AAAUSDT",
+        "BBBUSDT",
+        "CCCUSDT",
+    ]
+    assert result["candidates"][0]["validate_request"] == {
+        "cell_number": 2,
+        "leverage": "1",
+        "max_price": "1.031",
+        "min_price": "0.97",
+        "stop_loss_price": "0.96",
+        "take_profit_price": "1.042",
+    }
 
 
 def test_workstation_snapshot_removes_device_instance_identifier(

@@ -59,6 +59,23 @@ def test_private_adapter_exposes_only_the_validate_endpoint() -> None:
     assert endpoint_literals == {"/v5/fgridbot/validate"}
 
 
+def test_mainnet_discovery_is_validate_only_and_uta_gated() -> None:
+    source = (ROOT / "scripts" / "discover_mainnet_validate_minimum.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "[switch]$AcknowledgeUnifiedAccount" in source
+    assert "--environment mainnet" in source
+    assert "--acknowledge-mainnet-validate-only" in source
+    assert source.count("& $cli probe") == 1
+    assert "/v5/" not in source
+    assert "Remove-Item Env:BYBIT_MAINNET_API_KEY" in source
+    assert "Remove-Item Env:BYBIT_MAINNET_API_SECRET" in source
+    assert "exit $exitCode" in source
+    for symbol in ("XRPUSDT", "DOGEUSDT", "LINKUSDT"):
+        assert symbol in source
+
+
 def test_each_application_declares_its_own_build_metadata() -> None:
     for application in ("data", "research", "release", "live"):
         assert (ROOT / "apps" / application / "pyproject.toml").is_file()

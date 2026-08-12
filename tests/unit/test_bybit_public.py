@@ -73,6 +73,21 @@ def test_exact_instrument_lookup_rejects_ambiguous_result() -> None:
         BybitPublicClient(transport).instrument(symbol="BTCUSDT")
 
 
+def test_tickers_require_unique_non_empty_symbols() -> None:
+    transport = QueueTransport([response({"list": [{"symbol": "BTCUSDT"}, {"symbol": "ETHUSDT"}]})])
+    assert [row["symbol"] for row in BybitPublicClient(transport).tickers()] == [
+        "BTCUSDT",
+        "ETHUSDT",
+    ]
+    assert transport.calls == [("/v5/market/tickers", {"category": "linear"})]
+
+    duplicate_transport = QueueTransport(
+        [response({"list": [{"symbol": "BTCUSDT"}, {"symbol": "BTCUSDT"}]})]
+    )
+    with pytest.raises(BybitPublicError, match="duplicate"):
+        BybitPublicClient(duplicate_transport).tickers()
+
+
 def test_kline_pagination_moves_inclusive_end_backward_without_duplicates() -> None:
     transport = QueueTransport(
         [

@@ -46,6 +46,14 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
             "m1-bybit-demo-validate-conclusion.json",
             "v1/bybit-fgrid-validate-conclusion.schema.json",
         ),
+        (
+            "m1-bybit-mainnet-validate-conclusion.json",
+            "v1/bybit-fgrid-mainnet-validate-conclusion.schema.json",
+        ),
+        (
+            "m1-mainnet-validate-candidates.json",
+            "v1/mainnet-validate-candidates.schema.json",
+        ),
         ("m1-layout-smoke.json", "v1/layout-benchmark.schema.json"),
         ("m1-layout-out-of-core-smoke.json", "v2/layout-benchmark.schema.json"),
         ("m1-layout-out-of-core-scaled.json", "v2/layout-benchmark.schema.json"),

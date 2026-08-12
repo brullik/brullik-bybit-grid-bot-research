@@ -13,6 +13,10 @@
   endpoint, hard-coded official Testnet/Demo/Mainnet origins, environment-isolated HMAC
   credentials, no retries or redirects, private evidence receipts, and no create/close/transfer
   implementation. Demo failure cannot fall back to mainnet.
+- Public-data candidate selection for low-capital Mainnet validation, with exact-decimal filters,
+  deterministic ranking, and tick-aligned parameter ranges.
+- Redaction of multiple verified private Mainnet reports into a schema-validated public conclusion
+  that contains no credentials, account identifiers, private hashes, or raw response bodies.
 - Atomic public evidence publication with a SHA-256 completion receipt written last.
 - Versioned JSON Schemas and exact-decimal domain contracts.
 - Reproducible bounded-memory Parquet layout benchmark for Polars and DuckDB. V2 writes
@@ -38,7 +42,11 @@
 - [Funding history](https://bybit-exchange.github.io/docs/v5/market/history-fund-rate) allows at
   most 200 events and requires the contemporaneous instrument funding interval.
 - The official [rate-limit table](https://bybit-exchange.github.io/docs/v5/rate-limit) lists the
-  private `POST /v5/fgridbot/validate` endpoint at 10 requests/second.
+  private `POST /v5/fgridbot/validate` and `POST /v5/fgridbot/create` endpoints at 10
+  requests/second.
+- The official [Trading MCP create contract](https://github.com/bybit-exchange/trading-mcp/blob/562291168e9fd3d679275bf28c16056d562cefce/src/tools/bot/createFGridBot.ts)
+  requires the validated fields plus `total_investment` and identifies `bot_id` as the handle for
+  detail and close operations. Its existence is capability evidence, not a live permission.
 - The official [developer portal](https://bybit-exchange.github.io/docs/) advertises public OHLCV
   and trade-history CSV downloads. It does not identify that OHLCV as canonical mark-price data or
   advertise funding-event bulk data, so the implementation does not infer either semantic.
@@ -126,8 +134,19 @@
   credentials, account identifiers, or private-artifact hash. The outcome matches Bybit's
   published Demo service list, which does not advertise `/v5/fgridbot/validate`.
 - The owner runbook is `ops/runbooks/M1_VALIDATE_ONLY_PROBE.md`. Demo feasibility is now resolved
-  as unsupported; an authenticated successful Testnet or separately acknowledged validate-only
-  mainnet result is still missing. No private result belongs in Git.
+  as unsupported.
+- After the owner confirmed completed UTA migration, the owner-controlled Mainnet runner sent one
+  validate request each for XRPUSDT, DOGEUSDT, and LINKUSDT with two cells and leverage 1. All
+  three returned `retCode=0` and `FGRID_CHECK_CODE_UNSPECIFIED`; every private receipt verified,
+  no request retried, and no mutating endpoint was called.
+- Bybit reported minimum investments of 0.1389 USDT for XRPUSDT, 0.0989 USDT for DOGEUSDT, and
+  1.1887 USDT for LINKUSDT. These values are feasibility observations only: `total_investment` was
+  not submitted and `create` was not called.
+- `m1-mainnet-validate-candidates.json` records the unauthenticated public shortlist snapshot.
+  `m1-bybit-mainnet-validate-conclusion.json` records only the redacted successful Mainnet result
+  and the pinned official create contract. Private reports and credentials remain outside Git.
+- Native Futures Grid validate-only feasibility is resolved successfully on Mainnet. This does
+  not close Gate 1 and does not open implementation or execution of the Phase 8 create workflow.
 
 ## Evidence still required to close Gate 1
 
@@ -137,7 +156,4 @@
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
-- Complete the native Futures Grid validate-only feasibility on Testnet or through a separately
-  owner-acknowledged mainnet validation. Demo was tested and explicitly rejected by Bybit as
-  unsupported. No private credentials may be added to the repository, logs, or research artifacts.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

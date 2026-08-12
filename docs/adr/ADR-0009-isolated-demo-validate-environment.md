@@ -25,6 +25,8 @@ safety properties:
 - credentials remain process-only and are excluded from reports;
 - Testnet remains the default;
 - mainnet continues to require an explicit validate-only acknowledgement; and
+- a mainnet discovery runner requires visible owner confirmation that Unified Trading Account
+  migration is complete before it requests credentials;
 - a Demo failure is recorded as feasibility evidence and never triggers fallback to mainnet.
 
 New reports use `grid.bybit-fgrid-validate-probe/v2`; the v1 schema remains immutable.

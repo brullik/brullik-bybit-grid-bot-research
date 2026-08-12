@@ -96,6 +96,22 @@ class BybitPublicClient:
             )
         return cast(Mapping[str, Any], matching[0])
 
+    def tickers(
+        self,
+        *,
+        category: Literal["linear", "inverse"] = "linear",
+    ) -> tuple[Mapping[str, Any], ...]:
+        result = self._request("/v5/market/tickers", {"category": category})
+        raw_items = result.get("list")
+        if not isinstance(raw_items, list) or any(not isinstance(item, dict) for item in raw_items):
+            raise BybitPublicError("ticker result.list must contain objects")
+        symbols = [item.get("symbol") for item in raw_items]
+        if any(not isinstance(symbol, str) or not symbol for symbol in symbols):
+            raise BybitPublicError("every ticker must have a non-empty symbol")
+        if len(symbols) != len(set(symbols)):
+            raise BybitPublicError("ticker response contains duplicate symbols")
+        return tuple(raw_items)
+
     def kline_page(
         self,
         *,

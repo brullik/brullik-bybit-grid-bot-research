@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/mainnet-validate-candidates.schema.json",
+  "title": "Public-data Mainnet validate candidate shortlist",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_count",
+    "candidates",
+    "evidence_schema",
+    "filter",
+    "observed_at_utc",
+    "source",
+    "status"
+  ],
+  "properties": {
+    "candidate_count": {"const": 3},
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["market_observation", "symbol", "validate_request"],
+        "properties": {
+          "market_observation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "high_price_24h",
+              "low_price_24h",
+              "mark_price",
+              "minimum_order_value",
+              "range_24h_ratio",
+              "spread_bps",
+              "tick_size",
+              "turnover_24h"
+            ],
+            "properties": {
+              "high_price_24h": {"$ref": "#/$defs/positiveDecimal"},
+              "low_price_24h": {"$ref": "#/$defs/positiveDecimal"},
+              "mark_price": {"$ref": "#/$defs/positiveDecimal"},
+              "minimum_order_value": {"$ref": "#/$defs/positiveDecimal"},
+              "range_24h_ratio": {"$ref": "#/$defs/nonNegativeDecimal"},
+              "spread_bps": {"$ref": "#/$defs/nonNegativeDecimal"},
+              "tick_size": {"$ref": "#/$defs/positiveDecimal"},
+              "turnover_24h": {"$ref": "#/$defs/positiveDecimal"}
+            }
+          },
+          "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+          "validate_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cell_number",
+              "leverage",
+              "max_price",
+              "min_price",
+              "stop_loss_price",
+              "take_profit_price"
+            ],
+            "properties": {
+              "cell_number": {"const": 2},
+              "leverage": {"const": "1"},
+              "max_price": {"$ref": "#/$defs/positiveDecimal"},
+              "min_price": {"$ref": "#/$defs/positiveDecimal"},
+              "stop_loss_price": {"$ref": "#/$defs/positiveDecimal"},
+              "take_profit_price": {"$ref": "#/$defs/positiveDecimal"}
+            }
+          }
+        }
+      }
+    },
+    "evidence_schema": {"const": "grid.mainnet-validate-candidates/v1"},
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_limit",
+        "maximum_24h_range_ratio",
+        "maximum_mark_price",
+        "maximum_minimum_order_value",
+        "maximum_spread_bps",
+        "minimum_mark_price",
+        "minimum_turnover_24h",
+        "ranking"
+      ],
+      "properties": {
+        "candidate_limit": {"const": 3},
+        "maximum_24h_range_ratio": {"const": "0.15"},
+        "maximum_mark_price": {"const": "10"},
+        "maximum_minimum_order_value": {"const": "5"},
+        "maximum_spread_bps": {"const": "5"},
+        "minimum_mark_price": {"const": "0.01"},
+        "minimum_turnover_24h": {"const": "50000000"},
+        "ranking": {"const": "minimum_order_value_asc,turnover_24h_desc,symbol_asc"}
+      }
+    },
+    "observed_at_utc": {"type": "string", "format": "date-time"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authentication", "instrument_endpoint", "ticker_endpoint"],
+      "properties": {
+        "authentication": {"const": "none"},
+        "instrument_endpoint": {"const": "/v5/market/instruments-info"},
+        "ticker_endpoint": {"const": "/v5/market/tickers"}
+      }
+    },
+    "status": {"const": "public-shortlist-only"}
+  },
+  "$defs": {
+    "positiveDecimal": {
+      "type": "string",
+      "pattern": "^(?:0*[1-9][0-9]*)(?:\\.[0-9]+)?$|^0*\\.(?:[0-9]*[1-9][0-9]*)$"
+    },
+    "nonNegativeDecimal": {
+      "type": "string",
+      "pattern": "^[0-9]+(?:\\.[0-9]+)?$"
+    }
+  }
+}
