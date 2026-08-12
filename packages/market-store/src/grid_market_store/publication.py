@@ -176,6 +176,17 @@ class PublishedDataset:
     receipt: CompletionReceipt
 
 
+@dataclass(frozen=True, slots=True)
+class _ParquetFacts:
+    row_count: int
+    row_group_count: int
+    instrument_count: int
+    min_time_ms: int
+    max_time_ms: int
+    min_instrument_id: int
+    max_instrument_id: int
+
+
 def _table_sha256(table: pa.Table) -> str:
     """Hash exact Arrow buffers without converting the batch into Python rows."""
 
@@ -363,6 +374,53 @@ def _file_stats(
     )
 
 
+def _parquet_facts(
+    path: Path,
+    dataset_type: DatasetType,
+    *,
+    expected_rows: int,
+) -> _ParquetFacts:
+    parquet = pq.ParquetFile(path)
+    try:
+        verify_canonical_candle_schema(parquet.schema_arrow, dataset_type)
+        metadata = parquet.metadata
+        if metadata.num_rows != expected_rows:
+            raise PublicationError("Parquet footer row count does not match its inventory")
+        for row_group_index in range(metadata.num_row_groups):
+            row_group = metadata.row_group(row_group_index)
+            for column_index in range(row_group.num_columns):
+                if row_group.column(column_index).compression.lower() != COMPRESSION:
+                    raise PublicationError("Parquet footer compression does not match ZSTD-3")
+        row_group_count = metadata.num_row_groups
+    finally:
+        parquet.close()
+    keys = pq.read_table(path, columns=["instrument_id", "open_time_ms"])
+    instrument_ids = keys.column("instrument_id")
+    open_times = keys.column("open_time_ms")
+    if keys.num_rows > 1:
+        previous_ids = instrument_ids.slice(0, keys.num_rows - 1)
+        next_ids = instrument_ids.slice(1, keys.num_rows - 1)
+        previous_times = open_times.slice(0, keys.num_rows - 1)
+        next_times = open_times.slice(1, keys.num_rows - 1)
+        strictly_ordered = pc.or_(
+            pc.greater(next_ids, previous_ids),
+            pc.and_(pc.equal(next_ids, previous_ids), pc.greater(next_times, previous_times)),
+        )
+        if pc.all(strictly_ordered).as_py() is not True:
+            raise PublicationError("Parquet canonical keys are not strictly sorted and unique")
+    times = cast(dict[str, int], pc.min_max(open_times).as_py())
+    instruments = cast(dict[str, int], pc.min_max(instrument_ids).as_py())
+    return _ParquetFacts(
+        row_count=keys.num_rows,
+        row_group_count=row_group_count,
+        instrument_count=int(pc.count_distinct(instrument_ids).as_py()),
+        min_time_ms=times["min"],
+        max_time_ms=times["max"],
+        min_instrument_id=instruments["min"],
+        max_instrument_id=instruments["max"],
+    )
+
+
 def _build_audit(
     plan: PublicationPlan,
     dataset_file: DatasetFile,
@@ -460,21 +518,17 @@ def publish_candle_dataset(
     parquet_sha = sha256_file(temporary_parquet)
     parquet_path = partition_root / f"part-{parquet_sha}.parquet"
     os.replace(temporary_parquet, parquet_path)
-    parquet_file = pq.ParquetFile(parquet_path)
-    try:
-        verify_canonical_candle_schema(parquet_file.schema_arrow, plan.batch.dataset_type)
-        if parquet_file.metadata.num_rows != plan.batch.table.num_rows:
-            raise PublicationError("Parquet footer row count does not match the canonical batch")
-        parquet_row_groups = parquet_file.metadata.num_row_groups
-    finally:
-        parquet_file.close()
+    facts = _parquet_facts(
+        parquet_path,
+        plan.batch.dataset_type,
+        expected_rows=plan.batch.table.num_rows,
+    )
     relative_parquet = plan.batch.partition_path / parquet_path.name
     dataset_file = _file_stats(plan.batch, relative_parquet, parquet_path)
-    instrument_count = int(pc.count_distinct(plan.batch.table.column("instrument_id")).as_py())
     audit = _build_audit(
         plan,
         dataset_file,
-        parquet_row_groups=parquet_row_groups,
+        parquet_row_groups=facts.row_group_count,
     )
     audit_path = plan.paths.building_root / "audit.json"
     _write_exclusive(audit_path, canonical_json_bytes(audit))
@@ -486,7 +540,7 @@ def publish_candle_dataset(
         semantic_version=plan.spec.semantic_version,
         status=DatasetStatus.COMPLETE,
         parent_dataset_ids=plan.spec.parent_dataset_ids,
-        instrument_count=instrument_count,
+        instrument_count=facts.instrument_count,
         row_count=dataset_file.row_count,
         min_time_ms=dataset_file.min_time_ms,
         max_time_ms=dataset_file.max_time_ms,
@@ -603,6 +657,8 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         raise PublicationError("completion receipt does not bind the manifest")
     if manifest.dataset_type not in (DatasetType.TRADE_KLINE_1M, DatasetType.MARK_KLINE_1M):
         raise PublicationError("publication verifier supports only canonical candle datasets")
+    if len(manifest.files) != 1:
+        raise PublicationError("bounded candle publication must contain exactly one Parquet file")
     audit_sha = sha256_file(audit_path)
     if manifest.audit_report_sha256 != (audit_sha,):
         raise PublicationError("manifest does not bind the canonical audit")
@@ -627,6 +683,7 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         raise PublicationError("canonical audit identity does not match the manifest")
     expected_files = {"audit.json", "manifest.json", "completion-receipt.json"}
     expected_directories: set[str] = set()
+    verified_facts: _ParquetFacts | None = None
     for item in manifest.files:
         path = _safe_dataset_file(root, item.path)
         if (
@@ -635,13 +692,18 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
             or sha256_file(path) != item.sha256
         ):
             raise PublicationError(f"dataset file hash or size mismatch: {item.path}")
-        parquet = pq.ParquetFile(path)
-        try:
-            verify_canonical_candle_schema(parquet.schema_arrow, manifest.dataset_type)
-            if parquet.metadata.num_rows != item.row_count:
-                raise PublicationError(f"dataset file row count mismatch: {item.path}")
-        finally:
-            parquet.close()
+        verified_facts = _parquet_facts(
+            path,
+            manifest.dataset_type,
+            expected_rows=item.row_count,
+        )
+        if (
+            item.min_time_ms != verified_facts.min_time_ms
+            or item.max_time_ms != verified_facts.max_time_ms
+            or item.min_instrument_id != verified_facts.min_instrument_id
+            or item.max_instrument_id != verified_facts.max_instrument_id
+        ):
+            raise PublicationError(f"dataset file key statistics mismatch: {item.path}")
         expected_files.add(item.path)
         parent = PurePosixPath(item.path).parent
         while parent != PurePosixPath("."):
@@ -653,6 +715,43 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
     actual_directories = {path.relative_to(root).as_posix() for path in entries if path.is_dir()}
     if actual_directories != expected_directories:
         raise PublicationError("committed dataset contains orphan or missing directories")
+    if verified_facts is None:
+        raise PublicationError("committed dataset has no verified Parquet facts")
+    item = manifest.files[0]
+    if (
+        manifest.row_count != verified_facts.row_count
+        or manifest.instrument_count != verified_facts.instrument_count
+        or manifest.min_time_ms != verified_facts.min_time_ms
+        or manifest.max_time_ms != verified_facts.max_time_ms
+    ):
+        raise PublicationError("manifest aggregate statistics do not match Parquet")
+    expected_file_target = {
+        "classification": _target_classification(item.size_bytes),
+        "observed_bytes": item.size_bytes,
+        "target_bytes": TARGET_FILE_SIZE_BYTES,
+    }
+    expected_parquet = {
+        "compression": COMPRESSION,
+        "compression_level": COMPRESSION_LEVEL,
+        "row_group_count": verified_facts.row_group_count,
+        "row_group_rows": ROW_GROUP_ROWS,
+    }
+    digest_fields = (
+        audit.get("capacity_evidence_sha256"),
+        audit.get("coverage_evidence_sha256"),
+        audit.get("input_table_sha256"),
+        audit.get("request_sha256"),
+    )
+    if (
+        audit.get("file_target") != expected_file_target
+        or audit.get("parquet") != expected_parquet
+        or audit.get("partition_path") != PurePosixPath(item.path).parent.as_posix()
+        or audit.get("coverage_evidence_sha256") not in manifest.source_evidence_sha256
+        or any(
+            not isinstance(value, str) or not SHA256_RE.fullmatch(value) for value in digest_fields
+        )
+    ):
+        raise PublicationError("canonical audit facts do not match Parquet or manifest")
     return PublishedDataset(
         dataset_root=root,
         manifest_path=manifest_path,
