@@ -13,6 +13,7 @@
     "measurements",
     "preparation",
     "profile",
+    "software",
     "status"
   ],
   "properties": {
@@ -34,6 +35,7 @@
     },
     "preparation": {"$ref": "#/$defs/preparation"},
     "profile": {"const": "reference"},
+    "software": {"$ref": "#/$defs/software"},
     "status": {"const": "reference-protocol-candidate"}
   },
   "$defs": {
@@ -49,6 +51,66 @@
         "machine": {"type": "string", "minLength": 1},
         "platform": {"type": "string", "minLength": 1},
         "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "referenceHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_count_logical",
+        "cpu_count_physical",
+        "cpu_model",
+        "machine",
+        "platform",
+        "ram_bytes",
+        "storage_kind",
+        "storage_model",
+        "volume_root",
+        "volume_total_bytes"
+      ],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 16},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 68719476736},
+        "storage_kind": {"const": "nvme"},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 2199023255552}
+      }
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "psutil", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "psutil": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "referenceHostEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "hardware",
+        "observed_at_utc",
+        "status"
+      ],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.workstation-snapshot/v1"},
+        "hardware": {"$ref": "#/$defs/referenceHardware"},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "status": {"const": "meets-documented-full-research-profile"}
       }
     },
     "layout": {
@@ -99,6 +161,7 @@
         "preparation",
         "profile",
         "query_shape",
+        "software",
         "status"
       ],
       "properties": {
@@ -126,6 +189,7 @@
         },
         "profile": {"const": "reference"},
         "query_shape": {"enum": ["single-symbol", "universe-month"]},
+        "software": {"$ref": "#/$defs/software"},
         "status": {"const": "reboot-separated-first-read"}
       }
     },
@@ -239,6 +303,8 @@
         "input",
         "preparation_schema",
         "real_market_evidence",
+        "reference_host_evidence",
+        "software",
         "source_semantics"
       ],
       "properties": {
@@ -264,6 +330,8 @@
         },
         "preparation_schema": {"const": "grid.reference-layout-preparation/v2"},
         "real_market_evidence": {"$ref": "#/$defs/realMarketEvidence"},
+        "reference_host_evidence": {"$ref": "#/$defs/referenceHostEvidence"},
+        "software": {"$ref": "#/$defs/software"},
         "source_semantics": {"const": "deterministic-exact-synthetic-v1+bounded-real-market-layout-skew-v1"}
       }
     }

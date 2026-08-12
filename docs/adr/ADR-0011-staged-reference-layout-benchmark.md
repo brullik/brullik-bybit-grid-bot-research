@@ -26,8 +26,18 @@ Add a staged reference benchmark with three explicit phases:
    query it checks only file paths, sizes, and modification times. Content hashes are verified
    after the timed reads.
 3. `finalize` accepts only a verified preparation receipt and all four verified measurement
-   receipts. It rejects duplicate boot markers, changed hardware, changed dataset content, missing
-   query legs, or incomplete maintenance parity evidence.
+   receipts. It rejects duplicate boot markers, changed hardware or software, changed dataset
+   content, missing query legs, or incomplete maintenance parity evidence.
+
+Reference preparation additionally requires a receipt-verified workstation snapshot that reports
+the documented full research profile: at least 16 observed physical cores, 64 GiB RAM, and a
+2 TiB NVMe measured volume. The current CPU/RAM/platform/storage identity must match the snapshot,
+and the retained work directory must be on that measured volume. The snapshot hash, summarized
+hardware, and exact Python/DuckDB/Polars/PyArrow/psutil versions are bound into the v2 preparation,
+every measurement leg, and the final artifact. Input verification occurs before an existing work
+directory can be replaced. On Windows, the storage model is resolved from the physical device
+number backing the measured drive rather than assumed from `PhysicalDrive0`; on Linux it is
+resolved from the longest matching mount and its `/sys/class/block` device.
 
 Local development may use an explicit `unverified-smoke` cache mode. Its result is always
 `local-smoke-only`; it cannot be relabelled as reference evidence.
@@ -39,9 +49,10 @@ compacted outputs, and the original source tree hash must remain unchanged. Temp
 targets are deleted only after their evidence has been captured; the prepared shortlist datasets
 remain for the post-reboot measurement legs.
 
-The first implementation uses the existing deterministic exact synthetic generator. This closes
-no real-market-skew requirement: a later append-only evidence version must add a receipt-verified
-real-market input before Gate 1 can be accepted.
+The first implementation uses the existing deterministic exact synthetic generator. The v2
+evidence contract also requires the receipt-verified ADR-0012 real-market skew input; this
+calibrates value-distribution compression but does not turn the synthetic timed rows into real
+historical paths.
 
 ## Consequences
 
@@ -50,6 +61,8 @@ real-market input before Gate 1 can be accepted.
 - Dataset content verification occurs after the timed first read, avoiding self-warming by the
   verifier while still detecting tampering.
 - Reference execution requires four reboot-separated measurement legs and retained scratch data.
+- A caller cannot obtain reference status by selecting `--profile reference` on a below-profile
+  or different host/volume, and cannot mix engine versions between measurement legs.
 - Repair and compaction evidence preserves ADR-0003 immutability and measures a bounded ADR-0005
   monthly-bucket unit.
 - The protocol is slower operationally but makes cache semantics and mutation boundaries auditable.

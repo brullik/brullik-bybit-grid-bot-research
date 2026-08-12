@@ -4,11 +4,12 @@ import json
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import polars as pl
 import pytest
 from grid_contracts.canonical import sha256_file
-from grid_data.evidence import verify_evidence
+from grid_data.evidence import publish_evidence, verify_evidence
 from polars.testing import assert_frame_equal
 
 import benchmarks.reference_layout_benchmark as reference_benchmark
@@ -473,6 +474,30 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
     monkeypatch.setattr(reference_benchmark, "FULL_MINIMUM_EFFECTIVE_ROWS", 20_000)
     monkeypatch.setattr(reference_benchmark, "FULL_INSTRUMENTS", 10)
     monkeypatch.setattr(reference_benchmark, "_boot_marker", lambda: next(boot_markers))
+    monkeypatch.setattr(
+        reference_benchmark,
+        "_reference_host_input",
+        lambda _path, _work_dir: {
+            "artifact": "reference-host.json",
+            "artifact_sha256": "a" * 64,
+            "evidence_schema": "grid.workstation-snapshot/v1",
+            "hardware": {"cpu_count_physical": 16},
+            "observed_at_utc": "2026-01-01T00:00:00Z",
+            "status": "meets-documented-full-research-profile",
+        },
+    )
+    with pytest.raises(ValueError, match="full-profile host evidence"):
+        prepare_reference_workdir(
+            work_dir=work_dir,
+            decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+            profile="reference",
+            rows=20_000,
+            instruments=10,
+            row_group_rows=1_000,
+            generation_chunk_rows=2_000,
+            real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+        )
+    assert not work_dir.exists()
     actual_write_layout = reference_benchmark.write_layout
 
     def simulated_reference_write(**kwargs: object) -> dict[str, object]:
@@ -489,7 +514,22 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
         row_group_rows=1_000,
         generation_chunk_rows=2_000,
         real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+        reference_host_evidence=Path("reference-host.json"),
     )
+    prepared_software = reference_benchmark._software()
+    monkeypatch.setattr(
+        reference_benchmark,
+        "_software",
+        lambda: {**prepared_software, "duckdb": "changed-after-preparation"},
+    )
+    with pytest.raises(ValueError, match="software changed"):
+        measure_leg(
+            work_dir=work_dir,
+            engine="duckdb",
+            query_shape="single-symbol",
+            cache_proof="reboot",
+        )
+    monkeypatch.setattr(reference_benchmark, "_software", lambda: prepared_software)
     for engine in ("duckdb", "polars"):
         for query_shape in ("single-symbol", "universe-month"):
             measure_leg(
@@ -506,7 +546,108 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
     assert payload["benchmark_schema"] == "grid.reference-layout-benchmark/v2"
     assert payload["status"] == "reference-protocol-candidate"
     assert payload["preparation"]["real_market_evidence"]["total_row_count"] == 80_640
+    assert payload["preparation"]["reference_host_evidence"]["artifact"] == "reference-host.json"
+    assert payload["software"] == payload["preparation"]["software"]
     assert len({item["boot_marker"] for item in payload["measurements"]}) == 4
+
+
+def test_reference_host_admission_rejects_current_below_profile(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="does not meet"):
+        reference_benchmark._reference_host_input(
+            Path("benchmarks/results/m1-workstation-snapshot.json"),
+            tmp_path / "reference-work",
+        )
+
+
+def test_invalid_reference_host_does_not_replace_owned_workdir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work_dir = tmp_path / "reference-work"
+    work_dir.mkdir()
+    marker, _receipt = publish_evidence(
+        work_dir / "run.json",
+        {"preserved": True, "run_schema": "grid.reference-layout-run/v1"},
+    )
+    monkeypatch.setattr(reference_benchmark, "FULL_MINIMUM_EFFECTIVE_ROWS", 20_000)
+    monkeypatch.setattr(reference_benchmark, "FULL_INSTRUMENTS", 10)
+
+    with pytest.raises(ValueError, match="does not meet"):
+        prepare_reference_workdir(
+            work_dir=work_dir,
+            decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+            profile="reference",
+            rows=20_000,
+            instruments=10,
+            row_group_rows=1_000,
+            generation_chunk_rows=2_000,
+            real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+            reference_host_evidence=Path("benchmarks/results/m1-workstation-snapshot.json"),
+            force=True,
+        )
+
+    assert verify_evidence(marker)
+    assert json.loads(marker.read_text(encoding="utf-8"))["preserved"] is True
+
+
+def test_reference_host_admission_binds_current_host_and_work_volume(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work_dir = tmp_path / "reference-work"
+    volume_root = work_dir.resolve().anchor
+    full_hardware = {
+        "cpu_count_logical": 32,
+        "cpu_count_physical": 16,
+        "cpu_model": "Reference CPU",
+        "machine": "AMD64",
+        "platform": "Reference OS",
+        "ram_bytes": 64 * 1024**3,
+        "storage_kind": "nvme",
+        "storage_model": "Reference NVMe",
+        "volume_free_bytes": 1024**4,
+        "volume_root": volume_root,
+        "volume_total_bytes": 2 * 1024**4,
+    }
+    artifact = tmp_path / "reference-host.json"
+    publish_evidence(
+        artifact,
+        {
+            "assessment": {"documented_full_research_profile": {"meets": True}},
+            "evidence_schema": "grid.workstation-snapshot/v1",
+            "hardware": full_hardware,
+            "observed_at_utc": "2026-01-01T00:00:00Z",
+            "status": "meets-documented-full-research-profile",
+        },
+    )
+    monkeypatch.setattr(
+        reference_benchmark,
+        "_hardware",
+        lambda: {
+            key: full_hardware[key]
+            for key in (
+                "cpu_count_logical",
+                "cpu_count_physical",
+                "machine",
+                "platform",
+                "ram_bytes",
+            )
+        },
+    )
+    monkeypatch.setattr(reference_benchmark, "cpu_model", lambda: "Reference CPU")
+    monkeypatch.setattr(
+        reference_benchmark,
+        "storage_identity",
+        lambda _volume: ("nvme", "Reference NVMe"),
+    )
+    monkeypatch.setattr(
+        reference_benchmark.psutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=2 * 1024**4),
+    )
+
+    admitted = reference_benchmark._reference_host_input(artifact, work_dir)
+
+    assert admitted["artifact_sha256"] == sha256_file(artifact)
+    assert admitted["hardware"]["volume_root"] == volume_root
 
 
 class FakeRealMarketClient:
@@ -774,3 +915,46 @@ def test_workstation_snapshot_removes_device_instance_identifier(
     )
 
     assert storage_identity() == ("nvme", "NVMe EXAMPLE MODEL")
+
+
+def test_workstation_snapshot_resolves_the_measured_volume_device(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_values: list[str] = []
+    monkeypatch.setattr(
+        "benchmarks.workstation_snapshot.windows_volume_device_number",
+        lambda _volume: 2,
+    )
+
+    def registry_value(_path: str, value_name: str) -> str:
+        requested_values.append(value_name)
+        return r"SCSI\Disk&Ven_NVMe&Prod_REFERENCE_VOLUME\instance-specific-suffix"
+
+    monkeypatch.setattr(
+        "benchmarks.workstation_snapshot.windows_registry_value",
+        registry_value,
+    )
+
+    assert storage_identity("D:\\") == ("nvme", "NVMe REFERENCE VOLUME")
+    assert requested_values == ["2"]
+
+
+def test_workstation_snapshot_resolves_linux_nvme_mount(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sys_block = tmp_path / "sys-block"
+    (sys_block / "nvme2n1" / "device").mkdir(parents=True)
+    (sys_block / "nvme2n1" / "queue").mkdir()
+    (sys_block / "nvme2n1" / "device" / "model").write_text(
+        "Reference Linux NVMe\n",
+        encoding="utf-8",
+    )
+    (sys_block / "nvme2n1" / "queue" / "rotational").write_text("0\n", encoding="utf-8")
+    monkeypatch.setattr("benchmarks.workstation_snapshot.sys.platform", "linux")
+    monkeypatch.setattr("benchmarks.workstation_snapshot.SYS_BLOCK_ROOT", sys_block)
+    monkeypatch.setattr(
+        "benchmarks.workstation_snapshot.psutil.disk_partitions",
+        lambda **_kwargs: [SimpleNamespace(device="/dev/nvme2n1p1", mountpoint=str(tmp_path))],
+    )
+
+    assert storage_identity(tmp_path / "benchmark") == ("nvme", "Reference Linux NVMe")

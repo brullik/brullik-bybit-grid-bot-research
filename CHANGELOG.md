@@ -37,6 +37,11 @@ All notable project-governance and architecture changes are recorded here.
   closed-candle checks, exact two-layout parity, ignored raw work files, and receipt-linked summary.
 - Real-market-calibrated v3 capacity projection and a v2 reference-protocol contract that binds the
   skew artifact and requires actual shortlisted target-file attainment.
+- Receipt-bound reference-host admission that rejects below-profile or mismatched machines/volumes
+  before mutation and freezes engine/runtime versions across reboot-separated measurements.
+- Volume-aware Windows storage identity using the measured drive's physical device number instead
+  of assuming every benchmark volume is backed by `PhysicalDrive0`.
+- Volume-aware Linux block-device/model detection for reference evidence on NVMe research hosts.
 
 ### Safety
 

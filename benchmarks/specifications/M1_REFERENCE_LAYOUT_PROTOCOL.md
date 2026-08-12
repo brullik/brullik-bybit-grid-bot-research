@@ -40,14 +40,29 @@ python -m benchmarks.reference_layout_benchmark finalize `
 
 ## Reference-hardware protocol
 
+First capture a receipt-verified workstation snapshot on the same volume that will retain the
+datasets. The example keeps both outside Git on `D:`:
+
+```powershell
+python benchmarks/workstation_snapshot.py `
+  --output D:\grid-reference\reference-host.json --force
+```
+
+The snapshot must report `meets-documented-full-research-profile`: at least 16 observed physical
+cores, 64 GiB RAM, and a 2 TiB NVMe volume. A below-profile, malformed, different-host, or
+different-volume snapshot is rejected before the work directory is created or replaced. On
+Windows, the snapshot resolves the physical device backing that drive; it does not assume that
+the benchmark volume is `PhysicalDrive0`.
+
 Prepare the retained 100-million-row shortlist once:
 
 ```powershell
 python -m benchmarks.reference_layout_benchmark prepare `
-  --work-dir .benchmark-work/reference-layout-reference `
+  --work-dir D:\grid-reference\reference-layout-reference `
   --profile reference --rows 100000000 --instruments 700 `
   --row-group-rows 100000 --generation-chunk-rows 1000000 `
-  --real-market-evidence benchmarks/results/m1-real-market-layout-skew.json
+  --real-market-evidence benchmarks/results/m1-real-market-layout-skew.json `
+  --reference-host-evidence D:\grid-reference\reference-host.json
 ```
 
 For each of the four engine/query combinations:
@@ -64,7 +79,8 @@ also requires unchanged hardware and matching DuckDB/Polars query-result hashes.
 profile fails closed unless the real-market artifact and receipt verify, reference the same exact
 shortlist, retain two schema-verified logical-equivalent layouts, and have a valid embedded hash.
 Preparation also fails closed unless each 100-million-row shortlist dataset actually exercises
-its declared target file size.
+its declared target file size. Python, DuckDB, Polars, PyArrow, and psutil versions are captured at
+preparation and must remain identical in all four legs.
 
 ## Maintenance semantics
 

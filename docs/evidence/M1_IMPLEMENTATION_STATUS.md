@@ -40,6 +40,9 @@
   exact shortlist layouts outside Git, and publishes only schema-validated aggregates and hashes.
 - V3 capacity calibration that binds the real-market artifact and retains the independent
   24/40/64-byte planning envelopes and provisional 2 TiB recommendation.
+- Fail-closed reference-host admission that requires a receipt-verified full-profile workstation
+  snapshot, matches current CPU/RAM/platform and storage identity, binds the measured work volume,
+  and freezes Python/DuckDB/Polars/PyArrow/psutil versions across all reboot-separated legs.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -221,8 +224,9 @@
 
 - Run the staged ADR-0010 shortlist protocol on declared reference hardware with four distinct
   reboot-separated measurement legs using the now receipt-verified real-market-skew binding, then
-  decide P-001 through P-005. The local maintenance/cold-read harness is implemented but its smoke
-  result satisfies none of those reference claims.
+  decide P-001 through P-005. The protocol now rejects the checked-in below-profile workstation
+  snapshot before mutation; a qualifying ≥16-core/64 GiB/2 TiB NVMe host remains external evidence.
+  The local maintenance/cold-read smoke result satisfies none of those reference claims.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

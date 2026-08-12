@@ -17,6 +17,7 @@ from grid_data.evidence import preflight_evidence, publish_evidence
 
 GIB = 1024**3
 TIB = 1024**4
+SYS_BLOCK_ROOT = Path("/sys/class/block")
 
 
 def windows_registry_value(key_path: str, value_name: str) -> str | None:
@@ -39,8 +40,130 @@ def cpu_model() -> str:
     return registry_model or platform.processor() or platform.machine()
 
 
-def storage_identity() -> tuple[str, str]:
-    registry_identity = windows_registry_value(r"SYSTEM\CurrentControlSet\Services\disk\Enum", "0")
+def windows_volume_device_number(volume_root: str | Path) -> int | None:
+    if sys.platform != "win32":
+        return None
+    volume_match = re.fullmatch(r"([A-Za-z]):\\?", str(volume_root))
+    if volume_match is None:
+        return None
+
+    import ctypes
+    from ctypes import wintypes
+
+    class StorageDeviceNumber(ctypes.Structure):
+        _fields_ = [
+            ("device_type", wintypes.DWORD),
+            ("device_number", wintypes.DWORD),
+            ("partition_number", wintypes.DWORD),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    device_io_control = kernel32.DeviceIoControl
+    device_io_control.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.c_void_p,
+    ]
+    device_io_control.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+    handle = create_file(
+        rf"\\.\{volume_match.group(1).upper()}:",
+        0,
+        0x00000001 | 0x00000002,
+        None,
+        3,
+        0,
+        None,
+    )
+    if handle == wintypes.HANDLE(-1).value:
+        return None
+    try:
+        device = StorageDeviceNumber()
+        returned = wintypes.DWORD()
+        succeeded = device_io_control(
+            handle,
+            0x002D1080,
+            None,
+            0,
+            ctypes.byref(device),
+            ctypes.sizeof(device),
+            ctypes.byref(returned),
+            None,
+        )
+        return int(device.device_number) if succeeded else None
+    finally:
+        close_handle(handle)
+
+
+def linux_storage_identity(volume_root: str | Path) -> tuple[str, str]:
+    resolved_volume = Path(volume_root).resolve()
+    candidates: list[tuple[int, str]] = []
+    for partition in psutil.disk_partitions(all=True):
+        mountpoint = Path(partition.mountpoint).resolve()
+        try:
+            resolved_volume.relative_to(mountpoint)
+        except ValueError:
+            continue
+        candidates.append((len(mountpoint.parts), str(partition.device)))
+    if not candidates:
+        return "unknown", "not-observed"
+    device = max(candidates)[1]
+    device_name = Path(device).name
+    partition_match = re.fullmatch(
+        r"(?P<base>nvme\d+n\d+|mmcblk\d+)p\d+|(?P<disk>[a-zA-Z]+)\d+",
+        device_name,
+    )
+    if partition_match is not None:
+        block_name = partition_match.group("base") or partition_match.group("disk")
+    else:
+        block_name = device_name
+    if not block_name:
+        return "unknown", "not-observed"
+    block_root = SYS_BLOCK_ROOT / block_name
+    model_path = block_root / "device" / "model"
+    rotational_path = block_root / "queue" / "rotational"
+    try:
+        model = model_path.read_text(encoding="utf-8").strip() or block_name
+    except OSError:
+        model = block_name or "not-observed"
+    if block_name.startswith("nvme"):
+        storage_kind = "nvme"
+    else:
+        try:
+            rotational = rotational_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            rotational = "unknown"
+        storage_kind = "ssd" if rotational == "0" else "unknown"
+    return storage_kind, model
+
+
+def storage_identity(volume_root: str | Path | None = None) -> tuple[str, str]:
+    if sys.platform.startswith("linux") and volume_root is not None:
+        return linux_storage_identity(volume_root)
+    device_number = windows_volume_device_number(volume_root) if volume_root is not None else 0
+    if device_number is None:
+        return "unknown", "not-observed"
+    registry_identity = windows_registry_value(
+        r"SYSTEM\CurrentControlSet\Services\disk\Enum", str(device_number)
+    )
     raw_identity = registry_identity or "not-observed"
     normalized = raw_identity.casefold()
     if "nvme" in normalized:
@@ -116,7 +239,7 @@ def build_snapshot(output: Path) -> dict[str, Any]:
     volume_root = output.anchor or Path.cwd().anchor
     disk = psutil.disk_usage(volume_root)
     physical_cores = psutil.cpu_count(logical=False)
-    storage_kind, storage_model = storage_identity()
+    storage_kind, storage_model = storage_identity(volume_root)
     assessment = profile_assessment(
         physical_cores,
         memory.total,

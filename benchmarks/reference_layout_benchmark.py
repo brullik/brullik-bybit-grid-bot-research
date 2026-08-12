@@ -14,6 +14,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Literal
 
@@ -33,6 +34,7 @@ from benchmarks.layout_benchmark import (
     _verify_exact_numeric_schema,
     write_layout,
 )
+from benchmarks.workstation_snapshot import GIB, TIB, cpu_model, storage_identity
 
 PREPARATION_SCHEMA = "grid.reference-layout-preparation/v1"
 PREPARATION_SCHEMA_V2 = "grid.reference-layout-preparation/v2"
@@ -44,6 +46,7 @@ FINAL_SCHEMA = "grid.reference-layout-benchmark/v1"
 FINAL_SCHEMA_V2 = "grid.reference-layout-benchmark/v2"
 DECISION_SCHEMA = "grid.layout-benchmark/v3"
 REAL_MARKET_SCHEMA = "grid.real-market-layout-skew/v1"
+WORKSTATION_SCHEMA = "grid.workstation-snapshot/v1"
 SOURCE_SEMANTICS = "deterministic-exact-synthetic-v1"
 Engine = Literal["duckdb", "polars"]
 QueryShape = Literal["single-symbol", "universe-month"]
@@ -85,6 +88,16 @@ def _hardware() -> dict[str, Any]:
         "machine": platform.machine(),
         "platform": platform.platform(),
         "ram_bytes": memory.total,
+    }
+
+
+def _software() -> dict[str, str]:
+    return {
+        "duckdb": version("duckdb"),
+        "polars": version("polars"),
+        "psutil": version("psutil"),
+        "pyarrow": version("pyarrow"),
+        "python": platform.python_version(),
     }
 
 
@@ -277,6 +290,110 @@ def _real_market_input(
         "layouts": summaries,
         "source_content_sha256": source_content_sha256,
         "total_row_count": total_row_count,
+    }
+
+
+def _reference_host_input(path: Path, work_dir: Path) -> dict[str, Any]:
+    path = path.resolve()
+    payload = _load_verified(path, "evidence_schema", WORKSTATION_SCHEMA)
+    assessment = payload.get("assessment")
+    hardware = payload.get("hardware")
+    full_profile = (
+        assessment.get("documented_full_research_profile")
+        if isinstance(assessment, Mapping)
+        else None
+    )
+    if (
+        payload.get("status") != "meets-documented-full-research-profile"
+        or not isinstance(full_profile, Mapping)
+        or full_profile.get("meets") is not True
+        or not isinstance(hardware, Mapping)
+    ):
+        raise ValueError("reference host evidence does not meet the documented full profile")
+
+    logical_cores = hardware.get("cpu_count_logical")
+    physical_cores = hardware.get("cpu_count_physical")
+    ram_bytes = hardware.get("ram_bytes")
+    volume_total_bytes = hardware.get("volume_total_bytes")
+    volume_root = hardware.get("volume_root")
+    required_text_fields = (
+        "cpu_model",
+        "machine",
+        "platform",
+        "storage_model",
+    )
+    if (
+        isinstance(logical_cores, bool)
+        or not isinstance(logical_cores, int)
+        or logical_cores < 1
+        or isinstance(physical_cores, bool)
+        or not isinstance(physical_cores, int)
+        or physical_cores < 16
+        or isinstance(ram_bytes, bool)
+        or not isinstance(ram_bytes, int)
+        or ram_bytes < 64 * GIB
+        or hardware.get("storage_kind") != "nvme"
+        or isinstance(volume_total_bytes, bool)
+        or not isinstance(volume_total_bytes, int)
+        or volume_total_bytes < 2 * TIB
+        or not isinstance(volume_root, str)
+        or not volume_root
+        or any(
+            not isinstance(hardware.get(field), str) or not hardware.get(field)
+            for field in required_text_fields
+        )
+    ):
+        raise ValueError("reference host evidence has invalid full-profile hardware values")
+
+    work_volume = Path(work_dir.resolve().anchor).resolve()
+    evidence_volume = Path(volume_root).resolve()
+    if work_volume != evidence_volume:
+        raise ValueError("reference work directory is not on the measured workstation volume")
+
+    current = _hardware()
+    identity_fields = (
+        "cpu_count_logical",
+        "cpu_count_physical",
+        "machine",
+        "platform",
+        "ram_bytes",
+    )
+    if any(hardware.get(field) != current.get(field) for field in identity_fields):
+        raise ValueError("reference workstation evidence does not match the current host")
+    current_storage_kind, current_storage_model = storage_identity(work_volume)
+    if (
+        hardware.get("cpu_model") != cpu_model()
+        or hardware.get("storage_kind") != current_storage_kind
+        or hardware.get("storage_model") != current_storage_model
+        or psutil.disk_usage(str(work_volume)).total != volume_total_bytes
+    ):
+        raise ValueError("reference workstation identity or measured volume changed")
+
+    observed_at_utc = payload.get("observed_at_utc")
+    try:
+        observed_at = datetime.fromisoformat(str(observed_at_utc).replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("reference workstation evidence timestamp is invalid") from error
+    if observed_at.tzinfo is None or observed_at > datetime.now(UTC):
+        raise ValueError("reference workstation evidence timestamp is naive or in the future")
+    return {
+        "artifact": path.name,
+        "artifact_sha256": sha256_file(path),
+        "evidence_schema": WORKSTATION_SCHEMA,
+        "hardware": {
+            "cpu_count_logical": logical_cores,
+            "cpu_count_physical": physical_cores,
+            "cpu_model": hardware["cpu_model"],
+            "machine": hardware["machine"],
+            "platform": hardware["platform"],
+            "ram_bytes": ram_bytes,
+            "storage_kind": hardware["storage_kind"],
+            "storage_model": hardware["storage_model"],
+            "volume_root": volume_root,
+            "volume_total_bytes": volume_total_bytes,
+        },
+        "observed_at_utc": observed_at_utc,
+        "status": payload["status"],
     }
 
 
@@ -526,15 +643,12 @@ def prepare_reference_workdir(
     row_group_rows: int,
     generation_chunk_rows: int,
     real_market_evidence: Path | None = None,
+    reference_host_evidence: Path | None = None,
     force: bool = False,
 ) -> Path:
     work_dir = work_dir.resolve()
     preparation_path = work_dir / "preparation.json"
     preflight_evidence(preparation_path, force=force)
-    if work_dir.exists():
-        if not force:
-            raise FileExistsError(f"work directory exists: {work_dir}")
-        _safe_replace_work_dir(work_dir)
     row_count = _validate_scale(profile, rows, instruments)
     shortlist, decision = _shortlist(decision_path)
     real_market = (
@@ -542,10 +656,24 @@ def prepare_reference_workdir(
         if real_market_evidence is not None
         else None
     )
-    if profile == "reference" and real_market is None:
-        raise ValueError("reference profile requires verified real-market skew evidence")
-    preparation_schema = PREPARATION_SCHEMA_V2 if real_market is not None else PREPARATION_SCHEMA
-    run_schema = RUN_SCHEMA_V2 if real_market is not None else RUN_SCHEMA
+    reference_host = (
+        _reference_host_input(reference_host_evidence, work_dir)
+        if reference_host_evidence is not None
+        else None
+    )
+    if profile == "reference" and (real_market is None or reference_host is None):
+        raise ValueError(
+            "reference profile requires verified real-market and full-profile host evidence"
+        )
+    if profile != "reference" and (real_market is not None or reference_host is not None):
+        raise ValueError("smoke profile cannot claim real-market or reference-host evidence")
+    if work_dir.exists():
+        if not force:
+            raise FileExistsError(f"work directory exists: {work_dir}")
+        _safe_replace_work_dir(work_dir)
+    preparation_schema = PREPARATION_SCHEMA_V2 if reference_host is not None else PREPARATION_SCHEMA
+    run_schema = RUN_SCHEMA_V2 if reference_host is not None else RUN_SCHEMA
+    software = _software()
     work_dir.mkdir(parents=True)
     run_payload = {
         "decision_evidence": decision,
@@ -560,6 +688,9 @@ def prepare_reference_workdir(
     }
     if real_market is not None:
         run_payload["real_market_evidence"] = real_market
+    if reference_host is not None:
+        run_payload["reference_host_evidence"] = reference_host
+        run_payload["software"] = software
     publish_evidence(work_dir / "run.json", run_payload)
     datasets = []
     for index, layout in enumerate(shortlist):
@@ -625,6 +756,9 @@ def prepare_reference_workdir(
     }
     if real_market is not None:
         payload["real_market_evidence"] = real_market
+    if reference_host is not None:
+        payload["reference_host_evidence"] = reference_host
+        payload["software"] = software
     publish_evidence(preparation_path, payload)
     return preparation_path
 
@@ -703,6 +837,12 @@ def measure_leg(
     measurement_schema = (
         MEASUREMENT_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else MEASUREMENT_SCHEMA
     )
+    current_software = _software()
+    if (
+        measurement_schema == MEASUREMENT_SCHEMA_V2
+        and preparation.get("software") != current_software
+    ):
+        raise ValueError("reference benchmark software changed after preparation")
     profile = preparation.get("profile")
     if profile == "reference" and cache_proof != "reboot":
         raise ValueError("reference measurement requires reboot cache proof")
@@ -774,6 +914,7 @@ def measure_leg(
     }
     if measurement_schema == MEASUREMENT_SCHEMA_V2:
         payload["preparation"]["preparation_schema"] = preparation_schema
+        payload["software"] = current_software
     publish_evidence(output, payload)
     return output
 
@@ -830,6 +971,11 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
     hardware = preparation.get("hardware")
     if any(item.get("hardware") != hardware for item in measurements):
         raise ValueError("reference benchmark hardware changed between stages")
+    software = preparation.get("software")
+    if final_schema == FINAL_SCHEMA_V2 and any(
+        item.get("software") != software for item in measurements
+    ):
+        raise ValueError("reference benchmark software changed between stages")
     profile = preparation.get("profile")
     boot_markers = [str(item.get("boot_marker")) for item in measurements]
     if profile == "reference":
@@ -898,6 +1044,9 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
     if final_schema == FINAL_SCHEMA_V2:
         payload["preparation"]["preparation_schema"] = preparation_schema
         payload["preparation"]["real_market_evidence"] = preparation["real_market_evidence"]
+        payload["preparation"]["reference_host_evidence"] = preparation["reference_host_evidence"]
+        payload["preparation"]["software"] = software
+        payload["software"] = software
     publish_evidence(output, payload, force=force)
     return output
 
@@ -918,6 +1067,7 @@ def arguments() -> argparse.Namespace:
     prepare.add_argument("--row-group-rows", type=int, default=100_000)
     prepare.add_argument("--generation-chunk-rows", type=int, default=1_000_000)
     prepare.add_argument("--real-market-evidence", type=Path)
+    prepare.add_argument("--reference-host-evidence", type=Path)
     prepare.add_argument("--force", action="store_true")
 
     measure = commands.add_parser("measure")
@@ -947,6 +1097,7 @@ def main() -> int:
             row_group_rows=args.row_group_rows,
             generation_chunk_rows=args.generation_chunk_rows,
             real_market_evidence=args.real_market_evidence,
+            reference_host_evidence=args.reference_host_evidence,
             force=args.force,
         )
     elif args.command_name == "measure":
