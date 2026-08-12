@@ -9,6 +9,9 @@ All notable project-governance and architecture changes are recorded here.
 - Fail-closed canonical 1m coverage audit with exact Landing/Parquet equality, per-series minute
   accounting, bounded hash-bound gap evidence, lifecycle/duplicate/unexpected/unrequested checks,
   immutable blocked evidence, and no automatically accepted absence reason.
+- Receipt-verified measured coverage audit for the two-symbol public pilot: exact parity across
+  20,160 rows with zero gaps, duplicates, conflicts, unexpected/unrequested rows, or lifecycle
+  violations, while retaining bounded-range and Gate 2 limitations.
 - GitHub-authoritative Phase 2 pilot evidence with a strict sanitized schema, exact per-series 1m
   coverage proof, transitive Landing/canonical hashes, immutable publisher identity, receipt-last
   publication, and an explicit ban on market values, local paths, device/account data, and secrets.

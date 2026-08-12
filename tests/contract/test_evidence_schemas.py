@@ -120,6 +120,30 @@ def test_phase2_public_1m_pilot_matches_schema_hash_receipt_and_redaction() -> N
         assert forbidden not in rendered
 
 
+def test_canonical_coverage_audit_matches_schema_hash_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-canonical-coverage-audit-20260812.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-1m-coverage-audit.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert verify_evidence(artifact)
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"open"',
+        '"volume"',
+    ):
+        assert forbidden not in rendered
+
+
 def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-archive-coverage.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-archive-coverage.schema.json")
