@@ -194,6 +194,12 @@ layout, and explicit software identity. Its deterministic dataset ID is derived 
 Landing manifest hash. Publication is no-mutation by default and repeats a fresh host observation
 before `--execute`; successful writing is not lifecycle/gap acceptance.
 
+GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
+Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact
+records their canonical hashes, requested ranges, exact 1m coverage, counts, immutable publisher
+commit, and limitations. A hash-bound summary makes substitution detectable without turning the
+public repository into the market-data store.
+
 ## Quality checks
 
 Required checks include:

@@ -34,6 +34,10 @@ grid-data publish-history-1m --job-root <completed-job-root> \
   --store-root <local-path> --software-identity git:<full-commit-sha>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data verify-canonical-candle <committed-dataset-root>
+grid-data history-pilot-evidence --job-root <completed-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --software-identity git:<full-commit-sha> \
+  --output benchmarks/results/<sanitized-pilot-evidence>.json
 
 # Planned canonical maintenance commands
 grid-data audit --dataset <dataset-id>

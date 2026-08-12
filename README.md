@@ -121,6 +121,7 @@ These are controlled assumptions, not promises of profitability. They can change
 | [Open questions](docs/18_OPEN_QUESTIONS.md) | Items that require evidence before implementation |
 | [Glossary](docs/19_GLOSSARY.md) | Project terminology |
 | [References](docs/20_REFERENCES.md) | Authoritative external documentation |
+| [M2 implementation status](docs/evidence/M2_IMPLEMENTATION_STATUS_20260812.md) | GitHub-authoritative canonical 1m progress and measured pilot evidence |
 | [GitHub repository settings](governance/GITHUB_REPOSITORY_SETTINGS.md) | Public repository configuration and protections |
 
 ## Delivery order

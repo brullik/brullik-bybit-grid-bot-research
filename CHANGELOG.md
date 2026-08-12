@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- GitHub-authoritative Phase 2 pilot evidence with a strict sanitized schema, exact per-series 1m
+  coverage proof, transitive Landing/canonical hashes, immutable publisher identity, receipt-last
+  publication, and an explicit ban on market values, local paths, device/account data, and secrets.
 - Verified Landing-to-canonical publication with deterministic dataset identity, transitive
   registry/capacity bindings, fresh no-mutation and execution host admission, explicit software
   identity, receipt-last immutable output, independent verification, and idempotent reruns.
