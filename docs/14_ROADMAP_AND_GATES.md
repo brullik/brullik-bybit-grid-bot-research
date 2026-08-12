@@ -33,6 +33,7 @@ Deliverables:
 - public Bybit instruments/pagination study;
 - official history-product inventory and one-minute compatibility classification;
 - representative 1m trade/mark/funding sample;
+- bounded launch/annual/terminal REST availability probe without retained market values;
 - row-width/compression/file-layout benchmark;
 - DuckDB/Polars scan and feature benchmark;
 - native Futures Grid validate/account feasibility study with no create;

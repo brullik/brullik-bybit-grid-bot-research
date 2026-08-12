@@ -35,6 +35,9 @@
 - Owner-approved one-minute-only source contract and append-only v2 assessment covering
   trade-price 1m, mark-price 1m, and funding REST capacity while proving that no tick or market
   rows were downloaded or retained by the assessment.
+- Bounded REST history-boundary probe with deterministic equal-status launch-time stratification,
+  exact 84-request preflight, no transport retry, in-memory launch pages, annual/terminal
+  checkpoints, explicit exact-versus-sampled semantics, and no persisted market values.
 - Staged ADR-0010 shortlist benchmark protocol with reboot-separated engine/query legs,
   post-timing content verification, immutable monthly repair, fragmented-input compaction, and
   cross-engine exact logical parity. Unverified local timing is forced to `local-smoke-only`.
@@ -139,6 +142,17 @@
   an 80-contract pool. The close-price range is `0.003998` through `64703.2`, a dynamic range of
   `16183891.94597298649324662331`; selection is current and therefore not historical-universe
   evidence.
+- The 2026-08-12 REST-boundary probe selected four Trading and four Closed records from the
+  receipt-verified 1,010-record inventory. It completed exactly 84 preflighted public requests in
+  one attempt each with eight workers and zero endpoint errors. Mark was observed for 8/8 symbols,
+  trade for 7/8, and funding for 6/8. Launch-window observations were
+  exact within the first 1,000 lifecycle minutes for 5 mark, 4 trade, and 3 funding series; three
+  series per dataset were observed only at sampled later checkpoints and are not claimed as exact
+  boundaries.
+- `DATAOLD01USDT` exposed launch-window mark data but no trade/funding in any probed window;
+  `RIOTUSDT` exposed launch-window trade/mark but no funding; BCHUSDT, MATICUSDT, and STPTUSDT had
+  empty launch windows and later sampled observations across all datasets. The downloader must
+  record these as source/lifecycle evidence and must not invent missing minutes.
 
 ## Measured local benchmark evidence
 

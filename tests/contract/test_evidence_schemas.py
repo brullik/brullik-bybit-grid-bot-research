@@ -139,6 +139,74 @@ def test_one_minute_source_assessment_matches_v2_schema_hash_and_receipt() -> No
     assert verify_evidence(artifact)
 
 
+def test_rest_history_boundary_matches_schema_hash_receipt_and_storage_policy() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m1-bybit-rest-history-boundary-20260812.json"
+    inventory = ROOT / "benchmarks" / "results" / "m1-owner-storage-review-inventory-20260812.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "bybit-rest-history-boundary.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert payload["inventory_source"]["artifact_sha256"] == sha256_file(inventory)
+    assert payload["request_audit"]["actual_request_count"] == 84
+    assert payload["request_audit"]["planned_request_upper_bound"] == 84
+    assert payload["request_audit"]["transport_max_attempts"] == 1
+    assert payload["storage_policy"] == {
+        "market_rows_persisted": False,
+        "market_values_persisted": False,
+        "response_content_hashes_persisted": True,
+        "tick_rows_requested": False,
+    }
+    assert payload["selection"]["symbols"] == [item["symbol"] for item in payload["symbols"]]
+    actual_requests = 0
+    for symbol in payload["symbols"]:
+        for dataset in symbol["datasets"].values():
+            checkpoints = dataset["checkpoints"]
+            actual_requests += dataset["request_count"]
+            assert dataset["request_count"] == 1 + len(checkpoints)
+            assert dataset["checkpoint_empty_count"] == sum(
+                not checkpoint["nonempty"] for checkpoint in checkpoints
+            )
+            assert dataset["checkpoint_nonempty_count"] == sum(
+                checkpoint["nonempty"] for checkpoint in checkpoints
+            )
+            if dataset["launch_window_nonempty"]:
+                assert dataset["observation_semantics"] == "exact-within-launch-window"
+            elif dataset["status"] == "available":
+                assert dataset["observation_semantics"] == ("sampled-checkpoint-not-exact-boundary")
+            else:
+                assert dataset["observation_semantics"] == ("none-observed-in-probed-windows")
+    assert actual_requests == payload["request_audit"]["actual_request_count"]
+    forbidden_keys = {
+        "close",
+        "closePrice",
+        "fundingRate",
+        "high",
+        "highPrice",
+        "low",
+        "lowPrice",
+        "open",
+        "openPrice",
+        "turnover",
+        "volume",
+    }
+
+    def assert_no_market_value_keys(value: Any) -> None:
+        if isinstance(value, Mapping):
+            assert forbidden_keys.isdisjoint(value)
+            for nested in value.values():
+                assert_no_market_value_keys(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_no_market_value_keys(nested)
+
+    assert_no_market_value_keys(payload)
+    assert verify_evidence(artifact)
+
+
 def test_reference_layout_protocol_smoke_matches_schema_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-reference-layout-protocol-smoke.json"
     schema = load_json(
