@@ -6,6 +6,7 @@ import argparse
 import json
 import shlex
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 from grid_bybit_public import (
@@ -30,6 +31,11 @@ from grid_data.history_sources import (
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 from grid_data.rest_history_boundary import build_rest_history_boundary
+from grid_data.rest_throughput import (
+    build_rest_throughput_evidence,
+    default_profile_text,
+    parse_profiles,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -94,6 +100,27 @@ def parser() -> argparse.ArgumentParser:
     rest_history.add_argument("--output", type=Path, required=True)
     rest_history.add_argument("--force", action="store_true")
     rest_history.set_defaults(handler=_rest_history_boundary)
+
+    rest_throughput = commands.add_parser(
+        "rest-throughput",
+        help="measure paced 1m REST page throughput without retaining market values",
+    )
+    rest_throughput.add_argument("--instrument-inventory", type=Path, required=True)
+    rest_throughput.add_argument("--source-assessment", type=Path, required=True)
+    rest_throughput.add_argument("--workstation-snapshot", type=Path, required=True)
+    rest_throughput.add_argument(
+        "--profiles",
+        type=parse_profiles,
+        default=parse_profiles(default_profile_text()),
+    )
+    rest_throughput.add_argument("--stage-seconds", type=Decimal, default=Decimal("4"))
+    rest_throughput.add_argument("--cooldown-seconds", type=Decimal, default=Decimal("5.25"))
+    rest_throughput.add_argument("--sample-size", type=int, default=8)
+    rest_throughput.add_argument("--max-requests", type=int, default=1000)
+    rest_throughput.add_argument("--base-url", default="https://api.bybit.com")
+    rest_throughput.add_argument("--output", type=Path, required=True)
+    rest_throughput.add_argument("--force", action="store_true")
+    rest_throughput.set_defaults(handler=_rest_throughput)
 
     sample = commands.add_parser(
         "public-sample", help="summarize bounded trade/mark/funding public samples"
@@ -278,6 +305,67 @@ def _rest_history_boundary(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _load_verified_json(path: Path, *, name: str) -> tuple[Path, dict[str, object]]:
+    resolved = path.resolve()
+    if not verify_evidence(resolved):
+        raise ValueError(f"{name} receipt verification failed: {resolved}")
+    raw = json.loads(resolved.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError(f"{name} must contain a JSON object")
+    return resolved, raw
+
+
+def _rest_throughput(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    inventory_path, inventory = _load_verified_json(
+        args.instrument_inventory, name="instrument inventory"
+    )
+    source_path, source_assessment = _load_verified_json(
+        args.source_assessment, name="source assessment"
+    )
+    workstation_path, workstation = _load_verified_json(
+        args.workstation_snapshot, name="workstation snapshot"
+    )
+    captured_at = workstation.get("observed_at_utc")
+    if workstation.get("evidence_schema") != "grid.workstation-snapshot/v1" or not isinstance(
+        captured_at, str
+    ):
+        raise ValueError("unsupported workstation snapshot evidence")
+    payload = build_rest_throughput_evidence(
+        lambda: BybitPublicClient(UrllibJsonTransport(base_url=args.base_url, max_attempts=1)),
+        inventory,
+        source_assessment,
+        command=shlex.join(sys.argv),
+        base_url=args.base_url,
+        inventory_artifact=inventory_path.name,
+        inventory_artifact_sha256=sha256_file(inventory_path),
+        source_assessment_artifact=source_path.name,
+        source_assessment_artifact_sha256=sha256_file(source_path),
+        workstation_artifact=workstation_path.name,
+        workstation_artifact_sha256=sha256_file(workstation_path),
+        workstation_captured_at_utc=captured_at,
+        profiles=args.profiles,
+        stage_seconds=args.stage_seconds,
+        cooldown_seconds=args.cooldown_seconds,
+        sample_size=args.sample_size,
+        max_requests=args.max_requests,
+    )
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "bootstrap_request_only_projection": payload["bootstrap_request_only_projection"],
+                "receipt": str(receipt),
+                "recommendation": payload["recommendation"],
+                "request_audit": payload["request_audit"],
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0 if payload["status"] == "bounded-benchmark-complete" else 2
 
 
 def _verify(args: argparse.Namespace) -> int:

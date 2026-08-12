@@ -32,6 +32,21 @@ exclude latency, throttling headroom, retry, validation, and publication. The do
 bounded concurrency and receipt-based resume; a later verified one-minute bulk product may replace
 matching REST ranges.
 
+### Measured public REST envelope
+
+The owner workstation/network bounded sweep processed 424 planned full 1m pages. Throughput rose
+to 15.027812 RPS at 24 workers with 120/120 valid pages and no endpoint errors; the next
+32-worker/40-RPS stage produced two transport timeouts and is rejected. A separate 100-request,
+24-worker/10-RPS confirmation returned every page without error, included an 8.078-second maximum
+response latency, measured 7.764397 strict finite-run completion RPS, and left the automatic
+candidate unset.
+
+At 7.764397 RPS, the receipt-bound current-universe request estimate is about 63.88 request-only
+hours and the conservative funding case is about 66.02 hours. These values remain incomplete:
+they exclude retry, gap repair, staging, schema validation, canonical publication, compaction, and
+long-duration service variability. See
+[M1 bounded REST throughput](../benchmarks/specifications/M1_REST_THROUGHPUT.md).
+
 ## Storage model
 
 Storage depends on schema, encoding, compression, cardinality, and value distributions. Illustrative trade-price estimates:

@@ -20,6 +20,14 @@ canonical range is committed, the downloader records the actual earliest/latest 
 explicit reason for every lifecycle/source mismatch. Empty ranges are evidence, never fabricated
 candles.
 
+Public REST concurrency is evidence-driven rather than inferred from the exchange ceiling. The
+bounded M1 sweep retains at least 20% documented IP-limit headroom, disables hidden retries, and
+persists no market values. Its 24-worker/10-RPS confirmation completed 100 full 1m pages without
+endpoint errors, included an 8.078-second maximum response latency, and measured 7.764397 RPS.
+This is a
+finite-run baseline, not an accepted production rate; Phase 2 must add adaptive throttling,
+durable resume, and long-run validation.
+
 ## Data layers
 
 ```mermaid

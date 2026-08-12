@@ -207,6 +207,93 @@ def test_rest_history_boundary_matches_schema_hash_receipt_and_storage_policy() 
     assert verify_evidence(artifact)
 
 
+def test_rest_throughput_evidence_chain_matches_schema_receipts_and_safety_bounds() -> None:
+    results = ROOT / "benchmarks" / "results"
+    inventory = results / "m1-owner-storage-review-inventory-20260812.json"
+    source = results / "m1-bybit-one-minute-source-assessment-20260812.json"
+    workstation = results / "m1-owner-storage-review-workstation-20260812.json"
+    schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-rest-throughput.schema.json")
+    artifacts = (
+        results / "m1-bybit-rest-throughput-20260812.json",
+        results / "m1-bybit-rest-throughput-20260812-r2.json",
+        results / "m1-bybit-rest-throughput-20260812-confirmation.json",
+    )
+    payloads = []
+    for artifact in artifacts:
+        payload = load_json(artifact)
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+        hash_input = dict(payload)
+        embedded_hash = hash_input.pop("content_sha256")
+        assert embedded_hash == canonical_sha256(hash_input)
+        assert payload["inventory_source"]["artifact_sha256"] == sha256_file(inventory)
+        assert payload["source_assessment"]["artifact_sha256"] == sha256_file(source)
+        assert payload["workstation_source"]["artifact_sha256"] == sha256_file(workstation)
+        assert payload["source_policy"] == {
+            "mark_price_1m": "/v5/market/mark-price-kline",
+            "trade_price_1m": "/v5/market/kline",
+        }
+        assert payload["official_limit"]["benchmark_ceiling_requests_per_second"] == 96
+        assert payload["workload"]["transport_max_attempts"] == 1
+        assert payload["storage_policy"] == {
+            "market_rows_persisted": False,
+            "market_values_persisted": False,
+            "response_content_hashes_persisted": True,
+            "tick_rows_requested": False,
+        }
+        actual_requests = sum(profile["actual_request_count"] for profile in payload["profiles"])
+        assert actual_requests == payload["request_audit"]["actual_request_count"]
+        assert actual_requests <= payload["request_audit"]["planned_request_count"]
+        assert (
+            payload["request_audit"]["planned_request_count"]
+            <= payload["request_audit"]["max_requests"]
+        )
+        assert all(
+            profile["row_count"] == profile["full_page_count"] * 1_000
+            for profile in payload["profiles"]
+        )
+        assert verify_evidence(artifact)
+        payloads.append(payload)
+
+    initial, sweep, confirmation = payloads
+    assert initial["request_audit"]["actual_request_count"] == 15
+    assert initial["status"] == "bounded-benchmark-partial"
+    assert sweep["request_audit"]["actual_request_count"] == 424
+    assert sweep["profiles"][-1]["target_requests_per_second"] == 40
+    assert sweep["profiles"][-1]["status"] == "failed"
+    assert sweep["profiles"][-1]["error_count"] == 2
+    assert confirmation["status"] == "bounded-benchmark-complete"
+    assert confirmation["request_audit"]["actual_request_count"] == 100
+    assert confirmation["profiles"][0]["target_requests_per_second"] == 10
+    assert confirmation["profiles"][0]["error_count"] == 0
+    assert confirmation["profiles"][0]["status"] == "under-target"
+
+    forbidden_keys = {
+        "close",
+        "closePrice",
+        "fundingRate",
+        "high",
+        "highPrice",
+        "low",
+        "lowPrice",
+        "open",
+        "openPrice",
+        "turnover",
+        "volume",
+    }
+
+    def assert_no_market_value_keys(value: Any) -> None:
+        if isinstance(value, Mapping):
+            assert forbidden_keys.isdisjoint(value)
+            for nested in value.values():
+                assert_no_market_value_keys(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_no_market_value_keys(nested)
+
+    for payload in payloads:
+        assert_no_market_value_keys(payload)
+
+
 def test_reference_layout_protocol_smoke_matches_schema_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-reference-layout-protocol-smoke.json"
     schema = load_json(

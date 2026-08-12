@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-rest-throughput.schema.json",
+  "title": "Bounded Bybit V5 one-minute REST throughput evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bootstrap_request_only_projection",
+    "command",
+    "content_sha256",
+    "evidence_schema",
+    "fetched_at_utc",
+    "inventory_source",
+    "limitations",
+    "official_limit",
+    "profiles",
+    "recommendation",
+    "request_audit",
+    "runtime",
+    "selection",
+    "source_assessment",
+    "source_policy",
+    "status",
+    "storage_policy",
+    "workload",
+    "workstation_source"
+  ],
+  "properties": {
+    "bootstrap_request_only_projection": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conservative_60m_funding_interval",
+            "current_funding_intervals"
+          ],
+          "properties": {
+            "conservative_60m_funding_interval": {"$ref": "#/$defs/projection"},
+            "current_funding_intervals": {"$ref": "#/$defs/projection"}
+          }
+        }
+      ]
+    },
+    "command": {"type": "string", "minLength": 1},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.bybit-rest-throughput/v1"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "inventory_source": {"$ref": "#/$defs/inventorySource"},
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "official_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmark_ceiling_requests_per_second",
+        "default_http_ip_requests",
+        "default_http_ip_window_seconds",
+        "implied_default_http_ip_requests_per_second",
+        "minimum_headroom_percent",
+        "source"
+      ],
+      "properties": {
+        "benchmark_ceiling_requests_per_second": {"const": 96},
+        "default_http_ip_requests": {"const": 600},
+        "default_http_ip_window_seconds": {"const": 5},
+        "implied_default_http_ip_requests_per_second": {"const": 120},
+        "minimum_headroom_percent": {"const": 20},
+        "source": {"const": "https://bybit-exchange.github.io/docs/v5/rate-limit"}
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/profile"}
+    },
+    "recommendation": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "basis",
+            "candidate_target_requests_per_second",
+            "candidate_workers",
+            "observed_requests_per_second"
+          ],
+          "properties": {
+            "basis": {"type": "string", "minLength": 1},
+            "candidate_target_requests_per_second": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 96
+            },
+            "candidate_workers": {"type": "integer", "minimum": 1, "maximum": 32},
+            "observed_requests_per_second": {"$ref": "#/$defs/nonNegativeDecimal"}
+          }
+        }
+      ]
+    },
+    "request_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_request_count",
+        "executed_profile_count",
+        "max_requests",
+        "planned_profile_count",
+        "planned_request_count"
+      ],
+      "properties": {
+        "actual_request_count": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "executed_profile_count": {"type": "integer", "minimum": 1, "maximum": 8},
+        "max_requests": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "planned_profile_count": {"type": "integer", "minimum": 1, "maximum": 8},
+        "planned_request_count": {"type": "integer", "minimum": 1, "maximum": 2000}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_cpu_count",
+        "platform_machine",
+        "platform_system",
+        "python_version"
+      ],
+      "properties": {
+        "logical_cpu_count": {"type": ["integer", "null"], "minimum": 1},
+        "platform_machine": {"type": "string", "minLength": 1},
+        "platform_system": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "benchmark_end_ms",
+        "eligible_count",
+        "requested_sample_size",
+        "symbols"
+      ],
+      "properties": {
+        "algorithm": {"const": "oldest-current-trading-usdt-linear-perpetual-v1"},
+        "benchmark_end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+        "eligible_count": {"type": "integer", "minimum": 1},
+        "requested_sample_size": {"type": "integer", "minimum": 1, "maximum": 16},
+        "symbols": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/symbol"}
+        }
+      }
+    },
+    "source_assessment": {"$ref": "#/$defs/sourceAssessment"},
+    "source_policy": {
+      "const": {
+        "mark_price_1m": "/v5/market/mark-price-kline",
+        "trade_price_1m": "/v5/market/kline"
+      }
+    },
+    "status": {"enum": ["bounded-benchmark-complete", "bounded-benchmark-partial"]},
+    "storage_policy": {
+      "const": {
+        "market_rows_persisted": false,
+        "market_values_persisted": false,
+        "response_content_hashes_persisted": true,
+        "tick_rows_requested": false
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_url",
+        "cooldown_seconds",
+        "dataset_mix",
+        "kline_page_limit",
+        "page_minutes",
+        "stage_seconds",
+        "transport_max_attempts"
+      ],
+      "properties": {
+        "base_url": {"const": "https://api.bybit.com"},
+        "cooldown_seconds": {"$ref": "#/$defs/nonNegativeDecimal"},
+        "dataset_mix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mark_price_1m", "trade_price_1m"],
+          "properties": {
+            "mark_price_1m": {"type": "integer", "minimum": 0, "maximum": 2000},
+            "trade_price_1m": {"type": "integer", "minimum": 0, "maximum": 2000}
+          }
+        },
+        "kline_page_limit": {"const": 1000},
+        "page_minutes": {"const": 1000},
+        "stage_seconds": {"$ref": "#/$defs/positiveDecimal"},
+        "transport_max_attempts": {"const": 1}
+      }
+    },
+    "workstation_source": {"$ref": "#/$defs/workstationSource"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+    "nonNegativeDecimal": {"type": "string", "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"},
+    "positiveDecimal": {"type": "string", "pattern": "^(0\\.[0-9]*[1-9][0-9]*|[1-9][0-9]*(\\.[0-9]+)?)$"},
+    "inventorySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "fetched_at_utc",
+        "inventory_status"
+      ],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"},
+        "inventory_status": {"enum": ["complete", "partial"]}
+      }
+    },
+    "sourceAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "fetched_at_utc"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-history-source-assessment/v2"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "workstationSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "captured_at_utc"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "captured_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_request_count",
+        "error_count",
+        "error_counts",
+        "full_page_count",
+        "latency_ms",
+        "observed_requests_per_second",
+        "observed_rows_per_second",
+        "planned_request_count",
+        "response_hash_aggregate",
+        "row_count",
+        "status",
+        "success_count",
+        "target_attainment_ratio",
+        "target_requests_per_second",
+        "wall_duration_seconds",
+        "workers"
+      ],
+      "properties": {
+        "actual_request_count": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "error_count": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "error_counts": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 2000}
+        },
+        "full_page_count": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "latency_ms": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["max", "min", "p50", "p95", "p99"],
+              "properties": {
+                "max": {"$ref": "#/$defs/nonNegativeDecimal"},
+                "min": {"$ref": "#/$defs/nonNegativeDecimal"},
+                "p50": {"$ref": "#/$defs/nonNegativeDecimal"},
+                "p95": {"$ref": "#/$defs/nonNegativeDecimal"},
+                "p99": {"$ref": "#/$defs/nonNegativeDecimal"}
+              }
+            }
+          ]
+        },
+        "observed_requests_per_second": {"$ref": "#/$defs/nonNegativeDecimal"},
+        "observed_rows_per_second": {"$ref": "#/$defs/nonNegativeDecimal"},
+        "planned_request_count": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "response_hash_aggregate": {"$ref": "#/$defs/sha256"},
+        "row_count": {"type": "integer", "minimum": 0, "maximum": 2000000},
+        "status": {"enum": ["failed", "passed", "under-target"]},
+        "success_count": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "target_attainment_ratio": {"$ref": "#/$defs/nonNegativeDecimal"},
+        "target_requests_per_second": {"type": "integer", "minimum": 1, "maximum": 96},
+        "wall_duration_seconds": {"$ref": "#/$defs/positiveDecimal"},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 32}
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_count", "request_only_hours", "request_only_seconds"],
+      "properties": {
+        "request_count": {"type": "integer", "minimum": 1},
+        "request_only_hours": {"$ref": "#/$defs/positiveDecimal"},
+        "request_only_seconds": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

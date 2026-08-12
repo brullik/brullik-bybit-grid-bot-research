@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0017 — Bounded public REST throughput evidence](ADR-0017-bounded-public-rest-throughput-evidence.md)
 - [ADR-0016 — One-minute-only market history](ADR-0016-one-minute-only-market-history.md)
 - [ADR-0015 — Current-universe bootstrap and incremental capacity evidence](ADR-0015-current-universe-bootstrap-and-incremental-capacity.md)
 - [ADR-0014 — Gate 1 reference evidence aggregation](ADR-0014-gate1-reference-evidence-aggregation.md)

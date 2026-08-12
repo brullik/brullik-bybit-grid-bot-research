@@ -38,6 +38,9 @@
 - Bounded REST history-boundary probe with deterministic equal-status launch-time stratification,
   exact 84-request preflight, no transport retry, in-memory launch pages, annual/terminal
   checkpoints, explicit exact-versus-sampled semantics, and no persisted market values.
+- Bounded, globally paced public REST throughput sweep with receipt-bound inventory/source/host
+  provenance, exact request preflight, full-page continuity validation, no hidden retry, explicit
+  error/under-target semantics, and no persisted market values.
 - Staged ADR-0010 shortlist benchmark protocol with reboot-separated engine/query legs,
   post-timing content verification, immutable monthly repair, fragmented-input compaction, and
   cross-engine exact logical parity. Unverified local timing is forced to `local-smoke-only`.
@@ -153,6 +156,16 @@
   `RIOTUSDT` exposed launch-window trade/mark but no funding; BCHUSDT, MATICUSDT, and STPTUSDT had
   empty launch windows and later sampled observations across all datasets. The downloader must
   record these as source/lifecycle evidence and must not invent missing minutes.
+- The corrected public REST throughput sweep attempted all 424 preflighted trade/mark 1m page
+  requests. Its 24-worker stage returned 120/120 full pages without error at 15.027812 finite-run
+  RPS; the 32-worker/40-RPS stage returned 158 full pages plus two transport timeouts and is
+  rejected. No request retried.
+- The separate 24-worker/10-RPS confirmation returned 100/100 full pages with zero endpoint
+  errors. It included an 8.078-second maximum response latency and measured 7.764397 strict
+  end-to-end RPS, so it remains `under-target` and emits no automatic rate recommendation.
+  Applying that observed rate gives about 63.88 current-case or 66.02 conservative request-only
+  hours; downloader work, validation, publication, retry, and long-run variability remain
+  excluded.
 
 ## Measured local benchmark evidence
 
