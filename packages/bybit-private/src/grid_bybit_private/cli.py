@@ -14,7 +14,7 @@ from grid_bybit_private.evidence import (
     verify_private_report,
 )
 from grid_bybit_private.fgrid_validate import FuturesGridValidateRequest, build_probe_report
-from grid_bybit_private.transport import HmacValidateTransport
+from grid_bybit_private.transport import Environment, HmacValidateTransport
 
 
 def parser() -> argparse.ArgumentParser:
@@ -32,7 +32,7 @@ def parser() -> argparse.ArgumentParser:
     probe.add_argument("--leverage", required=True, type=_decimal)
     probe.add_argument("--stop-loss-price", required=True, type=_decimal)
     probe.add_argument("--take-profit-price", type=_decimal)
-    probe.add_argument("--environment", choices=("testnet", "mainnet"), default="testnet")
+    probe.add_argument("--environment", choices=("testnet", "demo", "mainnet"), default="testnet")
     probe.add_argument("--acknowledge-mainnet-validate-only", action="store_true")
     probe.add_argument("--output", required=True, type=Path)
     probe.set_defaults(handler=_probe)
@@ -50,6 +50,7 @@ def _doctor(_args: argparse.Namespace) -> int:
                 "allowed_endpoint": "/v5/fgridbot/validate",
                 "application": "grid-bybit-validate",
                 "credentials": "environment-only",
+                "environments": ["testnet", "demo", "mainnet-explicit-acknowledgement"],
                 "mutating_endpoints": False,
                 "status": "ready",
             }
@@ -98,8 +99,12 @@ def _verify(args: argparse.Namespace) -> int:
     return 0 if valid else 2
 
 
-def _credentials(environment: str) -> tuple[str, str]:
-    prefix = "BYBIT_TESTNET" if environment == "testnet" else "BYBIT_MAINNET"
+def _credentials(environment: Environment) -> tuple[str, str]:
+    prefix = {
+        "demo": "BYBIT_DEMO",
+        "mainnet": "BYBIT_MAINNET",
+        "testnet": "BYBIT_TESTNET",
+    }[environment]
     key_name = f"{prefix}_API_KEY"
     secret_name = f"{prefix}_API_SECRET"
     api_key = os.environ.get(key_name, "")

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from grid_data.evidence import verify_evidence
 from polars.testing import assert_frame_equal
 
 from benchmarks.capacity_projection import projected_bytes
@@ -17,11 +18,17 @@ from benchmarks.feature_benchmark import (
 )
 from benchmarks.layout_benchmark import (
     Layout,
+    TimePartition,
+    _prepare_work_dir,
+    build_bucket_chunk,
     build_frame,
     classify_run,
+    scan_layout,
+    time_partitions,
     validate_configuration,
     write_layout,
 )
+from benchmarks.redact_validate_probe import build_redacted_conclusion
 from benchmarks.workstation_snapshot import storage_identity
 
 
@@ -65,6 +72,38 @@ def test_full_layout_profile_cannot_claim_a_small_run() -> None:
     assert validate_configuration("full", 100_000_000, 700, 100_000) == 99_999_900
 
 
+def test_layout_generation_chunk_preserves_requested_row_groups() -> None:
+    with pytest.raises(ValueError, match="at least row-group"):
+        validate_configuration("smoke", 200_000, 50, 10_000, 5_000)
+    with pytest.raises(ValueError, match="multiple of row-group"):
+        validate_configuration("smoke", 200_000, 50, 10_000, 15_000)
+
+
+def test_time_partitions_follow_real_utc_calendar_boundaries() -> None:
+    partitions = time_partitions(31 * 24 * 60 + 2)
+
+    assert partitions == (
+        TimePartition(year=2026, month=1, start_minute=0, minute_count=44_640),
+        TimePartition(year=2026, month=2, start_minute=44_640, minute_count=2),
+    )
+
+
+def test_bucket_chunk_matches_deterministic_full_frame() -> None:
+    full = build_frame(40, 8, "scaled_int64")
+    chunk = build_bucket_chunk(
+        partition=TimePartition(year=2026, month=1, start_minute=0, minute_count=5),
+        instrument_count=8,
+        bucket_count=4,
+        bucket=0,
+        position_start=0,
+        row_count=10,
+        representation="scaled_int64",
+    )
+
+    expected = full.filter((pl.col("instrument_id") % 4) == 0)
+    assert_frame_equal(chunk, expected)
+
+
 def test_reference_feature_profile_accepts_its_documented_command_scale() -> None:
     assert (
         validate_feature_configuration("reference", 100_000_000, 700, 2_880, 1_440, 70)
@@ -84,23 +123,81 @@ def test_representative_status_requires_every_file_target() -> None:
 
 
 def test_layout_reports_observed_file_sizes(tmp_path: Path) -> None:
-    frame = build_frame(20_000, 10, "scaled_int64")
     result = write_layout(
-        frame,
-        tmp_path,
-        Layout(8, "zstd", 3, "scaled_int64", 1),
+        row_count=20_000,
+        instrument_count=10,
+        root=tmp_path,
+        layout=Layout(8, "zstd", 3, "scaled_int64", 1),
         row_group_rows=1_000,
+        generation_chunk_rows=2_000,
     )
 
     assert result["bytes"] >= result["largest_file_bytes"] > 0
     assert result["smallest_file_bytes"] > 0
     assert result["target_file_bytes"] == 1024 * 1024
     assert isinstance(result["target_file_exercised"], bool)
+    assert result["writer"] == "pyarrow-parquet-writer"
+    assert result["rss_peak_delta_bytes"] >= 0
     assert not tuple(tmp_path.rglob(".calibration.parquet"))
+
+    scan = scan_layout(tmp_path / Layout(8, "zstd", 3, "scaled_int64", 1).name, 20_000, 10)
+    assert scan["validation"]["engines_match_aggregate_values"] is True
+    assert scan["validation"]["expected_single_symbol_rows"] == 2_000
+    assert scan["validation"]["expected_universe_month_rows"] == 20_000
+
+
+def test_layout_work_directory_resume_requires_identical_receipted_run(
+    tmp_path: Path,
+) -> None:
+    work_dir = tmp_path / "scratch"
+    configuration = {"benchmark_schema": "grid.layout-benchmark-run/v1", "profile": "smoke"}
+    with pytest.raises(FileNotFoundError, match="missing benchmark work directory"):
+        _prepare_work_dir(work_dir, configuration, force=False, resume=True)
+    _prepare_work_dir(work_dir, configuration, force=False, resume=False)
+
+    assert verify_evidence(work_dir / "run.json")
+    _prepare_work_dir(work_dir, configuration, force=False, resume=True)
+    with pytest.raises(ValueError, match="does not match"):
+        _prepare_work_dir(
+            work_dir,
+            {"benchmark_schema": "grid.layout-benchmark-run/v1", "profile": "scaled"},
+            force=False,
+            resume=True,
+        )
+    _prepare_work_dir(work_dir, configuration, force=True, resume=False)
+    assert verify_evidence(work_dir / "run.json")
 
 
 def test_capacity_projection_rounds_up_partial_bytes() -> None:
     assert projected_bytes(3, Decimal("1.1")) == 4
+
+
+def test_validate_conclusion_redacts_prices_and_requires_safe_demo_result() -> None:
+    private_report = {
+        "created_at_utc": "2026-08-12T12:00:00Z",
+        "endpoint": "/v5/fgridbot/validate",
+        "environment": "demo",
+        "request": {
+            "symbol": "BTCUSDT",
+            "min_price": "62000",
+            "max_price": "65000",
+        },
+        "response": {"retCode": 10032, "retMsg": "Demo trading are not supported."},
+        "safety": {"credentials_persisted": False, "mutating_endpoint_called": False},
+    }
+
+    conclusion = build_redacted_conclusion(private_report)
+
+    assert conclusion["status"] == "demo-unsupported"
+    assert "62000" not in repr(conclusion)
+    assert conclusion["safety"]["mainnet_fallback"] is False
+    unsafe_report = dict(private_report)
+    unsafe_report["safety"] = {
+        "credentials_persisted": False,
+        "mutating_endpoint_called": True,
+    }
+    with pytest.raises(ValueError, match="validate-only"):
+        build_redacted_conclusion(unsafe_report)
 
 
 def test_workstation_snapshot_removes_device_instance_identifier(

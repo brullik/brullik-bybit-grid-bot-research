@@ -20,3 +20,5 @@ An ADR is immutable after acceptance except for status/supersession references a
 - [ADR-0005 — Time and symbol-bucket partitioning](ADR-0005-time-symbol-bucket-partitioning.md)
 - [ADR-0006 — Exact execution arithmetic](ADR-0006-exact-execution-arithmetic.md)
 - [ADR-0007 — Local-first, cloud-ready architecture](ADR-0007-local-first-cloud-ready.md)
+- [ADR-0008 — Versioned, bounded-memory layout evidence](ADR-0008-versioned-bounded-layout-evidence.md)
+- [ADR-0009 — Isolated Demo environment for validate-only feasibility](ADR-0009-isolated-demo-validate-environment.md)

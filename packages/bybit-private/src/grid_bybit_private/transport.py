@@ -10,16 +10,18 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from grid_contracts.canonical import canonical_json_bytes
 
 from grid_bybit_private.fgrid_validate import VALIDATE_ENDPOINT
 
 ORIGINS = {
+    "demo": "https://api-demo.bybit.com",
     "mainnet": "https://api.bybit.com",
     "testnet": "https://api-testnet.bybit.com",
 }
+Environment = Literal["demo", "mainnet", "testnet"]
 
 
 class ValidateTransportError(RuntimeError):
@@ -43,7 +45,7 @@ class HmacValidateTransport:
     def __init__(
         self,
         *,
-        environment: str,
+        environment: Environment,
         api_key: str,
         api_secret: str,
         recv_window: int = 5_000,
@@ -52,7 +54,7 @@ class HmacValidateTransport:
         read_response: ResponseReader | None = None,
     ) -> None:
         if environment not in ORIGINS:
-            raise ValueError("environment must be testnet or mainnet")
+            raise ValueError("environment must be demo, testnet, or mainnet")
         if not api_key or not api_secret:
             raise ValueError("API key and secret must be non-empty")
         if not 1_000 <= recv_window <= 5_000:

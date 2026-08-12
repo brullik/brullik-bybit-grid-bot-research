@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-fgrid-validate-conclusion.schema.json",
+  "title": "Redacted owner-controlled Futures Grid validate-only conclusion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "conclusion",
+    "endpoint",
+    "environment",
+    "evidence_schema",
+    "observed_at_utc",
+    "request_summary",
+    "response_summary",
+    "safety",
+    "status"
+  ],
+  "properties": {
+    "conclusion": {"type": "string", "minLength": 1},
+    "endpoint": {"const": "/v5/fgridbot/validate"},
+    "environment": {"const": "demo"},
+    "evidence_schema": {"const": "grid.bybit-fgrid-validate-conclusion/v1"},
+    "observed_at_utc": {"type": "string", "format": "date-time"},
+    "request_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grid_mode", "grid_type", "numeric_encoding", "symbol"],
+      "properties": {
+        "grid_mode": {"const": "neutral"},
+        "grid_type": {"const": "geometric"},
+        "numeric_encoding": {"const": "exact-decimal-and-integer-strings"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    },
+    "response_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_code", "ret_code", "ret_msg"],
+      "properties": {
+        "check_code": {"type": "null"},
+        "ret_code": {"const": 10032},
+        "ret_msg": {"const": "Demo trading are not supported."}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "credentials_persisted",
+        "mainnet_fallback",
+        "mutating_endpoint_called",
+        "private_artifact_committed",
+        "private_receipt_verified",
+        "retry_count"
+      ],
+      "properties": {
+        "credentials_persisted": {"const": false},
+        "mainnet_fallback": {"const": false},
+        "mutating_endpoint_called": {"const": false},
+        "private_artifact_committed": {"const": false},
+        "private_receipt_verified": {"const": true},
+        "retry_count": {"const": 0}
+      }
+    },
+    "status": {"const": "demo-unsupported"}
+  }
+}

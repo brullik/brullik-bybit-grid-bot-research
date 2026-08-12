@@ -10,12 +10,15 @@
 - Bounded public trade/mark/funding sampling with current instrument metadata, exact-decimal
   normalization, gap accounting, and raw-row exclusion from Git.
 - Owner-controlled, testnet-first Futures Grid validate-only tooling. Its adapter has one allowed
-  endpoint, hard-coded official origins, HMAC signing, no retries or redirects, environment-only
-  credentials, private evidence receipts, and no create/close/transfer implementation.
+  endpoint, hard-coded official Testnet/Demo/Mainnet origins, environment-isolated HMAC
+  credentials, no retries or redirects, private evidence receipts, and no create/close/transfer
+  implementation. Demo failure cannot fall back to mainnet.
 - Atomic public evidence publication with a SHA-256 completion receipt written last.
 - Versioned JSON Schemas and exact-decimal domain contracts.
-- Reproducible Parquet layout benchmark for Polars and DuckDB. Its scale labels fail closed,
-  actual file-size attainment is recorded, and scratch layouts are deleted after each scan.
+- Reproducible bounded-memory Parquet layout benchmark for Polars and DuckDB. V2 writes
+  deterministic chunks through PyArrow into real UTC calendar/bucket partitions, preflights
+  scratch space, records peak RSS and actual file-size attainment, validates aggregates in both
+  engines, and resumes only identical hash-receipted per-layout checkpoints.
 - Lookahead-safe Polars feature benchmark with 1,440-minute read-only halos, bounded shards, peak
   RSS sampling, and parity/no-future tests.
 - Reproducible workstation snapshot and documented profile assessment.
@@ -72,6 +75,18 @@
 - The layout smoke run used 200,000 rows and 50 instruments. All eight 1 MiB smoke layouts were
   measured, but none reached 80% of the requested file size; its status therefore remains
   `smoke-only` and it supports no P-001 through P-004 decision.
+- The V2 out-of-core smoke repeated all eight layouts with exact row-count and aggregate parity in
+  DuckDB and Polars. Its maximum observed RSS increase was 74,072,064 bytes; the evidence receipt
+  verifies and the status remains `smoke-only`.
+- The V2 scaled full matrix wrote and scanned all 54 combinations over 10,000,000 rows and 700
+  instruments. Aggregate write time was 227.562 s and the six measured scans per layout totaled
+  7.819 s. Both engines matched expected counts and aggregate values for every layout. Peak
+  process RSS was 701,689,856 bytes and the largest baseline-relative increase was 315,822,080
+  bytes.
+- None of the scaled layouts produced a non-tail file at least 80% of its requested 128/256/512
+  MiB target, so the artifact correctly reports `scaled-only`. The smallest observed layout was
+  54,638,328 bytes for scaled Int64, 8 buckets, and ZSTD level 3. These results do not choose a
+  physical layout; the full calendar-spanning run and reference-hardware evidence remain required.
 - The scaled feature run processed 9,999,500 core rows across all 700 instruments in 2.930438400 s
   (3,412,288.072664424 core rows/s). Five bounded shards read 14,031,500 rows including halos; the
   largest input shard was 3,024,000 rows.
@@ -99,12 +114,20 @@
 ## Validate-only readiness
 
 - Official Bybit sources identify `POST /v5/fgridbot/validate` as the pre-create validation call.
-- The V1 probe fixes `grid_mode="1"` (Neutral) and `grid_type="2"` (Geometric), passes all numeric
+- The probe fixes `grid_mode="1"` (Neutral) and `grid_type="2"` (Geometric), passes all numeric
   fields as exact decimal/integer strings, and requires an explicit stop loss below the range.
 - Success requires both `retCode=0` and
   `check_code=FGRID_CHECK_CODE_UNSPECIFIED`; any malformed response fails closed.
-- The owner runbook is `ops/runbooks/M1_VALIDATE_ONLY_PROBE.md`. No authenticated probe has been
-  performed by this implementation and no private result belongs in Git.
+- On 2026-08-12 the owner created an isolated Demo key and performed one signed request against
+  `api-demo.bybit.com`. Bybit returned `retCode=10032`, `Demo trading are not supported.` The
+  private report and receipt verified, remained Git-ignored, persisted no credentials, called no
+  mutating endpoint, made no retry, and did not fall back to Testnet or mainnet.
+- The redacted public conclusion is `m1-bybit-demo-validate-conclusion.json`; it contains no prices,
+  credentials, account identifiers, or private-artifact hash. The outcome matches Bybit's
+  published Demo service list, which does not advertise `/v5/fgridbot/validate`.
+- The owner runbook is `ops/runbooks/M1_VALIDATE_ONLY_PROBE.md`. Demo feasibility is now resolved
+  as unsupported; an authenticated successful Testnet or separately acknowledged validate-only
+  mainnet result is still missing. No private result belongs in Git.
 
 ## Evidence still required to close Gate 1
 
@@ -114,6 +137,7 @@
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
-- Perform an owner-controlled, authenticated validate-only probe for native Futures Grid. No
-  private credentials may be added to the repository, logs, or research artifacts.
+- Complete the native Futures Grid validate-only feasibility on Testnet or through a separately
+  owner-acknowledged mainnet validation. Demo was tested and explicitly rejected by Bybit as
+  unsupported. No private credentials may be added to the repository, logs, or research artifacts.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

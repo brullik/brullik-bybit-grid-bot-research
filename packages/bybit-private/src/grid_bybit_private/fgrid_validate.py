@@ -15,7 +15,8 @@ VALIDATE_ENDPOINT = "/v5/fgridbot/validate"
 
 
 class ValidateTransport(Protocol):
-    environment: str
+    @property
+    def environment(self) -> str: ...
 
     def validate(self, payload: Mapping[str, str]) -> Mapping[str, Any]: ...
 
@@ -80,7 +81,7 @@ def build_probe_report(
         "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "endpoint": VALIDATE_ENDPOINT,
         "environment": transport.environment,
-        "probe_schema": "grid.bybit-fgrid-validate-probe/v1",
+        "probe_schema": "grid.bybit-fgrid-validate-probe/v2",
         "request": payload,
         "response": response,
         "result": {
@@ -90,6 +91,7 @@ def build_probe_report(
         },
         "safety": {
             "credentials_persisted": False,
+            "environment_is_simulated": transport.environment in {"demo", "testnet"},
             "mutating_endpoint_called": False,
             "validate_only": True,
         },

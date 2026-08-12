@@ -42,15 +42,21 @@ def test_public_sample_evidence_matches_schema_and_hashes() -> None:
 
 def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
     cases = (
-        ("m1-layout-smoke.json", "layout-benchmark.schema.json"),
-        ("m1-feature-scaled.json", "feature-benchmark.schema.json"),
-        ("m1-feature-reference-candidate.json", "feature-benchmark.schema.json"),
-        ("m1-workstation-snapshot.json", "workstation-snapshot.schema.json"),
-        ("m1-capacity-projection.json", "capacity-projection.schema.json"),
+        (
+            "m1-bybit-demo-validate-conclusion.json",
+            "v1/bybit-fgrid-validate-conclusion.schema.json",
+        ),
+        ("m1-layout-smoke.json", "v1/layout-benchmark.schema.json"),
+        ("m1-layout-out-of-core-smoke.json", "v2/layout-benchmark.schema.json"),
+        ("m1-layout-out-of-core-scaled.json", "v2/layout-benchmark.schema.json"),
+        ("m1-feature-scaled.json", "v1/feature-benchmark.schema.json"),
+        ("m1-feature-reference-candidate.json", "v1/feature-benchmark.schema.json"),
+        ("m1-workstation-snapshot.json", "v1/workstation-snapshot.schema.json"),
+        ("m1-capacity-projection.json", "v1/capacity-projection.schema.json"),
     )
-    for artifact_name, schema_name in cases:
+    for artifact_name, versioned_schema_name in cases:
         artifact = ROOT / "benchmarks" / "results" / artifact_name
-        schema = load_json(ROOT / "schemas" / "evidence" / "v1" / schema_name)
+        schema = load_json(ROOT / "schemas" / "evidence" / versioned_schema_name)
 
         Draft202012Validator(schema, format_checker=FormatChecker()).validate(load_json(artifact))
         assert verify_evidence(artifact)
@@ -75,7 +81,7 @@ class FakeValidateTransport:
 
 
 def test_fgrid_validate_report_matches_schema_and_hashes() -> None:
-    schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "fgrid-validate-probe.schema.json")
+    schema = load_json(ROOT / "schemas" / "evidence" / "v2" / "fgrid-validate-probe.schema.json")
     report = build_probe_report(
         FakeValidateTransport(),
         FuturesGridValidateRequest(
