@@ -66,6 +66,9 @@
   separates first bootstrap, full rebuild, daily append, and bounded monthly repair; rejects
   stale/cross-layout/internally inconsistent evidence before output replacement; and leaves raw
   source-archive headroom explicitly unmeasured.
+- Fail-closed external reference-campaign handoff that admits the host/volume and pinned source
+  evidence before publishing an immutable eight-step plan, exposes one next command or reboot at
+  a time, rejects invalid/out-of-order receipts, and can never accept Gate 1 automatically.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -299,4 +302,7 @@
   replacement and requires a v2 host-bound result.
 - Build the v1 Gate 1 review pack from the completed external layout/feature reference artifacts;
   immutable v1-v3 provisional projections intentionally retain their original local semantics.
+- Use `benchmarks.reference_campaign` and `ops/runbooks/M1_REFERENCE_CAMPAIGN.md` on the qualifying
+  host to bind the exact four reboot-separated legs, feature run, and review-pack build. The
+  current checked-in below-profile workstation fails this preflight before campaign-root creation.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.
