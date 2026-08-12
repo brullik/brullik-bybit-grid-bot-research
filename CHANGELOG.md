@@ -23,6 +23,9 @@ All notable project-governance and architecture changes are recorded here.
 - Reproducible workstation snapshot and profile assessment with a verified evidence receipt.
 - Receipt-linked capacity projection that keeps synthetic extrapolation separate from the
   documented 24/40/64-byte planning envelopes and provisional hardware recommendation.
+- Bounded official-archive coverage matrix for every current USDT LinearPerpetual symbol, direct
+  probes for index exceptions, top-level product summaries, current-metadata mismatch guards, and
+  schema-verified evidence without raw archive downloads.
 - CI checks for lint, formatting, strict typing, tests, schema/evidence validation, manifest
   integrity, and slim live installation.
 

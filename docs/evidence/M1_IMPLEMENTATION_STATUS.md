@@ -19,6 +19,9 @@
 - Lookahead-safe Polars feature benchmark with 1,440-minute read-only halos, bounded shards, peak
   RSS sampling, and parity/no-future tests.
 - Reproducible workstation snapshot and documented profile assessment.
+- Receipt-linked comparison of all current USDT LinearPerpetual symbols with the official archive
+  index, plus bounded direct probes for index exceptions, `PreLaunch` symbols, and a deterministic
+  launch-time-stratified sample.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -42,6 +45,19 @@
 - The official archive index exposed 1,889 trading symbol directories. BTCUSDT daily trade files
   covered 2020-03-25 through 2026-08-11 and ETHUSDT covered 2020-10-21 through 2026-08-11, with no
   missing calendar dates inside either observed span.
+- Of 1,006 current USDT LinearPerpetual symbols, 1,002 appeared in the observed `/trading/` index:
+  all 699 `Trading`, all 5 `PreLaunch`, and 298 of 302 `Closed` records. The index also contained
+  887 symbols outside that current snapshot, so it is not interchangeable with a current universe.
+- Direct probes resolved the four current index exceptions: `BITUSDT` retained 632 daily files
+  from 2021-10-11 through 2023-07-04 despite not being listed; `MONPROUSDT` had an accessible path
+  with no daily files; `LAYERUSDT` and `LITENTRYUSDT` returned HTTP 404.
+- The 20-symbol detailed sample found no internal calendar gaps within any observed non-empty
+  daily-trade span and no archive start before the current metadata launch date. These findings do
+  not replace dated historical metadata snapshots.
+- The observed root advertised `kline_for_metatrader4`, `premium_index`, `spot`, `spot_index`, and
+  `trading`; no product named for mark price or funding was advertised. This is an observed index
+  limitation, not proof that no unlisted bulk path exists, so mark/funding history remains a REST
+  coverage and capacity concern.
 - The fixed BTCUSDT public sample for 2026-07-01 through 2026-07-07 contained 10,080 trade candles,
   10,080 mark candles, and 21 funding events at the metadata-derived 480-minute interval. The
   report found no duplicate timestamps, missing candles, or missing internal funding intervals.
@@ -84,8 +100,8 @@
 
 ## Evidence still required to close Gate 1
 
-- Extend official bulk archive coverage beyond the BTCUSDT/ETHUSDT daily-trade sample and document
-  dataset/symbol/month gaps, especially mark-price and funding availability.
+- Obtain authoritative Bybit confirmation for bulk mark-price/funding availability and size the
+  required REST backfill; neither dataset is advertised by name in the observed archive root.
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
 - Repeat the feature-throughput/memory benchmark at representative scale on that hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.

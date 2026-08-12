@@ -7,10 +7,15 @@ import json
 from pathlib import Path
 
 from grid_bybit_public import BybitArchiveIndex, BybitPublicClient, UrllibJsonTransport
+from grid_contracts.canonical import sha256_file
 
 from grid_data import __version__
-from grid_data.archive_inventory import build_archive_inventory
-from grid_data.evidence import publish_evidence, verify_evidence
+from grid_data.archive_inventory import (
+    build_archive_coverage_matrix,
+    build_archive_inventory,
+    load_verified_public_inventory,
+)
+from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 
@@ -37,6 +42,16 @@ def parser() -> argparse.ArgumentParser:
     archive.add_argument("--force", action="store_true")
     archive.set_defaults(handler=_archive_inventory)
 
+    archive_coverage = commands.add_parser(
+        "archive-coverage",
+        help="compare current USDT perpetuals with bounded official archive coverage",
+    )
+    archive_coverage.add_argument("--instrument-inventory", type=Path, required=True)
+    archive_coverage.add_argument("--sample-size", type=int, default=20)
+    archive_coverage.add_argument("--output", type=Path, required=True)
+    archive_coverage.add_argument("--force", action="store_true")
+    archive_coverage.set_defaults(handler=_archive_coverage)
+
     sample = commands.add_parser(
         "public-sample", help="summarize bounded trade/mark/funding public samples"
     )
@@ -60,9 +75,10 @@ def _doctor(_args: argparse.Namespace) -> int:
 
 
 def _inventory(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
     client = BybitPublicClient(UrllibJsonTransport(base_url=args.base_url))
     payload = build_public_inventory(client)
-    artifact, receipt = publish_evidence(args.output, payload, force=args.force)
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
     print(
         json.dumps(
             {"artifact": str(artifact), "receipt": str(receipt), "summary": payload["summary"]}
@@ -72,13 +88,14 @@ def _inventory(args: argparse.Namespace) -> int:
 
 
 def _archive_inventory(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
     symbols = tuple(
         sorted({symbol.strip().upper() for symbol in args.symbols.split(",") if symbol.strip()})
     )
     if not symbols:
         raise ValueError("at least one symbol is required")
     payload = build_archive_inventory(BybitArchiveIndex(), symbols)
-    artifact, receipt = publish_evidence(args.output, payload, force=args.force)
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
     print(
         json.dumps(
             {
@@ -93,7 +110,31 @@ def _archive_inventory(args: argparse.Namespace) -> int:
     return 0
 
 
+def _archive_coverage(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    inventory = load_verified_public_inventory(args.instrument_inventory)
+    payload = build_archive_coverage_matrix(
+        BybitArchiveIndex(),
+        inventory,
+        inventory_artifact_sha256=sha256_file(args.instrument_inventory.resolve()),
+        sample_size=args.sample_size,
+    )
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "coverage_findings": payload["coverage_findings"],
+                "receipt": str(receipt),
+                "universe_comparison": payload["universe_comparison"],
+            }
+        )
+    )
+    return 0
+
+
 def _public_sample(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
     client = BybitPublicClient(UrllibJsonTransport(base_url=args.base_url))
     payload = build_public_sample(
         client,
@@ -101,7 +142,7 @@ def _public_sample(args: argparse.Namespace) -> int:
         start_ms=args.start_ms,
         end_ms=args.end_ms,
     )
-    artifact, receipt = publish_evidence(args.output, payload, force=args.force)
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
     print(
         json.dumps(
             {
