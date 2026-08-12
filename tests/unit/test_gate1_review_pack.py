@@ -178,7 +178,6 @@ def dataset(candidate: dict[str, Any]) -> dict[str, Any]:
         "write": {
             "bytes": ROW_COUNT * (7 if bucket_count == 4 else 8),
             "numeric_schema_verified": True,
-            "row_count": ROW_COUNT,
             "target_file_exercised": True,
             "write_seconds": "600.000000000",
         },
@@ -446,6 +445,11 @@ def test_qualified_gate1_pack_binds_v3_workloads_without_accepting_gate(tmp_path
     layout_path, feature_path, decision_path, real_market_path, qualification_path = (
         publish_qualified_sources(tmp_path)
     )
+    contract_layout = json.loads(layout_path.read_text(encoding="utf-8"))
+    assert all(
+        "row_count" not in candidate["write"]
+        for candidate in contract_layout["preparation"]["datasets"]
+    )
     output = tmp_path / "qualified-gate1-review.json"
 
     payload = publish_qualified_review_pack(
@@ -561,7 +565,7 @@ def test_gate1_pack_rejects_schema_valid_internal_write_mismatch(tmp_path: Path)
         tmp_path
     )
     mismatched_layout = json.loads(layout_path.read_text(encoding="utf-8"))
-    mismatched_layout["preparation"]["datasets"][0]["write"]["row_count"] -= 1
+    mismatched_layout["preparation"]["datasets"][0]["write"]["row_count"] = ROW_COUNT - 1
     publish_evidence(layout_path, mismatched_layout, force=True)
 
     with pytest.raises(ValueError, match="write row count"):
