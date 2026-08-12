@@ -7,6 +7,9 @@ Documentation-first architecture for a high-throughput Bybit Futures Grid Bot re
 > harnesses are present;
 > trading execution remains intentionally absent and all live entries are blocked.
 
+The M1 private feasibility boundary exposes only an owner-controlled Futures Grid `validate` call;
+it contains no bot creation, close, transfer, or ordinary-order endpoint.
+
 [Русская версия](README.ru.md)
 
 ## Final goal

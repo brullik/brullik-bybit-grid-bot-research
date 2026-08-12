@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid-bybit-private"
+version = "0.2.0"
+description = "Owner-controlled Bybit private adapter; M1 exposes validate-only"
+requires-python = ">=3.12"
+dependencies = ["grid-contracts==0.2.0"]
+
+[project.scripts]
+grid-bybit-validate = "grid_bybit_private.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

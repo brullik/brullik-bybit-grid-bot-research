@@ -34,6 +34,7 @@ pythonpath = [
   ".",
   "packages/contracts/src",
   "packages/bybit-public/src",
+  "packages/bybit-private/src",
   "apps/data/src",
   "apps/research/src",
   "apps/release/src",
@@ -55,6 +56,7 @@ warn_unused_configs = true
 mypy_path = [
   "packages/contracts/src",
   "packages/bybit-public/src",
+  "packages/bybit-private/src",
   "apps/data/src",
   "apps/research/src",
   "apps/release/src",

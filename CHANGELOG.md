@@ -11,6 +11,9 @@ All notable project-governance and architecture changes are recorded here.
 - Public-only Bybit V5 adapter with cursor and reverse-time pagination guards.
 - Bounded trade/mark/funding feasibility sampler with metadata-derived funding interval,
   exact-decimal validation, gap summaries, content hashes, and a versioned evidence schema.
+- Owner-controlled HMAC Futures Grid validate-only package with hard-coded Bybit origins, testnet
+  default, exact Neutral + Geometric payload, redirect rejection, private receipts, and no
+  create/close/transfer endpoint.
 - Atomic feasibility evidence publication and SHA-256 receipts.
 - DuckDB/Polars Parquet layout benchmark harness and architecture tests.
 - CI checks for lint, formatting, strict typing, tests, schema/evidence validation, manifest
@@ -18,7 +21,8 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Safety
 
-- No authenticated trading client or mutating Bybit operation was added.
+- Authenticated access is limited to `POST /v5/fgridbot/validate`; no mutating Bybit operation was
+  added and the probe was not run without owner-provided process credentials.
 - Raw public market rows remain outside Git; only the bounded sample summary and hashes are kept.
 - `grid-live doctor` remains fail-closed while release/live gates are closed.
 

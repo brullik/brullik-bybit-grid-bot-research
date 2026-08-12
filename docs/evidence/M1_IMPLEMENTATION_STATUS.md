@@ -9,6 +9,9 @@
 - Funding page contract with the documented 200-row maximum.
 - Bounded public trade/mark/funding sampling with current instrument metadata, exact-decimal
   normalization, gap accounting, and raw-row exclusion from Git.
+- Owner-controlled, testnet-first Futures Grid validate-only tooling. Its adapter has one allowed
+  endpoint, hard-coded official origins, HMAC signing, no retries or redirects, environment-only
+  credentials, private evidence receipts, and no create/close/transfer implementation.
 - Atomic public evidence publication with a SHA-256 completion receipt written last.
 - Versioned JSON Schemas and exact-decimal domain contracts.
 - Reproducible Parquet layout benchmark for Polars and DuckDB.
@@ -40,6 +43,16 @@
   report found no duplicate timestamps, missing candles, or missing internal funding intervals.
 - Each evidence artifact has a verified SHA-256 receipt. The public sample additionally validates
   against `grid.bybit-public-sample/v1`; raw market rows were not committed.
+
+## Validate-only readiness
+
+- Official Bybit sources identify `POST /v5/fgridbot/validate` as the pre-create validation call.
+- The V1 probe fixes `grid_mode="1"` (Neutral) and `grid_type="2"` (Geometric), passes all numeric
+  fields as exact decimal/integer strings, and requires an explicit stop loss below the range.
+- Success requires both `retCode=0` and
+  `check_code=FGRID_CHECK_CODE_UNSPECIFIED`; any malformed response fails closed.
+- The owner runbook is `ops/runbooks/M1_VALIDATE_ONLY_PROBE.md`. No authenticated probe has been
+  performed by this implementation and no private result belongs in Git.
 
 ## Evidence still required to close Gate 1
 

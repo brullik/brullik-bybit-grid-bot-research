@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from grid_bybit_private.fgrid_validate import (
+    EXPECTED_CHECK_CODE,
+    FuturesGridValidateRequest,
+    build_probe_report,
+)
 from grid_contracts.canonical import canonical_sha256
 from grid_data.evidence import verify_evidence
 from jsonschema import Draft202012Validator, FormatChecker
@@ -31,3 +38,30 @@ def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     embedded_hash = payload.pop("content_sha256")
     assert embedded_hash == canonical_sha256(payload)
     assert verify_evidence(artifact)
+
+
+class FakeValidateTransport:
+    environment = "testnet"
+
+    def validate(self, _payload: Mapping[str, str]) -> Mapping[str, Any]:
+        return {"retCode": 0, "result": {"check_code": EXPECTED_CHECK_CODE}}
+
+
+def test_fgrid_validate_report_matches_schema_and_hashes() -> None:
+    schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "fgrid-validate-probe.schema.json")
+    report = build_probe_report(
+        FakeValidateTransport(),
+        FuturesGridValidateRequest(
+            symbol="BTCUSDT",
+            cell_number=20,
+            min_price=Decimal("100"),
+            max_price=Decimal("200"),
+            leverage=Decimal("2"),
+            stop_loss_price=Decimal("90"),
+            take_profit_price=Decimal("220"),
+        ),
+    )
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(report)
+    embedded_hash = report.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(report)
