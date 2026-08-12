@@ -95,6 +95,20 @@
   MiB target, so the artifact correctly reports `scaled-only`. The smallest observed layout was
   54,638,328 bytes for scaled Int64, 8 buckets, and ZSTD level 3. These results do not choose a
   physical layout; the full calendar-spanning run and reference-hardware evidence remain required.
+- The full-profile local candidate completed all 54 layouts over 99,999,900 rows, 700 instruments,
+  and four real UTC calendar months. Aggregate write time across the entire matrix was
+  2,705.069363100 s and all six scans per layout totaled 35.566339300 s. Every DuckDB/Polars
+  row-count and aggregate comparison passed. Peak process RSS was 1,089,785,856 bytes and the
+  largest baseline-relative increase was 356,229,120 bytes.
+- Per-layout compressed size ranged from 631,822,933 to 1,182,975,174 bytes. The smallest layout
+  was scaled Int64, 8 buckets, ZSTD level 3; the fastest write was scaled Int64, 16 buckets,
+  Snappy at 32.568810500 s. These are local-host candidate results, not an accepted physical
+  choice.
+- The largest individual file across the matrix was only 45,730,398 bytes. No layout created a
+  non-tail file reaching 80% of a 128/256/512 MiB target, so the artifact correctly fails closed
+  as `full-matrix-insufficient-file-scale`. The evidence rejects the current month × 8/16/32
+  bucket × 128–512 MiB matrix as internally incompatible at this row density; a revised
+  partition/bucket/file-size ADR and benchmark are required before P-001 through P-005 can close.
 - The scaled feature run processed 9,999,500 core rows across all 700 instruments in 2.930438400 s
   (3,412,288.072664424 core rows/s). Five bounded shards read 14,031,500 rows including halos; the
   largest input shard was 3,024,000 rows.
@@ -153,7 +167,10 @@
 - Obtain authoritative Bybit confirmation whether any bulk OHLCV product is canonical mark-price
   history and whether funding-event bulk data exists, then size the remaining REST backfill;
   neither dataset is advertised by name in the observed archive root/developer summary.
-- Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
+- Revise the partition/bucket/file-size candidates because the completed 100-million-row full
+  matrix proved that month × 8/16/32 buckets cannot exercise 128–512 MiB files at the measured row
+  density; then benchmark the revised matrix on declared reference hardware and decide P-001
+  through P-005.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

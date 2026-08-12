@@ -163,6 +163,13 @@ contract at commit `562291168e9fd3d679275bf28c16056d562cefce` requires the valid
 `total_investment` and describes `bot_id` as the successful response identifier. This proves that
 the exchange exposes a create capability; M1 does not call it.
 
+There is an unresolved official-contract discrepancy: that generated MCP schema types
+`cell_number` as an integer, while Bybit's official Trading Bot instruction at commit
+`27147f594c5242f18a66c39b685a55aff5bd0fc8` says all Futures Grid numeric parameters must be JSON
+strings and warns that integers return `retCode=10001`. The successful Mainnet validation used
+strings. A mutating adapter must resolve this against authoritative create behavior and pin one
+canonical serialization before it can pass review.
+
 A `create` request may place real orders. It remains blocked until the manual-mainnet phase has a
 promoted strategy release, current instrument constraints, exact-decimal quantization, balance and
 worst-loss evidence, durable audit/state storage, exact-payload approval, detail/reconciliation,
@@ -176,5 +183,6 @@ project gates.
 - [Bybit Standard-to-UTA migration precautions](https://www.bybit.com/ru-RU/help-center/article/How-to-Upgrade-Standard-Account-to-UTA)
 - [Official Trading MCP validate schema](https://github.com/bybit-exchange/trading-mcp/blob/main/src/tools/bot/validateFGridInput.ts)
 - [Official Trading MCP create schema](https://github.com/bybit-exchange/trading-mcp/blob/562291168e9fd3d679275bf28c16056d562cefce/src/tools/bot/createFGridBot.ts)
+- [Official Trading Bot instruction with Futures Grid serialization rules](https://github.com/bybit-exchange/skills/blob/27147f594c5242f18a66c39b685a55aff5bd0fc8/modules/trading-bot.md)
 - [Official Bybit rate limits including Futures Grid validate/create](https://bybit-exchange.github.io/docs/v5/rate-limit)
 - [Official Trading Bot module](https://github.com/bybit-exchange/skills/blob/main/modules/trading-bot.md)

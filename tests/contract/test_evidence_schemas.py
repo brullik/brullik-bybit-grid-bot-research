@@ -57,6 +57,10 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
         ("m1-layout-smoke.json", "v1/layout-benchmark.schema.json"),
         ("m1-layout-out-of-core-smoke.json", "v2/layout-benchmark.schema.json"),
         ("m1-layout-out-of-core-scaled.json", "v2/layout-benchmark.schema.json"),
+        (
+            "m1-layout-out-of-core-full-candidate.json",
+            "v2/layout-benchmark.schema.json",
+        ),
         ("m1-feature-scaled.json", "v1/feature-benchmark.schema.json"),
         ("m1-feature-reference-candidate.json", "v1/feature-benchmark.schema.json"),
         ("m1-workstation-snapshot.json", "v1/workstation-snapshot.schema.json"),
