@@ -106,6 +106,11 @@ def publish_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path,
     publish_evidence(host_path, workstation_payload())
     admitted = admitted_host(host_path)
     monkeypatch.setattr(campaign, "admit_reference_host", lambda *_args, **_kwargs: admitted)
+    monkeypatch.setattr(
+        campaign,
+        "_require_reference_environment",
+        lambda: {"failures": [], "status": "ready-for-reference-campaign"},
+    )
     monkeypatch.setattr(campaign, "_source_manifest_summary", manifest_summary)
     campaign_root = tmp_path / "campaign"
     payload = campaign.publish_campaign_plan(
@@ -237,6 +242,33 @@ def test_campaign_plan_pins_eight_ordered_commands_and_never_accepts_gate(
     assert prepare[prepare.index("--profile") + 1] == "reference"
     assert prepare[prepare.index("--rows") + 1] == "100000000"
     assert prepare[prepare.index("--instruments") + 1] == "700"
+
+
+def test_campaign_plan_rejects_environment_drift_before_root_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    host_path = tmp_path / "reference-host.json"
+    publish_evidence(host_path, workstation_payload())
+    admitted = admitted_host(host_path)
+    monkeypatch.setattr(campaign, "admit_reference_host", lambda *_args, **_kwargs: admitted)
+    monkeypatch.setattr(
+        campaign,
+        "_require_reference_environment",
+        lambda: (_ for _ in ()).throw(
+            ValueError("reference environment preflight failed: constrained_versions_match")
+        ),
+    )
+    campaign_root = tmp_path / "rejected-environment"
+
+    with pytest.raises(ValueError, match="constrained_versions_match"):
+        campaign.publish_campaign_plan(
+            campaign_root=campaign_root,
+            reference_host_path=host_path,
+            decision_path=DECISION,
+            real_market_path=REAL_MARKET,
+        )
+
+    assert not campaign_root.exists()
 
 
 def test_campaign_status_returns_prepare_then_requires_reboot(

@@ -16,28 +16,81 @@ Required host and volume:
 The current owner computer does not meet this profile. Run every command below on the qualifying
 host from one clean checkout of the repository.
 
-## 1. Install and validate
+## 1. Build one exact clean environment
 
-Create a Python 3.12 environment and install the project dependencies using the repository's
-normal development installation. Then run:
+Clone the canonical public repository, synchronize `main`, and do not use a development branch or
+an existing Python environment. The campaign requires Python 3.12 and the reviewed exact direct
+pins in `requirements/reference-campaign.txt`.
+
+Windows PowerShell:
 
 ```powershell
-python -m ruff check .
-python -m ruff format --check .
-python -m mypy packages apps benchmarks scripts
-python -m pytest
-python scripts/update_manifest.py
+git clone https://github.com/brullik/brullik-bybit-grid-bot-research.git
+Set-Location brullik-bybit-grid-bot-research
+git fetch --prune origin
+git switch main
+git pull --ff-only origin main
+
+py -3.12 -m venv .venv
+$python = (Resolve-Path .\.venv\Scripts\python.exe).Path
+& $python -m pip install -c requirements/reference-campaign.txt -e ".[data,dev]"
+& $python -m pip install --no-deps -e packages/contracts -e packages/bybit-public `
+  -e packages/bybit-private
+& $python -m pip install --no-deps -e apps/data -e apps/research -e apps/release -e apps/live
 ```
 
-Do not continue if any command fails or the working tree contains unreviewed changes.
+Linux shell:
+
+```bash
+git clone https://github.com/brullik/brullik-bybit-grid-bot-research.git
+cd brullik-bybit-grid-bot-research
+git fetch --prune origin
+git switch main
+git pull --ff-only origin main
+
+python3.12 -m venv .venv
+PYTHON="$(pwd)/.venv/bin/python"
+"$PYTHON" -m pip install -c requirements/reference-campaign.txt -e ".[data,dev]"
+"$PYTHON" -m pip install --no-deps -e packages/contracts -e packages/bybit-public \
+  -e packages/bybit-private
+"$PYTHON" -m pip install --no-deps -e apps/data -e apps/research -e apps/release \
+  -e apps/live
+```
+
+Run the complete validation through that same absolute interpreter:
+
+```powershell
+& $python -m ruff check .
+& $python -m ruff format --check .
+& $python -m mypy packages apps benchmarks scripts
+& $python -m pytest
+& $python scripts/update_manifest.py
+& $python -m benchmarks.reference_environment
+```
+
+On Linux replace `& $python` with `"$PYTHON"`. The final command must return
+`status=ready-for-reference-campaign`. It checks the exact interpreter/dependencies, all editable
+monorepo packages, required imports, `pip check`, source manifest, canonical origin, clean `main`
+at `origin/main`, and only the **names** of any present Bybit credential variables. It never reads
+or prints credential values.
+
+Do not continue if any command fails. Do not upgrade dependencies, fetch a newer commit, recreate
+the environment, or set Bybit credentials after the immutable campaign plan is published.
 
 ## 2. Capture the qualifying host
 
 Choose a dedicated root on the measured NVMe volume. The example uses `D:\grid-reference`:
 
 ```powershell
-python -m benchmarks.workstation_snapshot `
+& $python -m benchmarks.workstation_snapshot `
   --output D:\grid-reference\reference-host.json
+```
+
+Linux equivalent:
+
+```bash
+"$PYTHON" -m benchmarks.workstation_snapshot \
+  --output /mnt/grid-reference/reference-host.json
 ```
 
 Verify the artifact and receipt exist. Its status must be
@@ -48,9 +101,17 @@ Verify the artifact and receipt exist. Its status must be
 Use a new campaign root on the same volume. Do not reuse a failed or completed root:
 
 ```powershell
-python -m benchmarks.reference_campaign plan `
+& $python -m benchmarks.reference_campaign plan `
   --campaign-root D:\grid-reference\campaign-001 `
   --reference-host-evidence D:\grid-reference\reference-host.json
+```
+
+Linux equivalent:
+
+```bash
+"$PYTHON" -m benchmarks.reference_campaign plan \
+  --campaign-root /mnt/grid-reference/campaign-001 \
+  --reference-host-evidence /mnt/grid-reference/reference-host.json
 ```
 
 The command validates all inputs before creating `campaign-plan.json` and its receipt. It rejects
@@ -60,8 +121,15 @@ output paths.
 ## 4. Follow status one action at a time
 
 ```powershell
-python -m benchmarks.reference_campaign status `
+& $python -m benchmarks.reference_campaign status `
   --plan D:\grid-reference\campaign-001\campaign-plan.json
+```
+
+Linux equivalent:
+
+```bash
+"$PYTHON" -m benchmarks.reference_campaign status \
+  --plan /mnt/grid-reference/campaign-001/campaign-plan.json
 ```
 
 Interpret `next_action`:

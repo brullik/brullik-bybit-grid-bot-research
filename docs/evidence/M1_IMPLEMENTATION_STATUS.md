@@ -69,6 +69,10 @@
 - Fail-closed external reference-campaign handoff that admits the host/volume and pinned source
   evidence before publishing an immutable eight-step plan, exposes one next command or reboot at
   a time, rejects invalid/out-of-order receipts, and can never accept Gate 1 automatically.
+- Read-only reference-environment bootstrap admission with CI-shared exact direct dependency
+  constraints, explicit editable monorepo-package checks, Python 3.12/venv enforcement, clean
+  canonical-main/source-manifest verification, `pip check`, required-import checks, and
+  secret-name-only rejection of Bybit credential variables before a campaign plan can exist.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings

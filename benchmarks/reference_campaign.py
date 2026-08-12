@@ -27,6 +27,7 @@ from benchmarks.gate1_review_pack import (
     WORKSTATION_SCHEMA,
     load_verified_evidence,
 )
+from benchmarks.reference_environment import collect_reference_environment
 from benchmarks.reference_host import admit_reference_host
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,6 +91,15 @@ def _source_manifest_summary() -> dict[str, Any]:
         "path": str(MANIFEST.resolve()),
         "source_file_count": source_file_count,
     }
+
+
+def _require_reference_environment() -> dict[str, Any]:
+    report = collect_reference_environment()
+    if report.get("status") != "ready-for-reference-campaign":
+        failures = report.get("failures")
+        rendered = ", ".join(str(item) for item in failures) if isinstance(failures, list) else ""
+        raise ValueError(f"reference environment preflight failed: {rendered or 'unknown failure'}")
+    return report
 
 
 def _source_summary(
@@ -296,6 +306,7 @@ def publish_campaign_plan(
         raise ValueError("layout decision evidence is not a decision-matrix candidate")
     if real_market.get("status") != "complete-bounded-real-market-skew":
         raise ValueError("real-market evidence is not a complete bounded layout result")
+    _require_reference_environment()
     source_manifest = _source_manifest_summary()
 
     plan_path = campaign_root / PLAN_NAME
