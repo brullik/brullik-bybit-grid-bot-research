@@ -107,12 +107,16 @@ Recommended starting layout:
 
 ```text
 market-store/
-  dataset=trade_kline_1m/
-    schema=v1/
-      year=YYYY/
-        month=MM/
-          bucket=BB/
-            part-<content-id>.parquet
+  datasets/<dataset-id>/
+    dataset=trade_kline_1m/
+      schema=v1/
+        year=YYYY/
+          month=MM/
+            bucket=BB/
+              part-<sha256>.parquet
+    audit.json
+    manifest.json
+    completion-receipt.json
 ```
 
 Where:
@@ -166,6 +170,9 @@ Float values from the research store are never copied directly into order/grid p
 10. Write the completion receipt last; it is the commit marker.
 
 A directory without a valid completion receipt is not a committed dataset.
+ADR-0022 additionally requires a no-mutation host/capacity preflight, a fresh recheck immediately
+before the first write, same-volume building/final paths, closed Parquet handles before the atomic
+directory rename, canonical manifest/receipt bytes, and orphan detection.
 
 ## Quality checks
 
