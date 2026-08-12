@@ -183,5 +183,12 @@ final layout evidence, feature evidence, and review pack. Do not commit generate
 external campaign root to the public repository. Only a separately reviewed small public evidence
 artifact may later be added to Git.
 
+If a verified orchestration defect is discovered after immutable work has completed, do not edit,
+overwrite, or delete the original root. Merge and validate the fix first, publish a new plan in a
+new dedicated root, and adopt only byte-identical receipt-verified artifacts in their original
+relative locations. Re-run `status` before continuing; any source, environment, receipt, hash,
+scale, host, boot-marker, ordering, or path mismatch must block the recovery. Preserve both roots
+as incident evidence.
+
 The review pack always leaves `gate_1.status=pending-owner-decision`. The owner/PM must record the
 decision separately before Phase 2 work is authorized.
