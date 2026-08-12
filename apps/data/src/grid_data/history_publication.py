@@ -52,6 +52,17 @@ class ResolvedHistoryPublication:
     plan: PublicationPlan
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedHistoryPublicationInput:
+    completed_history: CompletedHistoryJob
+    instrument_registry: VerifiedInstrumentRegistry
+    capacity_evidence_path: Path
+    capacity_evidence_sha256: str
+    batch: CanonicalCandleBatch
+    budget: CapacityBudget
+    dataset_id: str
+
+
 def _object(path: Path, *, name: str) -> dict[str, object]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -100,22 +111,13 @@ def _dataset_id(dataset_type: str, history_manifest_sha256: str) -> str:
     return f"{prefix}-{history_manifest_sha256[:24]}"
 
 
-def preflight_completed_history_publication(
-    store_root: Path,
+def load_verified_history_publication_input(
     job_root: Path,
     instrument_registry_path: Path,
     capacity_evidence_path: Path,
-    snapshot: HostSnapshot,
-    *,
-    now_ms: int,
-    software_identity: str,
-) -> ResolvedHistoryPublication:
-    """Verify all upstream evidence and plan one immutable canonical dataset without mutation."""
+) -> VerifiedHistoryPublicationInput:
+    """Verify Landing and upstream evidence without probing the host or mutating storage."""
 
-    if not SOFTWARE_IDENTITY_RE.fullmatch(software_identity):
-        raise HistoryAcquisitionError(
-            "software_identity must be git:<40-character-lowercase-commit-sha>"
-        )
     completed = verify_completed_history_job(job_root)
     manifest = _object(completed.manifest_path, name="history manifest")
     history_plan = _object(completed.plan_path, name="history plan")
@@ -135,43 +137,84 @@ def preflight_completed_history_publication(
         )
     batch = load_completed_history_batch(completed.job_root)
     _validate_registry_coverage(registry, batch)
-    dataset_id = _dataset_id(batch.dataset_type.value, completed.manifest_sha256)
-    build_config_sha = canonical_sha256(
-        {
-            "canonical_layout": CANONICAL_LAYOUT_ID,
-            "contract": HISTORY_PUBLICATION_CONTRACT,
-            "dataset_id": dataset_id,
-            "history_manifest_sha256": completed.manifest_sha256,
-            "semantic_version": "1.0.0",
-            "software_identity": software_identity,
-        }
-    )
-    spec = CandleDatasetSpec(
-        dataset_id=dataset_id,
-        semantic_version="1.0.0",
-        parent_dataset_ids=(),
-        source_evidence_sha256=(
-            completed.manifest_sha256,
-            registry.artifact_sha256,
-        ),
-        coverage_evidence_sha256=completed.manifest_sha256,
-        capacity_evidence_sha256=capacity_sha,
-        build_config_sha256=build_config_sha,
-        software_identity=software_identity,
-    )
-    publication_plan = preflight_candle_dataset(
-        store_root,
-        spec,
-        batch,
-        budget,
-        snapshot,
-        now_ms=now_ms,
-    )
-    return ResolvedHistoryPublication(
+    return VerifiedHistoryPublicationInput(
         completed_history=completed,
         instrument_registry=registry,
         capacity_evidence_path=capacity_path,
         capacity_evidence_sha256=capacity_sha,
+        batch=batch,
+        budget=budget,
+        dataset_id=_dataset_id(batch.dataset_type.value, completed.manifest_sha256),
+    )
+
+
+def history_publication_spec(
+    verified: VerifiedHistoryPublicationInput,
+    *,
+    software_identity: str,
+) -> CandleDatasetSpec:
+    """Resolve the deterministic canonical specification for verified Landing evidence."""
+
+    if not SOFTWARE_IDENTITY_RE.fullmatch(software_identity):
+        raise HistoryAcquisitionError(
+            "software_identity must be git:<40-character-lowercase-commit-sha>"
+        )
+    build_config_sha = canonical_sha256(
+        {
+            "canonical_layout": CANONICAL_LAYOUT_ID,
+            "contract": HISTORY_PUBLICATION_CONTRACT,
+            "dataset_id": verified.dataset_id,
+            "history_manifest_sha256": verified.completed_history.manifest_sha256,
+            "semantic_version": "1.0.0",
+            "software_identity": software_identity,
+        }
+    )
+    return CandleDatasetSpec(
+        dataset_id=verified.dataset_id,
+        semantic_version="1.0.0",
+        parent_dataset_ids=(),
+        source_evidence_sha256=(
+            verified.completed_history.manifest_sha256,
+            verified.instrument_registry.artifact_sha256,
+        ),
+        coverage_evidence_sha256=verified.completed_history.manifest_sha256,
+        capacity_evidence_sha256=verified.capacity_evidence_sha256,
+        build_config_sha256=build_config_sha,
+        software_identity=software_identity,
+    )
+
+
+def preflight_completed_history_publication(
+    store_root: Path,
+    job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    snapshot: HostSnapshot,
+    *,
+    now_ms: int,
+    software_identity: str,
+) -> ResolvedHistoryPublication:
+    """Verify all upstream evidence and plan one immutable canonical dataset without mutation."""
+
+    verified = load_verified_history_publication_input(
+        job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+    )
+    spec = history_publication_spec(verified, software_identity=software_identity)
+    publication_plan = preflight_candle_dataset(
+        store_root,
+        spec,
+        verified.batch,
+        verified.budget,
+        snapshot,
+        now_ms=now_ms,
+    )
+    return ResolvedHistoryPublication(
+        completed_history=verified.completed_history,
+        instrument_registry=verified.instrument_registry,
+        capacity_evidence_path=verified.capacity_evidence_path,
+        capacity_evidence_sha256=verified.capacity_evidence_sha256,
         plan=publication_plan,
     )
 

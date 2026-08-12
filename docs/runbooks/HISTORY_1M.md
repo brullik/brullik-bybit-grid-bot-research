@@ -147,3 +147,26 @@ an incomplete range and never contains candle values, local paths, host/device i
 data, or credentials. Runtime Landing and Parquet artifacts remain ignored; GitHub is authoritative
 through their cryptographic bindings, not by storing the market lake. Existing evidence and its
 receipt cannot be overwritten; a later run uses a new output identity.
+
+## 9. Audit exact requested coverage
+
+After the auditor implementation has a merged full Git SHA, run the read-only audit. The publisher
+identity is the SHA already bound into the canonical manifest; the auditor identity is the SHA that
+contains `audit-history-1m`:
+
+```powershell
+.venv\Scripts\grid-data.exe audit-history-1m `
+  --job-root data\history\.landing\trade-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --publisher-software-identity git:<publisher-commit-sha> `
+  --audit-software-identity git:<auditor-commit-sha> `
+  --output benchmarks\results\m2-canonical-coverage-audit-<date>.json
+```
+
+The command always preserves a valid audit plus receipt. Exit code 0 means exact source parity and
+zero missing, duplicate, unexpected, unrequested, or lifecycle-invalid rows inside the requested
+ranges. Exit code 2 means blocked evidence was written. In v1, even a fully verified REST page with
+no candle is `rest_returned_no_data` and remains unaccepted; do not edit the audit or classify it as
+no-trade manually. Repair and reason-policy changes require their own contract and review.

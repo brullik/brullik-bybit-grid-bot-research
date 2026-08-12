@@ -83,6 +83,14 @@ coverage inside each requested series. It explicitly contains no candle values, 
 local paths, device identity, or credentials. Its `existing_commit_verified` fact proves an
 idempotent publication preflight, not full lifecycle/gap acceptance or Gate 2 completion.
 
+`grid.canonical-1m-coverage-audit/v1` re-verifies one completed Landing-to-canonical publication,
+requires exact reconstructed-Arrow/Parquet equality, and accounts for every requested minute.
+Per-series facts include lifecycle bounds, missing contiguous ranges, duplicates, unexpected
+timestamps, and observed rows; dataset facts also include rows outside every request. The complete
+gap-range list is hash-bound while only 20 diagnostic samples are embedded. In v1,
+`rest_returned_no_data` is observed but never accepted: any gap blocks status and cannot be
+silently classified as a no-trade interval.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

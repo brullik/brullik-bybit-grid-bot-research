@@ -232,6 +232,12 @@ Not every absent minute is automatically an error. Each gap receives a reason:
 
 Only explicitly accepted reasons may be present in a complete dataset. `unknown` blocks completion.
 
+ADR-0026 implements the first read-only requested-range audit. It proves exact Landing/canonical
+table parity and accounts for missing, duplicate, unexpected, unrequested, and lifecycle-invalid
+rows. V1 accepts no absence reason; a verified REST response with no candle is recorded as
+`rest_returned_no_data` and blocks. Exact historical lifecycle-bound discovery remains a separate
+requirement, so a passing bounded audit is not full-universe completeness.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.

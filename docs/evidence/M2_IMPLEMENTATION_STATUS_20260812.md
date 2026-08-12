@@ -42,10 +42,19 @@ hashes and receipt relationships are in the evidence artifact under ADR-0025.
 - No API key, private endpoint, order, bot, transfer, tick archive, account identifier, or market
   value was added to GitHub.
 
+## Coverage-audit implementation
+
+`grid-data audit-history-1m` and `grid.canonical-1m-coverage-audit/v1` implement a read-only,
+fail-closed audit for exact Landing/Parquet equality, every requested minute, duplicates,
+unexpected or unrequested rows, and registry lifecycle bounds. A REST-returned missing minute is
+preserved as blocked evidence and is not accepted automatically. The measured audit of the public
+pilot must be produced only after the auditor has an immutable merged Git SHA, so it remains a
+separate GitHub evidence PR.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
-- gap and conflict classification with accepted reason codes;
+- measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
 - bounded repair and immutable replacement lineage;
 - multi-file target-size compaction and tail policy at representative scale;
 - catalog registration and reproducible range selection;
