@@ -61,10 +61,18 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
             "m1-layout-out-of-core-full-candidate.json",
             "v2/layout-benchmark.schema.json",
         ),
+        (
+            "m1-layout-exact-decision-candidate.json",
+            "v3/layout-benchmark.schema.json",
+        ),
         ("m1-feature-scaled.json", "v1/feature-benchmark.schema.json"),
         ("m1-feature-reference-candidate.json", "v1/feature-benchmark.schema.json"),
         ("m1-workstation-snapshot.json", "v1/workstation-snapshot.schema.json"),
         ("m1-capacity-projection.json", "v1/capacity-projection.schema.json"),
+        (
+            "m1-exact-capacity-projection.json",
+            "v2/capacity-projection.schema.json",
+        ),
     )
     for artifact_name, versioned_schema_name in cases:
         artifact = ROOT / "benchmarks" / "results" / artifact_name

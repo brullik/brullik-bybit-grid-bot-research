@@ -107,8 +107,19 @@
 - The largest individual file across the matrix was only 45,730,398 bytes. No layout created a
   non-tail file reaching 80% of a 128/256/512 MiB target, so the artifact correctly fails closed
   as `full-matrix-insufficient-file-scale`. The evidence rejects the current month × 8/16/32
-  bucket × 128–512 MiB matrix as internally incompatible at this row density; a revised
-  partition/bucket/file-size ADR and benchmark are required before P-001 through P-005 can close.
+  bucket × 128–512 MiB matrix as internally incompatible at this row density and motivates the
+  ADR-backed revised matrix recorded below.
+- The ADR-0010 exact decision matrix completed all 16 combinations over 99,999,900 rows and 700
+  instruments. All DuckDB/Polars counts and exact aggregates matched, all Parquet numeric
+  contracts reopened and verified, 14 layouts materially exercised their requested target, and
+  the artifact reports `decision-matrix-candidate`. Aggregate write and scan time were
+  819.498028500 s and 10.996928900 s; maximum process RSS was 1,676,791,808 bytes.
+- The deterministic reference rerun shortlist is hybrid Int64-price/Decimal128 volume and
+  turnover with ZSTD level 3: four buckets at 32 MiB and eight buckets at 16 MiB. Their observed
+  sizes were 6.445478115 and 6.509652550 bytes/row. Projecting those measurements to 7.363 billion
+  trade+mark rows gives 47,459,916,819 and 47,932,451,711 bytes, respectively. These synthetic
+  projections do not reduce the independent planning envelopes or the provisional 2 TiB storage
+  recommendation.
 - The scaled feature run processed 9,999,500 core rows across all 700 instruments in 2.930438400 s
   (3,412,288.072664424 core rows/s). Five bounded shards read 14,031,500 rows including halos; the
   largest input shard was 3,024,000 rows.
@@ -167,10 +178,8 @@
 - Obtain authoritative Bybit confirmation whether any bulk OHLCV product is canonical mark-price
   history and whether funding-event bulk data exists, then size the remaining REST backfill;
   neither dataset is advertised by name in the observed archive root/developer summary.
-- Revise the partition/bucket/file-size candidates because the completed 100-million-row full
-  matrix proved that month × 8/16/32 buckets cannot exercise 128–512 MiB files at the measured row
-  density; then benchmark the revised matrix on declared reference hardware and decide P-001
-  through P-005.
+- Rerun the ADR-0010 exact shortlist on declared reference hardware with documented cold-cache,
+  real-market-skew, monthly repair, and compaction evidence, then decide P-001 through P-005.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

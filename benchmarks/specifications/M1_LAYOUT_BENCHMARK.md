@@ -60,3 +60,40 @@ and scaled-Int64 frames are built sequentially rather than retained together.
   conditions are representative and the receipt verifies.
 - The canonical physical representation and partition layout remain provisional until the
   owner/PM accepts the full result.
+
+## Density-derived exact decision matrix
+
+The completed v2 full-profile candidate proved that month × 8/16/32 buckets cannot exercise the
+original 128/256/512 MiB targets at the measured row density. ADR-0010 therefore adds an
+append-only v3 decision profile; it does not change the v2 passing condition.
+
+The v3 matrix compares 4/8 buckets, 16/32 MiB targets, ZSTD-3/Snappy, and two exact physical
+contracts: hybrid Int64-price/Decimal128 and all-Decimal128. It verifies Arrow/Parquet type and
+scale metadata in every file and links to receipt-verified predecessor and public precision
+evidence.
+
+```powershell
+python benchmarks/layout_benchmark.py `
+  --profile decision --rows 100000000 --instruments 700 `
+  --row-group-rows 100000 --generation-chunk-rows 1000000 `
+  --work-dir .benchmark-work/layout-decision `
+  --predecessor-evidence benchmarks/results/m1-layout-out-of-core-full-candidate.json `
+  --precision-evidence benchmarks/results/m1-bybit-public-inventory.json `
+  --output benchmarks/results/m1-layout-exact-decision-candidate.json --force
+```
+
+`decision-matrix-candidate` means at least one exact, schema-verified layout materially exercised
+its requested target. It is a shortlist for a reference-hardware rerun, not an owner/PM decision
+and not Gate 1 approval. `decision-matrix-no-eligible-layout` fails closed and requires another
+ADR-backed candidate revision.
+
+The receipt-linked exact-capacity projection is generated from the deterministic shortlist:
+
+```powershell
+python -m benchmarks.exact_capacity_projection `
+  --output benchmarks/results/m1-exact-capacity-projection.json --force
+```
+
+This projection retains the independent 24/40/64-byte planning envelopes and the provisional
+2 TiB recommendation. Synthetic compression and write-rate extrapolations do not replace a
+reference-hardware run, real-market skew, filesystem overhead, compaction, or backup sizing.

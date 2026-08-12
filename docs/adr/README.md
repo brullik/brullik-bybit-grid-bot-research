@@ -13,6 +13,8 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0010 — Density-derived exact monthly layout matrix](ADR-0010-density-derived-exact-layout-matrix.md)
+
 - [ADR-0001 — Separate deployable applications](ADR-0001-separate-deployable-applications.md)
 - [ADR-0002 — Parquet, DuckDB, and Polars baseline](ADR-0002-parquet-duckdb-polars.md)
 - [ADR-0003 — Immutable datasets and receipts](ADR-0003-immutable-datasets-and-receipts.md)

@@ -9,6 +9,7 @@ from grid_data.evidence import verify_evidence
 from polars.testing import assert_frame_equal
 
 from benchmarks.capacity_projection import projected_bytes
+from benchmarks.exact_capacity_projection import selected_layout_projections
 from benchmarks.feature_benchmark import (
     build_market_frame,
     feature_plan,
@@ -23,6 +24,10 @@ from benchmarks.layout_benchmark import (
     build_bucket_chunk,
     build_frame,
     classify_run,
+    decision_input_evidence,
+    decision_summary,
+    layouts,
+    numeric_contracts,
     scan_layout,
     time_partitions,
     validate_configuration,
@@ -72,6 +77,31 @@ def test_full_layout_profile_cannot_claim_a_small_run() -> None:
         validate_configuration("full", 200_000, 50, 10_000)
     assert validate_configuration("scaled", 200_001, 50, 10_000) == 200_000
     assert validate_configuration("full", 100_000_000, 700, 100_000) == 99_999_900
+    with pytest.raises(ValueError, match="decision profile requires"):
+        validate_configuration("decision", 10_000_000, 700, 100_000)
+    assert validate_configuration("decision", 100_000_000, 700, 100_000) == 99_999_900
+
+
+def test_decision_layout_matrix_is_exact_and_density_derived() -> None:
+    matrix = layouts("decision")
+
+    assert len(matrix) == 16
+    assert {layout.bucket_count for layout in matrix} == {4, 8}
+    assert {layout.target_file_mb for layout in matrix} == {16, 32}
+    assert {layout.numeric_representation for layout in matrix} == {
+        "decimal128",
+        "hybrid_int64_decimal",
+    }
+    assert {(layout.compression, layout.compression_level) for layout in matrix} == {
+        ("snappy", None),
+        ("zstd", 3),
+    }
+    assert numeric_contracts()["hybrid_int64_decimal"]["fields"]["ohlc"] == {
+        "field_metadata_required": True,
+        "physical_type": "int64",
+        "scale": 8,
+        "unit": "1e-8",
+    }
 
 
 def test_layout_generation_chunk_preserves_requested_row_groups() -> None:
@@ -122,6 +152,12 @@ def test_representative_status_requires_every_file_target() -> None:
         "full-matrix-insufficient-file-scale"
     )
     assert classify_run("full", [exercised]) == "representative-run"
+    exact_exercised = {"write": {"numeric_schema_verified": True, "target_file_exercised": True}}
+    exact_insufficient = {
+        "write": {"numeric_schema_verified": True, "target_file_exercised": False}
+    }
+    assert classify_run("decision", [exact_exercised]) == "decision-matrix-candidate"
+    assert classify_run("decision", [exact_insufficient]) == ("decision-matrix-no-eligible-layout")
 
 
 def test_layout_reports_observed_file_sizes(tmp_path: Path) -> None:
@@ -148,6 +184,38 @@ def test_layout_reports_observed_file_sizes(tmp_path: Path) -> None:
     assert scan["validation"]["expected_universe_month_rows"] == 20_000
 
 
+def test_layout_rejects_more_buckets_than_instruments(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="bucket count"):
+        write_layout(
+            row_count=20,
+            instrument_count=2,
+            root=tmp_path,
+            layout=Layout(4, "zstd", 3, "scaled_int64", 1),
+            row_group_rows=10,
+            generation_chunk_rows=10,
+        )
+
+
+@pytest.mark.parametrize("representation", ["decimal128", "hybrid_int64_decimal"])
+def test_exact_layout_reopens_and_verifies_numeric_schema(
+    tmp_path: Path, representation: str
+) -> None:
+    layout = Layout(4, "zstd", 3, representation, 1)  # type: ignore[arg-type]
+    result = write_layout(
+        row_count=20_000,
+        instrument_count=10,
+        root=tmp_path,
+        layout=layout,
+        row_group_rows=1_000,
+        generation_chunk_rows=2_000,
+    )
+
+    assert result["numeric_contract_id"] == "grid.candle-exact-physical/v1"
+    assert result["numeric_schema_verified"] is True
+    scan = scan_layout(tmp_path / layout.name, 20_000, 10)
+    assert scan["validation"]["engines_match_aggregate_values"] is True
+
+
 def test_layout_work_directory_resume_requires_identical_receipted_run(
     tmp_path: Path,
 ) -> None:
@@ -169,9 +237,111 @@ def test_layout_work_directory_resume_requires_identical_receipted_run(
     _prepare_work_dir(work_dir, configuration, force=True, resume=False)
     assert verify_evidence(work_dir / "run.json")
 
+    decision_work_dir = tmp_path / "decision-scratch"
+    decision_configuration = {
+        "benchmark_schema": "grid.layout-benchmark-run/v2",
+        "profile": "decision",
+    }
+    _prepare_work_dir(decision_work_dir, decision_configuration, force=False, resume=False)
+    _prepare_work_dir(decision_work_dir, decision_configuration, force=True, resume=False)
+    assert verify_evidence(decision_work_dir / "run.json")
+
+
+def test_decision_inputs_verify_receipts_and_observed_precision() -> None:
+    inputs = decision_input_evidence(
+        Path("benchmarks/results/m1-layout-out-of-core-full-candidate.json"),
+        Path("benchmarks/results/m1-bybit-public-inventory.json"),
+    )
+
+    assert inputs["predecessor"]["layout_count"] == 54
+    assert inputs["precision_basis"]["max_observed_price_decimal_places"] == 8
+    assert inputs["precision_basis"]["max_observed_quantity_decimal_places"] == 4
+    assert inputs["precision_basis"]["derived_turnover_scale"] == 12
+
+
+def test_decision_summary_shortlists_one_eligible_layout_per_bucket() -> None:
+    def result(bucket: int, target: int, size: int, exercised: bool) -> dict[str, object]:
+        return {
+            "layout": {
+                "bucket_count": bucket,
+                "compression": "zstd",
+                "compression_level": 3,
+                "numeric_representation": "decimal128",
+                "target_file_mb": target,
+            },
+            "scan": {
+                "duckdb_single_symbol_first_seconds": "0.100000000",
+                "duckdb_single_symbol_warm_seconds": "0.100000000",
+                "duckdb_universe_month_seconds": "0.100000000",
+                "polars_single_symbol_first_seconds": "0.100000000",
+                "polars_single_symbol_warm_seconds": "0.100000000",
+                "polars_universe_month_seconds": "0.100000000",
+            },
+            "write": {
+                "bytes": size,
+                "file_count": 10,
+                "numeric_schema_verified": True,
+                "target_file_exercised": exercised,
+                "write_seconds": "1.000000000",
+            },
+        }
+
+    summary = decision_summary(
+        [
+            result(4, 16, 100, True),
+            result(4, 32, 90, True),
+            result(8, 16, 80, True),
+            result(8, 32, 70, False),
+        ]
+    )
+
+    assert summary["eligible_layout_count"] == 3
+    assert [layout["target_file_mb"] for layout in summary["reference_rerun_shortlist"]] == [
+        32,
+        16,
+    ]
+
 
 def test_capacity_projection_rounds_up_partial_bytes() -> None:
     assert projected_bytes(3, Decimal("1.1")) == 4
+
+
+def test_exact_capacity_projection_uses_only_verified_shortlist() -> None:
+    four_bucket = {
+        "bucket_count": 4,
+        "compression": "zstd",
+        "compression_level": 3,
+        "numeric_representation": "hybrid_int64_decimal",
+        "target_file_mb": 32,
+    }
+    eight_bucket = {**four_bucket, "bucket_count": 8, "target_file_mb": 16}
+
+    def result(candidate: dict[str, object], size: int) -> dict[str, object]:
+        return {
+            "layout": candidate,
+            "write": {
+                "bytes": size,
+                "numeric_schema_verified": True,
+                "target_file_exercised": True,
+                "write_seconds": "10.000000000",
+            },
+        }
+
+    projections = selected_layout_projections(
+        {
+            "decision": {"reference_rerun_shortlist": [four_bucket, eight_bucket]},
+            "input": {"row_count": 100},
+            "results": [result(four_bucket, 640), result(eight_bucket, 650)],
+        }
+    )
+
+    assert [projection["observed_bytes_per_row"] for projection in projections] == [
+        "6.400000000",
+        "6.500000000",
+    ]
+    assert all(
+        projection["observed_write_rows_per_second"] == "10.000000000" for projection in projections
+    )
 
 
 def test_validate_conclusion_redacts_prices_and_requires_safe_demo_result() -> None:
