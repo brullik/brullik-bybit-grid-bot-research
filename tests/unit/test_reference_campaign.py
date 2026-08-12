@@ -216,7 +216,6 @@ def final_payloads(
                 "artifact": sources["real_market"]["artifact"],
                 "artifact_sha256": sources["real_market"]["artifact_sha256"],
                 "evidence_schema": sources["real_market"]["schema"],
-                "status": sources["real_market"]["status"],
             },
             "reference_host_evidence": plan["reference_host"],
         },
@@ -338,6 +337,56 @@ def test_qualified_campaign_plan_pins_v3_commands_and_environment(
     status = campaign.campaign_status(plan_path)
     assert status["campaign_status"] == "ready"
     assert status["next_action"]["step"]["id"] == "layout-prepare"
+
+
+def test_qualified_layout_accepts_contract_real_market_summary_without_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _plan_path, plan = publish_qualified_plan(tmp_path, monkeypatch)
+    preparation_hash = "a" * 64
+    sources = plan["sources"]
+    layout = {
+        "preparation": {
+            "artifact_sha256": preparation_hash,
+            "decision_evidence": {
+                "artifact": sources["decision"]["artifact"],
+                "artifact_sha256": sources["decision"]["artifact_sha256"],
+                "benchmark_schema": sources["decision"]["schema"],
+                "status": sources["decision"]["status"],
+            },
+            "input": campaign._expected_reference_input(),
+            "real_market_evidence": {
+                "artifact": sources["real_market"]["artifact"],
+                "artifact_sha256": sources["real_market"]["artifact_sha256"],
+                "evidence_schema": sources["real_market"]["schema"],
+                "layouts": [],
+                "source_content_sha256": "b" * 64,
+                "total_row_count": 1,
+            },
+            "reference_host_qualification": plan["reference_host_qualification"],
+        },
+        "profile": "reference",
+        "status": "qualified-reference-protocol-candidate",
+    }
+
+    assert (
+        campaign._qualified_layout_completion_reason(
+            layout,
+            plan,
+            preparation_hash=preparation_hash,
+        )
+        is None
+    )
+
+    foreign_layout = deepcopy(layout)
+    foreign_layout["preparation"]["real_market_evidence"]["artifact_sha256"] = "c" * 64
+    assert "does not bind" in str(
+        campaign._qualified_layout_completion_reason(
+            foreign_layout,
+            plan,
+            preparation_hash=preparation_hash,
+        )
+    )
 
 
 def test_campaign_plan_rejects_environment_drift_before_root_mutation(

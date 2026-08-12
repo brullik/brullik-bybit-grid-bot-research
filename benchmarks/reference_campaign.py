@@ -540,18 +540,18 @@ def _matches_source(
     source: Mapping[str, Any],
     *,
     schema_key: str,
+    require_status: bool = True,
 ) -> bool:
     if not isinstance(reference, Mapping):
         return False
-    return all(
-        reference.get(key) == expected
-        for key, expected in (
-            ("artifact", source["artifact"]),
-            ("artifact_sha256", source["artifact_sha256"]),
-            (schema_key, source["schema"]),
-            ("status", source["status"]),
-        )
-    )
+    bindings = [
+        ("artifact", source["artifact"]),
+        ("artifact_sha256", source["artifact_sha256"]),
+        (schema_key, source["schema"]),
+    ]
+    if require_status:
+        bindings.append(("status", source["status"]))
+    return all(reference.get(key) == expected for key, expected in bindings)
 
 
 def _layout_completion_reason(
@@ -579,6 +579,7 @@ def _layout_completion_reason(
             preparation.get("real_market_evidence"),
             sources["real_market"],
             schema_key="evidence_schema",
+            require_status=False,
         )
     ):
         return "final layout does not bind the campaign preparation, scale, host, or sources"
@@ -701,6 +702,7 @@ def _qualified_layout_completion_reason(
             preparation.get("real_market_evidence"),
             sources["real_market"],
             schema_key="evidence_schema",
+            require_status=False,
         )
     ):
         return "qualified layout does not bind the campaign preparation, scale, host, or sources"
