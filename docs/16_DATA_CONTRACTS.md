@@ -68,6 +68,14 @@ evidence for canonical publication, not a canonical dataset completion marker. C
 rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance cannot collide
 between otherwise similar jobs.
 
+`grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
+immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
+artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle
+bounds, and binds an explicit software identity. Dataset identity is the candle kind plus the first
+24 hexadecimal characters of the full Landing manifest SHA-256; the full hash remains in source
+and coverage evidence. Publication receipt does not imply that gaps or lifecycle coverage are
+accepted.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

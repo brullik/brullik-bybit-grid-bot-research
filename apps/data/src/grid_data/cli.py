@@ -17,6 +17,7 @@ from grid_bybit_public import (
     UrllibJsonTransport,
 )
 from grid_contracts.canonical import sha256_file
+from grid_market_store import verify_committed_candle_dataset
 
 from grid_data import __version__
 from grid_data.archive_inventory import (
@@ -29,6 +30,10 @@ from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
     verify_completed_history_job,
+)
+from grid_data.history_publication import (
+    preflight_completed_history_publication,
+    publish_preflighted_history,
 )
 from grid_data.history_request import closed_before_now_ms, resolve_history_request
 from grid_data.history_sources import (
@@ -173,6 +178,29 @@ def parser() -> argparse.ArgumentParser:
     history_verify.add_argument("job_root", type=Path)
     history_verify.set_defaults(handler=_verify_history_1m)
 
+    history_publish = commands.add_parser(
+        "publish-history-1m",
+        help="preflight or receipt-last publish one verified Landing job as canonical Parquet",
+    )
+    history_publish.add_argument("--job-root", type=Path, required=True)
+    history_publish.add_argument("--instrument-registry", type=Path, required=True)
+    history_publish.add_argument("--capacity-evidence", type=Path, required=True)
+    history_publish.add_argument("--store-root", type=Path, required=True)
+    history_publish.add_argument("--software-identity", required=True)
+    history_publish.add_argument(
+        "--execute",
+        action="store_true",
+        help="write canonical Parquet and receipt; omitted means no-mutation preflight",
+    )
+    history_publish.set_defaults(handler=_publish_history_1m)
+
+    canonical_verify = commands.add_parser(
+        "verify-canonical-candle",
+        help="verify one receipt-committed canonical candle dataset and exact file allowlist",
+    )
+    canonical_verify.add_argument("dataset_root", type=Path)
+    canonical_verify.set_defaults(handler=_verify_canonical_candle)
+
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
     verify.set_defaults(handler=_verify)
@@ -284,6 +312,70 @@ def _verify_history_1m(args: argparse.Namespace) -> int:
                 "manifest_sha256": completed.manifest_sha256,
                 "page_count": completed.page_count,
                 "row_count": completed.row_count,
+                "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _publish_history_1m(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_completed_history_publication(
+        args.store_root,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    summary = {
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "history_manifest_sha256": resolved.completed_history.manifest_sha256,
+        "input_table_sha256": plan.input_table_sha256,
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "request_sha256": plan.request_sha256,
+        "required_free_bytes": plan.required_free_bytes,
+        "row_count": plan.batch.table.num_rows,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    published = publish_preflighted_history(
+        resolved,
+        lambda: probe_host_snapshot(args.store_root),
+        lambda: time.time_ns() // 1_000_000,
+    )
+    summary.update(
+        {
+            "manifest": str(published.manifest_path),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "receipt": str(published.receipt_path),
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_canonical_candle(args: argparse.Namespace) -> int:
+    published = verify_committed_candle_dataset(args.dataset_root)
+    print(
+        json.dumps(
+            {
+                "dataset_id": published.manifest.dataset_id,
+                "dataset_root": str(published.dataset_root),
+                "file_count": len(published.manifest.files),
+                "instrument_count": published.manifest.instrument_count,
+                "manifest_sha256": published.receipt.manifest_sha256,
+                "row_count": published.manifest.row_count,
                 "valid": True,
             }
         )

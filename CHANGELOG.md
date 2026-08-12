@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Verified Landing-to-canonical publication with deterministic dataset identity, transitive
+  registry/capacity bindings, fresh no-mutation and execution host admission, explicit software
+  identity, receipt-last immutable output, independent verification, and idempotent reruns.
 - Stable Bybit-linear instrument registry evidence with deterministic UInt32 identities, exact
   dated metadata, source receipt binding, and rejection of caller-supplied candle identities.
 - Bounded public trade/mark 1m acquisition with no-mutation host/capacity preflight, fixed

@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0024 — Verified Landing to canonical publication](ADR-0024-verified-landing-to-canonical-publication.md)
 - [ADR-0023 — Stable linear registry and resumable public 1m acquisition](ADR-0023-stable-linear-registry-and-resumable-1m-acquisition.md)
 - [ADR-0022 — Receipt-last canonical partition publication](ADR-0022-receipt-last-canonical-partition-publication.md)
 - [ADR-0021 — Canonical candle physical contract boundary](ADR-0021-canonical-candle-physical-contract.md)

@@ -136,7 +136,9 @@ def _resolve_series(
     return tuple(sorted(resolved, key=lambda item: item.instrument_id))
 
 
-def _active_building_bytes(capacity: dict[str, object]) -> int:
+def active_and_building_bytes_from_capacity(capacity: dict[str, object]) -> int:
+    """Extract the accepted-layout active-plus-building requirement from capacity evidence."""
+
     if capacity.get("evidence_schema") != CAPACITY_CONTRACT:
         raise HistoryAcquisitionError("unsupported capacity evidence contract")
     raw_layouts = capacity.get("layout_projections")
@@ -176,6 +178,18 @@ def _active_building_bytes(capacity: dict[str, object]) -> int:
     return required
 
 
+def load_verified_capacity_evidence(
+    path: Path,
+) -> tuple[Path, dict[str, object], str]:
+    """Load a receipt-verified capacity artifact and return its exact artifact digest."""
+
+    capacity_path, capacity = _object_file(path, name="capacity evidence")
+    if not verify_evidence(capacity_path):
+        raise HistoryAcquisitionError("capacity evidence receipt does not verify")
+    active_and_building_bytes_from_capacity(capacity)
+    return capacity_path, capacity, sha256_file(capacity_path)
+
+
 def resolve_history_request(
     request_path: Path,
     *,
@@ -196,10 +210,7 @@ def resolve_history_request(
         kind=kind,
         registry=registry,
     )
-    capacity_path, capacity = _object_file(capacity_evidence_path, name="capacity evidence")
-    if not verify_evidence(capacity_path):
-        raise HistoryAcquisitionError("capacity evidence receipt does not verify")
-    capacity_hash = sha256_file(capacity_path)
+    capacity_path, capacity, capacity_hash = load_verified_capacity_evidence(capacity_evidence_path)
     defaults = {
         "page_limit": 1000,
         "workers": 24,
@@ -219,7 +230,7 @@ def resolve_history_request(
         **defaults,
     )
     budget = CapacityBudget(
-        active_and_building_bytes=_active_building_bytes(capacity),
+        active_and_building_bytes=active_and_building_bytes_from_capacity(capacity),
         rest_staging_bytes=required_rest_staging_bytes(spec),
         operating_reserve_bytes=MIN_OPERATING_RESERVE_BYTES,
     )
