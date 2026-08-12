@@ -1,12 +1,14 @@
 """Reproducible Parquet layout/engine benchmark for Gate 1 evidence.
 
-The smoke profile validates the harness. The full profile is intended for a
-representative workstation and does not claim to flush the operating-system cache.
+The smoke profile validates the harness, the scaled profile exercises the full
+matrix without making a scale claim, and the full profile fails closed unless its
+minimum scale is met. No profile claims that the operating-system cache was flushed.
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 import platform
 import shlex
 import shutil
@@ -21,9 +23,12 @@ from typing import Any, Literal
 import duckdb
 import polars as pl
 import psutil  # type: ignore[import-untyped]
-from grid_data.evidence import publish_evidence
+from grid_data.evidence import preflight_evidence, publish_evidence
 
 BASE_TIME_MS = 1_767_225_600_000  # 2026-01-01T00:00:00Z
+FULL_MINIMUM_ROWS = 100_000_000
+FULL_INSTRUMENTS = 700
+TARGET_EXERCISE_RATIO = 0.8
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,24 +96,36 @@ def write_layout(
     if layout_root.exists():
         raise FileExistsError(f"benchmark layout already exists: {layout_root}")
     layout_root.mkdir(parents=True)
-    frame = frame.with_columns(
-        symbol_bucket=(pl.col("instrument_id").cast(pl.UInt64) % layout.bucket_count).cast(
-            pl.UInt16
-        )
+    calibration_rows = min(frame.height, max(row_group_rows, 1_000_000))
+    calibration_path = layout_root / ".calibration.parquet"
+    frame.head(calibration_rows).write_parquet(
+        calibration_path,
+        compression=layout.compression,
+        compression_level=layout.compression_level,
+        row_group_size=row_group_rows,
+        statistics="full",
     )
-    estimated_bytes_per_row = max(1, int(frame.estimated_size()) // frame.height)
+    calibration_bytes = calibration_path.stat().st_size
+    calibration_path.unlink()
+    compressed_bytes_per_row = calibration_bytes / calibration_rows
+    target_file_bytes = layout.target_file_mb * 1024 * 1024
+    raw_rows_per_file = max(1, int(target_file_bytes / compressed_bytes_per_row))
     rows_per_file = max(
-        row_group_rows, layout.target_file_mb * 1024 * 1024 // estimated_bytes_per_row
+        row_group_rows,
+        math.ceil(raw_rows_per_file / row_group_rows) * row_group_rows,
     )
     started = time.perf_counter()
     file_count = 0
-    for key, bucket_frame in frame.partition_by("symbol_bucket", as_dict=True).items():
-        bucket = int(key[0] if isinstance(key, tuple) else key)
+    for bucket in range(layout.bucket_count):
+        bucket_frame = frame.filter(
+            (pl.col("instrument_id").cast(pl.UInt64) % layout.bucket_count) == bucket
+        )
+        if bucket_frame.is_empty():
+            continue
         bucket_root = layout_root / f"bucket={bucket:02d}"
         bucket_root.mkdir()
-        payload = bucket_frame.drop("symbol_bucket")
-        for offset in range(0, payload.height, rows_per_file):
-            part = payload.slice(offset, rows_per_file)
+        for offset in range(0, bucket_frame.height, rows_per_file):
+            part = bucket_frame.slice(offset, rows_per_file)
             part.write_parquet(
                 bucket_root / f"part-{file_count:05d}.parquet",
                 compression=layout.compression,
@@ -119,10 +136,21 @@ def write_layout(
             file_count += 1
     elapsed = time.perf_counter() - started
     files = tuple(layout_root.rglob("*.parquet"))
+    file_sizes = tuple(path.stat().st_size for path in files)
+    largest_file_bytes = max(file_sizes)
+    smallest_file_bytes = min(file_sizes)
+    target_exercised = largest_file_bytes >= target_file_bytes * TARGET_EXERCISE_RATIO
     return {
-        "bytes": sum(path.stat().st_size for path in files),
+        "bytes": sum(file_sizes),
+        "calibration_bytes_per_row": decimal_seconds(compressed_bytes_per_row),
         "file_count": file_count,
+        "largest_file_bytes": largest_file_bytes,
+        "largest_file_target_ratio": decimal_seconds(largest_file_bytes / target_file_bytes),
         "rows_per_file_target": rows_per_file,
+        "smallest_file_bytes": smallest_file_bytes,
+        "target_exercise_criterion": "largest file is at least 80% of requested target",
+        "target_file_bytes": target_file_bytes,
+        "target_file_exercised": target_exercised,
         "write_seconds": decimal_seconds(elapsed),
     }
 
@@ -237,19 +265,50 @@ def layouts(profile: str) -> tuple[Layout, ...]:
 
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--profile", choices=["smoke", "full"], default="smoke")
+    parser.add_argument("--profile", choices=["smoke", "scaled", "full"], default="smoke")
     parser.add_argument("--rows", type=int, default=200_000)
     parser.add_argument("--instruments", type=int, default=50)
     parser.add_argument("--row-group-rows", type=int, default=100_000)
     parser.add_argument("--work-dir", type=Path, default=Path(".benchmark-work/layout"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--retain-layouts", action="store_true")
     return parser.parse_args()
+
+
+def validate_configuration(profile: str, rows: int, instruments: int, row_group_rows: int) -> int:
+    if rows <= 0 or instruments <= 0 or row_group_rows <= 0:
+        raise ValueError("rows, instruments, and row-group-rows must be positive")
+    row_count = rows - rows % instruments
+    if row_count < instruments:
+        raise ValueError("rows must cover at least one row per instrument")
+    if profile == "full" and (row_count < FULL_MINIMUM_ROWS or instruments != FULL_INSTRUMENTS):
+        raise ValueError(
+            "full profile requires at least 100,000,000 rows and exactly 700 instruments; "
+            "use --profile scaled for a smaller full-matrix run"
+        )
+    return row_count
+
+
+def classify_run(profile: str, results: list[dict[str, Any]]) -> str:
+    if profile == "smoke":
+        return "smoke-only"
+    if profile == "scaled":
+        return "scaled-only"
+    if all(bool(result["write"]["target_file_exercised"]) for result in results):
+        return "representative-run"
+    return "full-matrix-insufficient-file-scale"
 
 
 def main() -> int:
     args = arguments()
+    row_count = validate_configuration(
+        args.profile, args.rows, args.instruments, args.row_group_rows
+    )
     work_dir = args.work_dir.resolve()
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    if output == work_dir or work_dir in output.parents:
+        raise ValueError("evidence output must be outside the disposable benchmark work directory")
     if work_dir.exists():
         if not args.force:
             raise FileExistsError(f"work directory exists; pass --force to rebuild: {work_dir}")
@@ -258,31 +317,30 @@ def main() -> int:
         shutil.rmtree(work_dir)
     work_dir.mkdir(parents=True)
 
-    row_count = args.rows - args.rows % args.instruments
     results: list[dict[str, Any]] = []
-    frames = {
-        representation: build_frame(row_count, args.instruments, representation)
-        for representation in ("float64", "scaled_int64")
-    }
-    for layout in layouts(args.profile):
-        layout_root = work_dir / layout.name
-        write_result = write_layout(
-            frames[layout.numeric_representation], work_dir, layout, args.row_group_rows
-        )
-        scan_result = scan_layout(layout_root, frames[layout.numeric_representation])
-        results.append(
-            {
-                "layout": {
-                    "bucket_count": layout.bucket_count,
-                    "compression": layout.compression,
-                    "compression_level": layout.compression_level,
-                    "numeric_representation": layout.numeric_representation,
-                    "target_file_mb": layout.target_file_mb,
-                },
-                "scan": scan_result,
-                "write": write_result,
-            }
-        )
+    for representation in ("float64", "scaled_int64"):
+        frame = build_frame(row_count, args.instruments, representation)
+        for layout in (
+            item for item in layouts(args.profile) if item.numeric_representation == representation
+        ):
+            layout_root = work_dir / layout.name
+            write_result = write_layout(frame, work_dir, layout, args.row_group_rows)
+            scan_result = scan_layout(layout_root, frame)
+            results.append(
+                {
+                    "layout": {
+                        "bucket_count": layout.bucket_count,
+                        "compression": layout.compression,
+                        "compression_level": layout.compression_level,
+                        "numeric_representation": layout.numeric_representation,
+                        "target_file_mb": layout.target_file_mb,
+                    },
+                    "scan": scan_result,
+                    "write": write_result,
+                }
+            )
+            if not args.retain_layouts:
+                shutil.rmtree(layout_root)
 
     memory = psutil.virtual_memory()
     payload = {
@@ -306,15 +364,18 @@ def main() -> int:
         },
         "profile": args.profile,
         "results": results,
+        "scratch_policy": (
+            "retained by explicit request" if args.retain_layouts else "deleted after each layout"
+        ),
         "software": {
             "duckdb": duckdb.__version__,
             "polars": pl.__version__,
             "pyarrow": version("pyarrow"),
             "python": platform.python_version(),
         },
-        "status": "smoke-only" if args.profile == "smoke" else "representative-run",
+        "status": classify_run(args.profile, results),
     }
-    publish_evidence(args.output, payload, force=args.force)
+    publish_evidence(output, payload, force=args.force)
     return 0
 
 

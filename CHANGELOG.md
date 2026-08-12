@@ -16,6 +16,13 @@ All notable project-governance and architecture changes are recorded here.
   create/close/transfer endpoint.
 - Atomic feasibility evidence publication and SHA-256 receipts.
 - DuckDB/Polars Parquet layout benchmark harness and architecture tests.
+- Fail-closed layout benchmark profiles with compressed-size calibration, observed target
+  attainment, sequential representations, and bounded scratch retention.
+- Sharded Polars feature-throughput benchmark with a 1,440-minute halo, no-future parity tests,
+  peak-RSS measurement, JSON Schema, and checked-in 700-instrument scaled evidence.
+- Reproducible workstation snapshot and profile assessment with a verified evidence receipt.
+- Receipt-linked capacity projection that keeps synthetic extrapolation separate from the
+  documented 24/40/64-byte planning envelopes and provisional hardware recommendation.
 - CI checks for lint, formatting, strict typing, tests, schema/evidence validation, manifest
   integrity, and slim live installation.
 

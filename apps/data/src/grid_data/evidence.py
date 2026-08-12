@@ -15,8 +15,8 @@ class EvidencePublicationError(RuntimeError):
     pass
 
 
-def publish_evidence(output: Path, payload: Any, *, force: bool = False) -> tuple[Path, Path]:
-    """Preflight, atomically publish evidence, then write its receipt last."""
+def preflight_evidence(output: Path, *, force: bool = False) -> tuple[Path, Path]:
+    """Resolve an evidence target and reject conflicting committed output before work starts."""
 
     output = output.resolve()
     receipt = output.with_suffix(output.suffix + ".receipt.json")
@@ -24,6 +24,17 @@ def publish_evidence(output: Path, payload: Any, *, force: bool = False) -> tupl
         raise EvidencePublicationError(f"refusing to overwrite existing evidence: {output}")
     if receipt.exists() and not force:
         raise EvidencePublicationError(f"refusing to overwrite existing receipt: {receipt}")
+    if output.exists() and not output.is_file():
+        raise EvidencePublicationError(f"evidence target is not a file: {output}")
+    if receipt.exists() and not receipt.is_file():
+        raise EvidencePublicationError(f"receipt target is not a file: {receipt}")
+    return output, receipt
+
+
+def publish_evidence(output: Path, payload: Any, *, force: bool = False) -> tuple[Path, Path]:
+    """Preflight, atomically publish evidence, then write its receipt last."""
+
+    output, receipt = preflight_evidence(output, force=force)
     output.parent.mkdir(parents=True, exist_ok=True)
     if not output.parent.is_dir():
         raise EvidencePublicationError("evidence parent is not a directory")

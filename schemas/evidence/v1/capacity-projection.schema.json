@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/capacity-projection.schema.json",
+  "title": "M1 provisional capacity projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capacity",
+    "command",
+    "evidence_schema",
+    "feature_runtime_linear_projection",
+    "layout_synthetic_linear_projections",
+    "limitations",
+    "planning_storage_envelopes",
+    "provenance",
+    "recommendation",
+    "source_workstation_status",
+    "status"
+  ],
+  "properties": {
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["theoretical_trade_and_mark_rows", "theoretical_trade_rows"],
+      "properties": {
+        "theoretical_trade_and_mark_rows": {"const": 7363288800},
+        "theoretical_trade_rows": {"const": 3681644400}
+      }
+    },
+    "command": {"type": "string", "minLength": 1},
+    "evidence_schema": {"const": "grid.capacity-projection/v1"},
+    "feature_runtime_linear_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_core_rows_per_second", "projected_trade_and_mark_seconds", "projected_trade_seconds"],
+      "properties": {
+        "observed_core_rows_per_second": {"$ref": "#/$defs/decimal"},
+        "projected_trade_and_mark_seconds": {"$ref": "#/$defs/decimal"},
+        "projected_trade_seconds": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "layout_synthetic_linear_projections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layout", "observed_bytes_per_row", "projected_trade_and_mark_bytes", "projected_trade_bytes"],
+        "properties": {
+          "layout": {"$ref": "#/$defs/layout"},
+          "observed_bytes_per_row": {"$ref": "#/$defs/decimal"},
+          "projected_trade_and_mark_bytes": {"type": "integer", "minimum": 1},
+          "projected_trade_bytes": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "planning_storage_envelopes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bytes_per_row", "trade_and_mark_bytes", "trade_bytes"],
+        "properties": {
+          "bytes_per_row": {"enum": [24, 40, 64]},
+          "trade_and_mark_bytes": {"type": "integer", "minimum": 1},
+          "trade_bytes": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature", "layout", "workstation"],
+      "properties": {
+        "feature": {"$ref": "#/$defs/provenance"},
+        "layout": {"$ref": "#/$defs/provenance"},
+        "workstation": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backup_capacity", "cpu", "nvme_bytes_minimum", "ram_bytes_range", "status"],
+      "properties": {
+        "backup_capacity": {"const": "sized separately from the research volume"},
+        "cpu": {"const": "16-32 physical/high-performance cores"},
+        "nvme_bytes_minimum": {"const": 2199023255552},
+        "ram_bytes_range": {
+          "const": [68719476736, 137438953472]
+        },
+        "status": {"const": "provisional-until-reference-benchmark-and-owner-acceptance"}
+      }
+    },
+    "source_workstation_status": {"type": "string", "minLength": 1},
+    "status": {"const": "provisional-scaled-extrapolation"}
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [8, 16, 32]},
+        "compression": {"enum": ["zstd", "snappy"]},
+        "compression_level": {"type": ["integer", "null"]},
+        "numeric_representation": {"enum": ["float64", "scaled_int64"]},
+        "target_file_mb": {"type": "integer", "minimum": 1}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

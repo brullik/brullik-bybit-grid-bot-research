@@ -40,6 +40,21 @@ def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     assert verify_evidence(artifact)
 
 
+def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
+    cases = (
+        ("m1-layout-smoke.json", "layout-benchmark.schema.json"),
+        ("m1-feature-scaled.json", "feature-benchmark.schema.json"),
+        ("m1-workstation-snapshot.json", "workstation-snapshot.schema.json"),
+        ("m1-capacity-projection.json", "capacity-projection.schema.json"),
+    )
+    for artifact_name, schema_name in cases:
+        artifact = ROOT / "benchmarks" / "results" / artifact_name
+        schema = load_json(ROOT / "schemas" / "evidence" / "v1" / schema_name)
+
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(load_json(artifact))
+        assert verify_evidence(artifact)
+
+
 class FakeValidateTransport:
     environment = "testnet"
 

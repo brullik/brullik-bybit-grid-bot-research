@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/layout-benchmark.schema.json",
+  "title": "Parquet layout benchmark evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmark_schema",
+    "cache_semantics",
+    "command",
+    "hardware",
+    "input",
+    "profile",
+    "results",
+    "scratch_policy",
+    "software",
+    "status"
+  ],
+  "properties": {
+    "benchmark_schema": {"const": "grid.layout-benchmark/v1"},
+    "cache_semantics": {"type": "string", "minLength": 1},
+    "command": {"type": "string", "minLength": 1},
+    "hardware": {"$ref": "#/$defs/hardware"},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument_count", "row_count", "row_group_rows", "synthetic_generator"],
+      "properties": {
+        "instrument_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1},
+        "row_group_rows": {"type": "integer", "minimum": 1},
+        "synthetic_generator": {"const": "deterministic-v1"}
+      }
+    },
+    "profile": {"enum": ["smoke", "scaled", "full"]},
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/result"}
+    },
+    "scratch_policy": {"enum": ["deleted after each layout", "retained by explicit request"]},
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {
+      "enum": [
+        "smoke-only",
+        "scaled-only",
+        "representative-run",
+        "full-matrix-insufficient-file-scale"
+      ]
+    }
+  },
+  "$defs": {
+    "seconds": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "machine", "platform", "ram_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": ["integer", "null"], "minimum": 1},
+        "cpu_count_physical": {"type": ["integer", "null"], "minimum": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layout", "scan", "write"],
+      "properties": {
+        "layout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+          "properties": {
+            "bucket_count": {"enum": [8, 16, 32]},
+            "compression": {"enum": ["zstd", "snappy"]},
+            "compression_level": {"type": ["integer", "null"]},
+            "numeric_representation": {"enum": ["float64", "scaled_int64"]},
+            "target_file_mb": {"type": "integer", "minimum": 1}
+          }
+        },
+        "scan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duckdb_single_symbol_first_seconds",
+            "duckdb_single_symbol_warm_seconds",
+            "duckdb_universe_day_seconds",
+            "polars_single_symbol_first_seconds",
+            "polars_single_symbol_warm_seconds",
+            "polars_universe_day_seconds"
+          ],
+          "properties": {
+            "duckdb_single_symbol_first_seconds": {"$ref": "#/$defs/seconds"},
+            "duckdb_single_symbol_warm_seconds": {"$ref": "#/$defs/seconds"},
+            "duckdb_universe_day_seconds": {"$ref": "#/$defs/seconds"},
+            "polars_single_symbol_first_seconds": {"$ref": "#/$defs/seconds"},
+            "polars_single_symbol_warm_seconds": {"$ref": "#/$defs/seconds"},
+            "polars_universe_day_seconds": {"$ref": "#/$defs/seconds"}
+          }
+        },
+        "write": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes",
+            "calibration_bytes_per_row",
+            "file_count",
+            "largest_file_bytes",
+            "largest_file_target_ratio",
+            "rows_per_file_target",
+            "smallest_file_bytes",
+            "target_exercise_criterion",
+            "target_file_bytes",
+            "target_file_exercised",
+            "write_seconds"
+          ],
+          "properties": {
+            "bytes": {"type": "integer", "minimum": 1},
+            "calibration_bytes_per_row": {"$ref": "#/$defs/seconds"},
+            "file_count": {"type": "integer", "minimum": 1},
+            "largest_file_bytes": {"type": "integer", "minimum": 1},
+            "largest_file_target_ratio": {"$ref": "#/$defs/seconds"},
+            "rows_per_file_target": {"type": "integer", "minimum": 1},
+            "smallest_file_bytes": {"type": "integer", "minimum": 1},
+            "target_exercise_criterion": {"const": "largest file is at least 80% of requested target"},
+            "target_file_bytes": {"type": "integer", "minimum": 1},
+            "target_file_exercised": {"type": "boolean"},
+            "write_seconds": {"$ref": "#/$defs/seconds"}
+          }
+        }
+      }
+    }
+  }
+}

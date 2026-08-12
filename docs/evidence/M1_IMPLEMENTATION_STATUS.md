@@ -14,7 +14,11 @@
   credentials, private evidence receipts, and no create/close/transfer implementation.
 - Atomic public evidence publication with a SHA-256 completion receipt written last.
 - Versioned JSON Schemas and exact-decimal domain contracts.
-- Reproducible Parquet layout benchmark for Polars and DuckDB.
+- Reproducible Parquet layout benchmark for Polars and DuckDB. Its scale labels fail closed,
+  actual file-size attainment is recorded, and scratch layouts are deleted after each scan.
+- Lookahead-safe Polars feature benchmark with 1,440-minute read-only halos, bounded shards, peak
+  RSS sampling, and parity/no-future tests.
+- Reproducible workstation snapshot and documented profile assessment.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -44,6 +48,30 @@
 - Each evidence artifact has a verified SHA-256 receipt. The public sample additionally validates
   against `grid.bybit-public-sample/v1`; raw market rows were not committed.
 
+## Measured local benchmark evidence
+
+- The layout smoke run used 200,000 rows and 50 instruments. All eight 1 MiB smoke layouts were
+  measured, but none reached 80% of the requested file size; its status therefore remains
+  `smoke-only` and it supports no P-001 through P-004 decision.
+- The scaled feature run processed 9,999,500 core rows across all 700 instruments in 2.930438400 s
+  (3,412,288.072664424 core rows/s). Five bounded shards read 14,031,500 rows including halos; the
+  largest input shard was 3,024,000 rows.
+- Peak feature-build RSS was 1,472,802,816 bytes, or 8.938957608% of the observed 16,476,225,536
+  bytes RAM. This passes the configured 70% limit for this scaled run only; it is not a full-scale
+  feature-memory result.
+- The measured workstation is an AMD Ryzen 5 5600H (6 physical/12 logical cores), 16.48 GB RAM,
+  and a 511.44 GB NVMe system volume with about 199 GB free at capture time. It is below both the
+  documented local-feasibility/storage envelope and the full research-workstation profile.
+- The current provisional recommendation remains 16-32 physical/high-performance cores, 64-128
+  GiB RAM, and at least 2 TiB NVMe plus separately sized backup storage for the full Gate 1 run.
+- Linear projection at the observed synthetic feature rate is 1,078.937159349 s for 3.681B trade
+  rows and 2,157.874318697 s for 7.363B trade+mark rows. It excludes I/O publication, audits,
+  compaction, concurrency, and real-market skew and is not a runtime commitment.
+- The small synthetic layout projects 49.16-185.36 GB for trade+mark, while the independent
+  documented 24/40/64-byte planning envelopes remain 176.72/294.53/471.25 GB. Neither includes
+  raw archives, derived stores, experiments, compaction headroom, backup, or filesystem overhead;
+  the 2 TiB recommendation is intentionally not reduced from smoke compression.
+
 ## Validate-only readiness
 
 - Official Bybit sources identify `POST /v5/fgridbot/validate` as the pre-create validation call.
@@ -59,8 +87,8 @@
 - Extend official bulk archive coverage beyond the BTCUSDT/ETHUSDT daily-trade sample and document
   dataset/symbol/month gaps, especially mark-price and funding availability.
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
-- Run the missing feature-throughput/memory benchmark and produce an updated storage/hardware
-  recommendation for the 700-instrument capacity envelope.
+- Repeat the feature-throughput/memory benchmark at representative scale on that hardware and
+  replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Perform an owner-controlled, authenticated validate-only probe for native Futures Grid. No
   private credentials may be added to the repository, logs, or research artifacts.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.
