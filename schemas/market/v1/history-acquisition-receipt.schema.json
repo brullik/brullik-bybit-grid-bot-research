@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-acquisition-receipt.schema.json",
+  "title": "History acquisition artifact receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["artifact", "artifact_sha256", "contract", "status"],
+  "properties": {
+    "artifact": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.json$"},
+    "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "contract": {"const": "grid.history-acquisition-receipt/v1"},
+    "status": {"const": "complete"}
+  }
+}

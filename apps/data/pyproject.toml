@@ -7,7 +7,12 @@ name = "grid-data"
 version = "0.2.0"
 description = "Public market-data and immutable dataset application"
 requires-python = ">=3.12"
-dependencies = ["grid-contracts==0.2.0", "grid-bybit-public==0.2.0"]
+dependencies = [
+  "grid-contracts==0.2.0",
+  "grid-bybit-public==0.2.0",
+  "grid-market-store==0.2.0",
+  "psutil>=6,<8",
+]
 
 [project.scripts]
 grid-data = "grid_data.cli:main"

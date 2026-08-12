@@ -25,7 +25,9 @@ compatible one-minute bulk product is verified.
 10. Which month/bucket/file layout gives the best mix of all-universe time scans and single-symbol ten-year scans?
 11. What hardware budget and disk capacity are available for the full research workstation?
 12. Is a 250 GB historical-data target still a hard constraint once mark-price, derived stores, compaction headroom, and backup are included?
-13. What bounded REST-page staging and receipt retention is sufficient for reproducible canonical import?
+13. ADR-0023 bounds one active REST job at 64 MiB plus 512 KiB per planned page and retains page
+    receipts through canonical import. Campaign-wide retention/garbage-collection evidence remains
+    required before full-universe bootstrap.
 14. Is local NVMe the source of truth or a cache over object storage?
 15. At what measured point, if any, is a Rust/native kernel justified?
 

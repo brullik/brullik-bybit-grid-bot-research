@@ -13,15 +13,23 @@ History acquisition, research/parameter selection, strategy release, and live op
 | `grid-release` | `grid-release ...` | build, verify, promote, revoke strategy bundles | not required | signing/promotion identity only | release registry |
 | `grid-live` | `grid-live ...` | current signals, risk, approval, execution, reconciliation | Bybit public/private + Telegram | trade key without withdrawal | small live state store |
 
-The command names describe the future interface; this repository baseline contains no implementation.
+The package boundaries are implemented. Phase 2 currently exposes stable-registry publication,
+no-mutation history preflight, bounded public 1m acquisition, and completed-Landing verification;
+the full audit/repair/compaction/catalog command family remains in progress.
 
 ## Separate startup examples
 
 Planned operator intent:
 
 ```text
-# Historical download/maintenance only
-grid-data sync-history --universe canonical --target 10y
+# Stable identities and bounded historical download only
+grid-data instrument-registry --instrument-inventory <inventory.json> --output <registry.json>
+grid-data history-1m --request <request.json> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --staging-root <local-path>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data verify-history-1m <completed-job-root>
+
+# Planned canonical maintenance commands
 grid-data audit --dataset <dataset-id>
 grid-data compact --dataset <dataset-id>
 

@@ -1,0 +1,93 @@
+# Public Bybit 1m History Runbook
+
+This runbook operates only the unauthenticated public data application. It does not read API
+keys, place orders, create bots, transfer funds, or download tick trades. Run one bounded pilot
+before increasing symbols or time coverage.
+
+## 1. Build the stable instrument registry
+
+Use a receipt-verified inventory. The command derives `instrument_id`; never enter it in a
+history request.
+
+```powershell
+.venv\Scripts\grid-data.exe instrument-registry `
+  --instrument-inventory benchmarks\results\m1-owner-storage-review-inventory-20260812.json `
+  --output data\evidence\instrument-registry-20260812.json
+```
+
+The output is local runtime evidence under the ignored `data/` tree. Keep the JSON and its
+`.receipt.json` together.
+
+## 2. Create one partition-scoped request
+
+`data\requests\btc-trade-2026-07.json`:
+
+```json
+{
+  "contract": "grid.bybit-1m-history-request/v1",
+  "job_id": "trade-2026-07-b05-btc-pilot",
+  "kind": "trade",
+  "series": [
+    {
+      "symbol": "BTCUSDT",
+      "start_ms": 1782864000000,
+      "end_ms": 1783468740000
+    }
+  ],
+  "page_limit": 1000,
+  "workers": 24,
+  "target_rps": 10,
+  "max_attempts": 3,
+  "max_http_requests": 100000
+}
+```
+
+The example is seven days of closed July 2026 BTC trade candles. A request must contain only one
+kind, UTC month, and stable bucket. Every bound is inclusive and divisible by 60,000. The resolver
+checks launch/delivery metadata and rejects future or currently open candles during preflight.
+
+## 3. Run the mandatory no-mutation preflight
+
+```powershell
+.venv\Scripts\grid-data.exe history-1m `
+  --request data\requests\btc-trade-2026-07.json `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --staging-root data\history
+```
+
+Without `--execute`, this command makes no directory and sends no HTTP request. Review the printed
+plan hash, page count, pending count, current required-free-space result, memory bound, and job
+root. Failure means stop; do not bypass the evidence or storage check.
+
+## 4. Execute exactly that request
+
+Repeat the command with `--execute`. Execution re-probes memory, NVMe/SSD identity, and free space,
+then calls only Bybit public trade/mark 1m endpoints.
+
+```powershell
+.venv\Scripts\grid-data.exe history-1m `
+  --request data\requests\btc-trade-2026-07.json `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --staging-root data\history `
+  --execute
+```
+
+An ordinary failed run keeps verified pages. Re-running the same command fetches only missing
+pages. A machine/process crash can leave `.run-lock`; that is deliberately treated as stale
+evidence and requires explicit repair work rather than automatic deletion.
+
+## 5. Verify the completed Landing batch
+
+Use the exact `job_root` printed by preflight/execution:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-history-1m `
+  data\history\.landing\trade-2026-07-b05-btc-pilot--<plan-prefix>
+```
+
+Verification checks the plan, every page and receipt, actual attempt/row totals, completion
+receipt, source policy, hashes, and exact file allowlist. This proves a Landing batch only.
+Canonical publication, gap/lifecycle acceptance, compaction, and catalog registration are later
+Phase 2 steps; Gate 2 remains closed.
