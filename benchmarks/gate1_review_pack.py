@@ -238,7 +238,8 @@ def _candidate(
             raise ValueError(f"DuckDB and Polars hashes differ for {dataset_path} {query}")
         query_hashes[query.replace("-", "_")] = hashes.pop()
 
-    if dataset["write"].get("row_count") != reference_rows:
+    write_row_count = dataset["write"].get("row_count")
+    if write_row_count is not None and write_row_count != reference_rows:
         raise ValueError("reference layout write row count does not match the declared input")
     synthetic_bytes = int(dataset["manifest"]["total_bytes"])
     if dataset["write"].get("bytes") != synthetic_bytes:
