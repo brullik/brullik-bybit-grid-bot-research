@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/reference-layout-benchmark.schema.json",
+  "title": "Reference layout benchmark with linked real-market skew evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmark_schema",
+    "cache_semantics",
+    "command",
+    "hardware",
+    "limitations",
+    "measurements",
+    "preparation",
+    "profile",
+    "status"
+  ],
+  "properties": {
+    "benchmark_schema": {"const": "grid.reference-layout-benchmark/v2"},
+    "cache_semantics": {"type": "string", "minLength": 1},
+    "command": {"type": "string", "minLength": 1},
+    "hardware": {"$ref": "#/$defs/hardware"},
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "measurements": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/measurement"}
+    },
+    "preparation": {"$ref": "#/$defs/preparation"},
+    "profile": {"const": "reference"},
+    "status": {"const": "reference-protocol-candidate"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "machine", "platform", "ram_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": ["integer", "null"], "minimum": 1},
+        "cpu_count_physical": {"type": ["integer", "null"], "minimum": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"const": "zstd"},
+        "compression_level": {"const": 3},
+        "numeric_representation": {"const": "hybrid_int64_decimal"},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "timedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_path",
+        "first_seconds",
+        "observed_row_count",
+        "post_scan_content_verified",
+        "pre_scan_metadata_verified",
+        "result_sha256",
+        "warm_seconds"
+      ],
+      "properties": {
+        "dataset_path": {"type": "string", "minLength": 1},
+        "first_seconds": {"$ref": "#/$defs/metric"},
+        "observed_row_count": {"type": "integer", "minimum": 1},
+        "post_scan_content_verified": {"const": true},
+        "pre_scan_metadata_verified": {"const": true},
+        "result_sha256": {"$ref": "#/$defs/sha256"},
+        "warm_seconds": {"$ref": "#/$defs/metric"}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boot_marker",
+        "cache_proof",
+        "command",
+        "engine",
+        "hardware",
+        "measurement_schema",
+        "measurements",
+        "preparation",
+        "profile",
+        "query_shape",
+        "status"
+      ],
+      "properties": {
+        "boot_marker": {"type": "string", "format": "date-time"},
+        "cache_proof": {"const": "reboot"},
+        "command": {"type": "string", "minLength": 1},
+        "engine": {"enum": ["duckdb", "polars"]},
+        "hardware": {"$ref": "#/$defs/hardware"},
+        "measurement_schema": {"const": "grid.reference-layout-measurement/v2"},
+        "measurements": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/timedResult"}
+        },
+        "preparation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "preparation_schema"],
+          "properties": {
+            "artifact": {"const": "preparation.json"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "preparation_schema": {"const": "grid.reference-layout-preparation/v2"}
+          }
+        },
+        "profile": {"const": "reference"},
+        "query_shape": {"enum": ["single-symbol", "universe-month"]},
+        "status": {"const": "reboot-separated-first-read"}
+      }
+    },
+    "decisionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "benchmark_schema", "status"],
+      "properties": {
+        "artifact": {"const": "m1-layout-exact-decision-candidate.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema": {"const": "grid.layout-benchmark/v3"},
+        "status": {"const": "decision-matrix-candidate"}
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "required": ["compaction", "logical_parity_verified", "repair", "source_tree_unchanged"],
+      "properties": {
+        "compaction": {
+          "type": "object",
+          "required": ["input_fragment_count", "numeric_schema_verified", "row_count"],
+          "properties": {
+            "input_fragment_count": {"const": 8},
+            "numeric_schema_verified": {"const": true},
+            "row_count": {"type": "integer", "minimum": 1}
+          }
+        },
+        "logical_parity_verified": {"const": true},
+        "repair": {
+          "type": "object",
+          "required": ["numeric_schema_verified", "row_count"],
+          "properties": {
+            "numeric_schema_verified": {"const": true},
+            "row_count": {"type": "integer", "minimum": 1}
+          }
+        },
+        "source_tree_unchanged": {"const": true}
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["dataset_path", "layout", "maintenance", "manifest", "write"],
+      "properties": {
+        "dataset_path": {"type": "string", "minLength": 1},
+        "layout": {"$ref": "#/$defs/layout"},
+        "maintenance": {"$ref": "#/$defs/maintenance"},
+        "manifest": {
+          "type": "object",
+          "required": ["file_count", "total_bytes", "tree_sha256"],
+          "properties": {
+            "file_count": {"type": "integer", "minimum": 1},
+            "total_bytes": {"type": "integer", "minimum": 1},
+            "tree_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "write": {
+          "type": "object",
+          "required": ["numeric_schema_verified", "target_file_exercised"],
+          "properties": {
+            "numeric_schema_verified": {"const": true},
+            "target_file_exercised": {"const": true}
+          }
+        }
+      }
+    },
+    "realLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes_per_row", "layout", "total_bytes", "tree_sha256"],
+      "properties": {
+        "bytes_per_row": {"$ref": "#/$defs/metric"},
+        "layout": {"$ref": "#/$defs/layout"},
+        "total_bytes": {"type": "integer", "minimum": 1},
+        "tree_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "realMarketEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "layouts",
+        "source_content_sha256",
+        "total_row_count"
+      ],
+      "properties": {
+        "artifact": {"const": "m1-real-market-layout-skew.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.real-market-layout-skew/v1"},
+        "layouts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/realLayout"}
+        },
+        "source_content_sha256": {"$ref": "#/$defs/sha256"},
+        "total_row_count": {"type": "integer", "minimum": 1, "maximum": 120960}
+      }
+    },
+    "preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "boot_marker",
+        "datasets",
+        "decision_evidence",
+        "input",
+        "preparation_schema",
+        "real_market_evidence",
+        "source_semantics"
+      ],
+      "properties": {
+        "artifact": {"const": "preparation.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "boot_marker": {"type": "string", "format": "date-time"},
+        "datasets": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/dataset"}
+        },
+        "decision_evidence": {"$ref": "#/$defs/decisionEvidence"},
+        "input": {
+          "type": "object",
+          "required": ["generation_chunk_rows", "instrument_count", "row_count", "row_group_rows"],
+          "properties": {
+            "generation_chunk_rows": {"type": "integer", "minimum": 1},
+            "instrument_count": {"const": 700},
+            "row_count": {"type": "integer", "minimum": 99999900},
+            "row_group_rows": {"type": "integer", "minimum": 1}
+          }
+        },
+        "preparation_schema": {"const": "grid.reference-layout-preparation/v2"},
+        "real_market_evidence": {"$ref": "#/$defs/realMarketEvidence"},
+        "source_semantics": {"const": "deterministic-exact-synthetic-v1+bounded-real-market-layout-skew-v1"}
+      }
+    }
+  }
+}

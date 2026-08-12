@@ -11,7 +11,7 @@ from grid_bybit_private.fgrid_validate import (
     FuturesGridValidateRequest,
     build_probe_report,
 )
-from grid_contracts.canonical import canonical_sha256
+from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.evidence import verify_evidence
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -73,6 +73,10 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
             "m1-exact-capacity-projection.json",
             "v2/capacity-projection.schema.json",
         ),
+        (
+            "m1-real-market-capacity-projection.json",
+            "v3/capacity-projection.schema.json",
+        ),
     )
     for artifact_name, versioned_schema_name in cases:
         artifact = ROOT / "benchmarks" / "results" / artifact_name
@@ -114,6 +118,38 @@ def test_reference_layout_protocol_smoke_matches_schema_and_receipt() -> None:
 
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(load_json(artifact))
     assert verify_evidence(artifact)
+
+
+def test_real_market_layout_skew_matches_schema_hash_and_receipt() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m1-real-market-layout-skew.json"
+    schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "real-market-layout-skew.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert len({item["layout"]["bucket_count"] for item in payload["layouts"]}) == 2
+    assert len({item["logical_summary"]["logical_sha256"] for item in payload["layouts"]}) == 1
+    assert payload["total_row_count"] == sum(item["row_count"] for item in payload["per_symbol"])
+    assert verify_evidence(artifact)
+
+
+def test_real_market_capacity_projection_is_bound_to_skew_and_decision_evidence() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m1-real-market-capacity-projection.json"
+    payload = load_json(artifact)
+    real_market = ROOT / "benchmarks" / "results" / "m1-real-market-layout-skew.json"
+    decision = ROOT / "benchmarks" / "results" / "m1-layout-exact-decision-candidate.json"
+
+    assert payload["provenance"]["real_market"]["artifact_sha256"] == sha256_file(real_market)
+    assert payload["provenance"]["layout"]["artifact_sha256"] == sha256_file(decision)
+    real_layouts = payload["real_market_layout_projections"]
+    assert [item["layout"] for item in real_layouts] == [
+        item["layout"] for item in payload["selected_exact_layout_projections"]
+    ]
+    assert all(
+        item["projected_trade_and_mark_bytes_at_trade_row_width"] > item["projected_trade_bytes"]
+        for item in real_layouts
+    )
 
 
 class FakeValidateTransport:

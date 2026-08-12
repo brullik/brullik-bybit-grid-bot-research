@@ -6,8 +6,9 @@ Measure the ADR-0010 shortlist without falsely treating a process-local first qu
 The protocol also measures immutable monthly-bucket repair and fragmented-input compaction while
 proving that source content and exact logical aggregates do not change.
 
-The current v1 source is deterministic exact synthetic data. A successful reference-profile run
-still remains a candidate until real-market-skew evidence and owner/PM acceptance exist.
+Preparation uses deterministic exact synthetic data so the 100-million-row scan is reproducible.
+The v2 reference contract additionally binds the verified bounded real-market-skew artifact. A
+successful reference-profile run remains a candidate until owner/PM acceptance.
 
 ## Local protocol smoke
 
@@ -45,7 +46,8 @@ Prepare the retained 100-million-row shortlist once:
 python -m benchmarks.reference_layout_benchmark prepare `
   --work-dir .benchmark-work/reference-layout-reference `
   --profile reference --rows 100000000 --instruments 700 `
-  --row-group-rows 100000 --generation-chunk-rows 1000000
+  --row-group-rows 100000 --generation-chunk-rows 1000000 `
+  --real-market-evidence benchmarks/results/m1-real-market-layout-skew.json
 ```
 
 For each of the four engine/query combinations:
@@ -58,7 +60,11 @@ For each of the four engine/query combinations:
 
 The finalizer requires four distinct post-preparation boot markers. It checks only path, size, and
 modification time before the timed first query, then verifies every content hash afterward. It
-also requires unchanged hardware and matching DuckDB/Polars query-result hashes.
+also requires unchanged hardware and matching DuckDB/Polars query-result hashes. The reference
+profile fails closed unless the real-market artifact and receipt verify, reference the same exact
+shortlist, retain two schema-verified logical-equivalent layouts, and have a valid embedded hash.
+Preparation also fails closed unless each 100-million-row shortlist dataset actually exercises
+its declared target file size.
 
 ## Maintenance semantics
 
@@ -77,6 +83,7 @@ evidence is captured; prepared shortlist datasets stay retained for the reboot-s
 
 - Reboot separation is stronger than process-local wording but cannot prevent unrelated host
   services from reading the files.
-- The v1 generator does not prove real-market compression or skew.
+- The synthetic reference generator is reproducible but does not reproduce real price paths; the
+  linked bounded artifact calibrates compression only for its stated sample.
 - The smoke artifact does not choose P-001 through P-005 or close Gate 1.
 - Scratch Parquet and intermediate evidence remain under `.benchmark-work/` and outside Git.

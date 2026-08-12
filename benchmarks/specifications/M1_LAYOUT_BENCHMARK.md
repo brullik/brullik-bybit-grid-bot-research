@@ -87,18 +87,23 @@ its requested target. It is a shortlist for a reference-hardware rerun, not an o
 and not Gate 1 approval. `decision-matrix-no-eligible-layout` fails closed and requires another
 ADR-backed candidate revision.
 
-The receipt-linked exact-capacity projection is generated from the deterministic shortlist:
+The original v2 receipt-linked exact-capacity projection is retained as synthetic-only historical
+evidence. The current v3 projection calibrates the same shortlist with the verified bounded
+real-market artifact:
 
 ```powershell
 python -m benchmarks.exact_capacity_projection `
-  --output benchmarks/results/m1-exact-capacity-projection.json --force
+  --real-market benchmarks/results/m1-real-market-layout-skew.json `
+  --output benchmarks/results/m1-real-market-capacity-projection.json --force
 ```
 
 This projection retains the independent 24/40/64-byte planning envelopes and the provisional
-2 TiB recommendation. Synthetic compression and write-rate extrapolations do not replace a
-reference-hardware run, real-market skew, filesystem overhead, compaction, or backup sizing.
+2 TiB recommendation. The seven-day, eight-contract calibration does not replace a
+reference-hardware run, broader historical regimes, a mark-price physical estimate, filesystem
+overhead, compaction, or backup sizing. The bounded collection method is specified in
+[M1_REAL_MARKET_LAYOUT_SKEW.md](M1_REAL_MARKET_LAYOUT_SKEW.md).
 
 The reboot-separated reference rerun and immutable monthly repair/compaction procedure are
 specified in [M1_REFERENCE_LAYOUT_PROTOCOL.md](M1_REFERENCE_LAYOUT_PROTOCOL.md). Its v1 local
-artifact is explicitly `local-smoke-only` and does not supply the missing real-market-skew or
-reference-hardware evidence.
+artifact is explicitly `local-smoke-only`; the linked v2 reference contract still requires an
+actual reboot-separated reference-hardware run.

@@ -7,12 +7,16 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from grid_contracts.canonical import sha256_file
 from grid_data.evidence import verify_evidence
 from polars.testing import assert_frame_equal
 
 import benchmarks.reference_layout_benchmark as reference_benchmark
 from benchmarks.capacity_projection import projected_bytes
-from benchmarks.exact_capacity_projection import selected_layout_projections
+from benchmarks.exact_capacity_projection import (
+    real_market_layout_projections,
+    selected_layout_projections,
+)
 from benchmarks.feature_benchmark import (
     build_market_frame,
     feature_plan,
@@ -37,6 +41,11 @@ from benchmarks.layout_benchmark import (
     write_layout,
 )
 from benchmarks.mainnet_validate_candidates import build_shortlist
+from benchmarks.real_market_skew import (
+    build_real_market_skew,
+    select_symbols,
+)
+from benchmarks.real_market_skew import prepare_work_dir as prepare_real_market_work_dir
 from benchmarks.redact_mainnet_validate_discovery import build_mainnet_conclusion
 from benchmarks.redact_validate_probe import build_redacted_conclusion
 from benchmarks.reference_layout_benchmark import (
@@ -353,6 +362,35 @@ def test_exact_capacity_projection_uses_only_verified_shortlist() -> None:
     )
 
 
+def test_real_market_projection_calibrates_both_exact_shortlist_layouts() -> None:
+    layout_path = Path("benchmarks/results/m1-layout-exact-decision-candidate.json")
+    real_market_path = Path("benchmarks/results/m1-real-market-layout-skew.json")
+    layout = json.loads(layout_path.read_text(encoding="utf-8"))
+    real_market = json.loads(real_market_path.read_text(encoding="utf-8"))
+
+    projections = real_market_layout_projections(
+        layout,
+        real_market,
+        layout_sha256=sha256_file(layout_path),
+    )
+
+    assert [item["layout"]["bucket_count"] for item in projections] == [4, 8]
+    assert all(Decimal(item["real_to_synthetic_bytes_per_row_ratio"]) > 3 for item in projections)
+    assert all(
+        item["projected_trade_and_mark_bytes_at_trade_row_width"] > item["projected_trade_bytes"]
+        for item in projections
+    )
+
+    corrupted = dict(real_market)
+    corrupted["total_row_count"] += 1
+    with pytest.raises(ValueError, match="content hash"):
+        real_market_layout_projections(
+            layout,
+            corrupted,
+            layout_sha256=sha256_file(layout_path),
+        )
+
+
 def test_staged_reference_layout_smoke_proves_immutable_maintenance(
     tmp_path: Path,
 ) -> None:
@@ -435,6 +473,13 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
     monkeypatch.setattr(reference_benchmark, "FULL_MINIMUM_EFFECTIVE_ROWS", 20_000)
     monkeypatch.setattr(reference_benchmark, "FULL_INSTRUMENTS", 10)
     monkeypatch.setattr(reference_benchmark, "_boot_marker", lambda: next(boot_markers))
+    actual_write_layout = reference_benchmark.write_layout
+
+    def simulated_reference_write(**kwargs: object) -> dict[str, object]:
+        result = actual_write_layout(**kwargs)  # type: ignore[arg-type]
+        return {**result, "target_file_exercised": True}
+
+    monkeypatch.setattr(reference_benchmark, "write_layout", simulated_reference_write)
     prepare_reference_workdir(
         work_dir=work_dir,
         decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
@@ -443,6 +488,7 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
         instruments=10,
         row_group_rows=1_000,
         generation_chunk_rows=2_000,
+        real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
     )
     for engine in ("duckdb", "polars"):
         for query_shape in ("single-symbol", "universe-month"):
@@ -457,8 +503,115 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
     finalize_reference_evidence(work_dir=work_dir, output=output)
     payload = json.loads(output.read_text(encoding="utf-8"))
 
-    assert payload["status"] == "reference-synthetic-protocol-candidate"
+    assert payload["benchmark_schema"] == "grid.reference-layout-benchmark/v2"
+    assert payload["status"] == "reference-protocol-candidate"
+    assert payload["preparation"]["real_market_evidence"]["total_row_count"] == 80_640
     assert len({item["boot_marker"] for item in payload["measurements"]}) == 4
+
+
+class FakeRealMarketClient:
+    def __init__(self, tickers: list[dict[str, str]], rows: dict[str, list[list[str]]]) -> None:
+        self._tickers = tickers
+        self._rows = rows
+        self.kline_calls: list[dict[str, object]] = []
+
+    def tickers(self, *, category: str = "linear") -> tuple[dict[str, str], ...]:
+        assert category == "linear"
+        return tuple(self._tickers)
+
+    def iter_klines_backward(self, **kwargs: object) -> object:
+        self.kline_calls.append(kwargs)
+        symbol = kwargs["symbol"]
+        assert isinstance(symbol, str)
+        return iter(self._rows[symbol])
+
+
+def _skew_inventory(symbol_count: int = 5) -> dict[str, object]:
+    return {
+        "evidence_schema": "grid.bybit-public-inventory/v1",
+        "fetched_at_utc": "2026-08-12T00:00:00Z",
+        "records": [
+            {
+                "contract_type": "LinearPerpetual",
+                "launch_time_ms": 0,
+                "quote_coin": "USDT",
+                "settle_coin": "USDT",
+                "source_symbol_id": index + 1,
+                "status": "Trading",
+                "symbol": f"S{index}USDT",
+            }
+            for index in range(symbol_count)
+        ],
+    }
+
+
+def test_real_market_selection_is_liquid_and_price_stratified() -> None:
+    tickers = [
+        {
+            "markPrice": str(10 ** (index - 2)),
+            "symbol": f"S{index}USDT",
+            "turnover24h": str(1_000_000 - index),
+        }
+        for index in range(5)
+    ]
+
+    selected, policy = select_symbols(_skew_inventory(), tickers, start_ms=60_000, sample_size=3)
+
+    assert [item["symbol"] for item in selected] == ["S0USDT", "S2USDT", "S4USDT"]
+    assert policy["selected_price_rank_indices"] == [0, 2, 4]
+
+
+def test_real_market_skew_writes_both_exact_shortlist_layouts_outside_git(
+    tmp_path: Path,
+) -> None:
+    inventory = _skew_inventory(3)
+    tickers = [
+        {
+            "markPrice": str(index + 1),
+            "symbol": f"S{index}USDT",
+            "turnover24h": str(1_000_000 - index),
+        }
+        for index in range(3)
+    ]
+    rows = {
+        f"S{index}USDT": [
+            [
+                str(timestamp),
+                "1.00000001",
+                "1.00000003",
+                "1",
+                "1.00000002",
+                "1.2345",
+                "1.234567890123",
+            ]
+            for timestamp in (180_000, 120_000, 60_000)
+        ]
+        for index in range(3)
+    }
+    work_dir = tmp_path / "real-market"
+    prepare_real_market_work_dir(work_dir, {"test": True}, force=False)
+
+    client = FakeRealMarketClient(tickers, rows)
+    payload = build_real_market_skew(
+        client=client,  # type: ignore[arg-type]
+        inventory=inventory,
+        inventory_path=Path("benchmarks/results/m1-bybit-public-inventory.json"),
+        decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+        work_dir=work_dir,
+        start_ms=60_000,
+        end_ms=180_000,
+        sample_size=3,
+        row_group_rows=2,
+    )
+
+    assert payload["status"] == "complete-bounded-real-market-skew"
+    assert payload["total_row_count"] == 9
+    assert len(payload["layouts"]) == 2
+    assert all(item["exact_schema_verified"] for item in payload["layouts"])
+    assert len({item["logical_summary"]["logical_sha256"] for item in payload["layouts"]}) == 1
+    assert all(call["limit"] == 1_000 and call["max_pages"] == 1 for call in client.kline_calls)
+    assert verify_evidence(work_dir / "run.json")
+    assert tuple(work_dir.rglob("*.parquet"))
 
 
 def test_validate_conclusion_redacts_prices_and_requires_safe_demo_result() -> None:

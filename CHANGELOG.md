@@ -33,6 +33,10 @@ All notable project-governance and architecture changes are recorded here.
   integrity, and slim live installation.
 - Staged ADR-0010 shortlist protocol with reboot-separated cold-read legs, post-timing content
   verification, immutable monthly repair/compaction probes, and fail-closed smoke classification.
+- Bounded public real-market layout-skew collector with liquid/price-stratified selection, complete
+  closed-candle checks, exact two-layout parity, ignored raw work files, and receipt-linked summary.
+- Real-market-calibrated v3 capacity projection and a v2 reference-protocol contract that binds the
+  skew artifact and requires actual shortlisted target-file attainment.
 
 ### Safety
 

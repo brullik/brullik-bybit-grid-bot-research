@@ -11,8 +11,9 @@ import shutil
 import sys
 import time
 from collections.abc import Iterable, Mapping
+from dataclasses import asdict
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Literal
 
@@ -34,10 +35,15 @@ from benchmarks.layout_benchmark import (
 )
 
 PREPARATION_SCHEMA = "grid.reference-layout-preparation/v1"
+PREPARATION_SCHEMA_V2 = "grid.reference-layout-preparation/v2"
 RUN_SCHEMA = "grid.reference-layout-run/v1"
+RUN_SCHEMA_V2 = "grid.reference-layout-run/v2"
 MEASUREMENT_SCHEMA = "grid.reference-layout-measurement/v1"
+MEASUREMENT_SCHEMA_V2 = "grid.reference-layout-measurement/v2"
 FINAL_SCHEMA = "grid.reference-layout-benchmark/v1"
+FINAL_SCHEMA_V2 = "grid.reference-layout-benchmark/v2"
 DECISION_SCHEMA = "grid.layout-benchmark/v3"
+REAL_MARKET_SCHEMA = "grid.real-market-layout-skew/v1"
 SOURCE_SEMANTICS = "deterministic-exact-synthetic-v1"
 Engine = Literal["duckdb", "polars"]
 QueryShape = Literal["single-symbol", "universe-month"]
@@ -57,6 +63,16 @@ def _load_verified(path: Path, schema_key: str, schema: str) -> dict[str, Any]:
         raise ValueError(f"evidence receipt does not verify: {path}")
     payload = _load_json(path)
     if payload.get(schema_key) != schema:
+        raise ValueError(f"unsupported evidence schema in {path}")
+    return payload
+
+
+def _load_verified_any(path: Path, schema_key: str, schemas: set[str]) -> dict[str, Any]:
+    path = path.resolve()
+    if not verify_evidence(path):
+        raise ValueError(f"evidence receipt does not verify: {path}")
+    payload = _load_json(path)
+    if payload.get(schema_key) not in schemas:
         raise ValueError(f"unsupported evidence schema in {path}")
     return payload
 
@@ -84,13 +100,13 @@ def _safe_replace_work_dir(work_dir: Path) -> None:
     run_marker = work_dir / "run.json"
     if work_dir in {Path(work_dir.anchor), cwd, home}:
         raise ValueError("refusing to replace a broad reference benchmark work directory")
-    preparation_owned = (
-        verify_evidence(preparation)
-        and _load_json(preparation).get("preparation_schema") == PREPARATION_SCHEMA
-    )
-    run_owned = (
-        verify_evidence(run_marker) and _load_json(run_marker).get("run_schema") == RUN_SCHEMA
-    )
+    preparation_owned = verify_evidence(preparation) and _load_json(preparation).get(
+        "preparation_schema"
+    ) in {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2}
+    run_owned = verify_evidence(run_marker) and _load_json(run_marker).get("run_schema") in {
+        RUN_SCHEMA,
+        RUN_SCHEMA_V2,
+    }
     if not preparation_owned and not run_owned:
         raise ValueError("refusing to replace work directory without a verified benchmark marker")
     shutil.rmtree(work_dir)
@@ -165,6 +181,102 @@ def _shortlist(decision_path: Path) -> tuple[list[Layout], dict[str, Any]]:
         "artifact_sha256": sha256_file(decision_path),
         "benchmark_schema": decision["benchmark_schema"],
         "status": decision["status"],
+    }
+
+
+def _real_market_input(
+    path: Path,
+    decision: Mapping[str, Any],
+    shortlist: list[Layout],
+) -> dict[str, Any]:
+    path = path.resolve()
+    payload = _load_verified(path, "evidence_schema", REAL_MARKET_SCHEMA)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256", None)
+    if embedded_hash != canonical_sha256(hash_input):
+        raise ValueError("real-market evidence embedded hash does not verify")
+    if payload.get("status") != "complete-bounded-real-market-skew":
+        raise ValueError("real-market evidence is not complete")
+    source_content_sha256 = payload.get("source_content_sha256")
+    if (
+        not isinstance(source_content_sha256, str)
+        or len(source_content_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in source_content_sha256)
+    ):
+        raise ValueError("real-market source content hash is invalid")
+    source_decision = payload.get("decision_evidence")
+    raw_layouts = payload.get("layouts")
+    if (
+        not isinstance(source_decision, Mapping)
+        or source_decision.get("artifact_sha256") != decision.get("artifact_sha256")
+        or not isinstance(raw_layouts, list)
+        or len(raw_layouts) != 2
+    ):
+        raise ValueError("real-market evidence does not reference the current shortlist")
+    expected_layouts = [asdict(layout) for layout in shortlist]
+    observed_layouts = []
+    logical_hashes = set()
+    logical_row_counts = set()
+    summaries = []
+    for result in raw_layouts:
+        if (
+            not isinstance(result, Mapping)
+            or result.get("exact_schema_verified") is not True
+            or not isinstance(result.get("layout"), Mapping)
+            or not isinstance(result.get("logical_summary"), Mapping)
+        ):
+            raise ValueError("real-market layout result is incomplete")
+        logical_sha256 = result["logical_summary"].get("logical_sha256")
+        logical_row_count = result["logical_summary"].get("row_count")
+        tree_sha256 = result.get("tree_sha256")
+        total_bytes = result.get("total_bytes")
+        bytes_per_row = result.get("bytes_per_row")
+        try:
+            bytes_per_row_value = Decimal(str(bytes_per_row))
+        except InvalidOperation as error:
+            raise ValueError("real-market layout byte metric is invalid") from error
+        if (
+            not isinstance(logical_sha256, str)
+            or len(logical_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in logical_sha256)
+            or not isinstance(logical_row_count, int)
+            or logical_row_count <= 0
+            or not isinstance(tree_sha256, str)
+            or len(tree_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in tree_sha256)
+            or not isinstance(total_bytes, int)
+            or total_bytes <= 0
+            or not bytes_per_row_value.is_finite()
+            or bytes_per_row_value <= 0
+        ):
+            raise ValueError("real-market layout result has invalid metrics or hashes")
+        observed_layouts.append(dict(result["layout"]))
+        logical_hashes.add(logical_sha256)
+        logical_row_counts.add(logical_row_count)
+        summaries.append(
+            {
+                "bytes_per_row": bytes_per_row,
+                "layout": dict(result["layout"]),
+                "total_bytes": total_bytes,
+                "tree_sha256": tree_sha256,
+            }
+        )
+    if observed_layouts != expected_layouts or len(logical_hashes) != 1:
+        raise ValueError("real-market layouts do not match or preserve one logical result")
+    total_row_count = payload.get("total_row_count")
+    if (
+        not isinstance(total_row_count, int)
+        or total_row_count <= 0
+        or logical_row_counts != {total_row_count}
+    ):
+        raise ValueError("real-market evidence row count is invalid")
+    return {
+        "artifact": path.name,
+        "artifact_sha256": sha256_file(path),
+        "evidence_schema": REAL_MARKET_SCHEMA,
+        "layouts": summaries,
+        "source_content_sha256": source_content_sha256,
+        "total_row_count": total_row_count,
     }
 
 
@@ -413,6 +525,7 @@ def prepare_reference_workdir(
     instruments: int,
     row_group_rows: int,
     generation_chunk_rows: int,
+    real_market_evidence: Path | None = None,
     force: bool = False,
 ) -> Path:
     work_dir = work_dir.resolve()
@@ -424,21 +537,30 @@ def prepare_reference_workdir(
         _safe_replace_work_dir(work_dir)
     row_count = _validate_scale(profile, rows, instruments)
     shortlist, decision = _shortlist(decision_path)
-    work_dir.mkdir(parents=True)
-    publish_evidence(
-        work_dir / "run.json",
-        {
-            "decision_evidence": decision,
-            "input": {
-                "generation_chunk_rows": generation_chunk_rows,
-                "instrument_count": instruments,
-                "row_count": row_count,
-                "row_group_rows": row_group_rows,
-            },
-            "profile": profile,
-            "run_schema": RUN_SCHEMA,
-        },
+    real_market = (
+        _real_market_input(real_market_evidence, decision, shortlist)
+        if real_market_evidence is not None
+        else None
     )
+    if profile == "reference" and real_market is None:
+        raise ValueError("reference profile requires verified real-market skew evidence")
+    preparation_schema = PREPARATION_SCHEMA_V2 if real_market is not None else PREPARATION_SCHEMA
+    run_schema = RUN_SCHEMA_V2 if real_market is not None else RUN_SCHEMA
+    work_dir.mkdir(parents=True)
+    run_payload = {
+        "decision_evidence": decision,
+        "input": {
+            "generation_chunk_rows": generation_chunk_rows,
+            "instrument_count": instruments,
+            "row_count": row_count,
+            "row_group_rows": row_group_rows,
+        },
+        "profile": profile,
+        "run_schema": run_schema,
+    }
+    if real_market is not None:
+        run_payload["real_market_evidence"] = real_market
+    publish_evidence(work_dir / "run.json", run_payload)
     datasets = []
     for index, layout in enumerate(shortlist):
         candidate_root = work_dir / "datasets" / f"candidate-{index}"
@@ -452,6 +574,10 @@ def prepare_reference_workdir(
             generation_chunk_rows=generation_chunk_rows,
             calibration_mode="month-bucket",
         )
+        if profile == "reference" and write.get("target_file_exercised") is not True:
+            raise RuntimeError(
+                "reference profile did not exercise the shortlisted target file size"
+            )
         dataset_root = candidate_root / layout.name
         manifest = _parquet_manifest(dataset_root)
         maintenance = _maintenance_probe(
@@ -476,7 +602,7 @@ def prepare_reference_workdir(
                 "write": write,
             }
         )
-    payload = {
+    payload: dict[str, Any] = {
         "boot_marker": _boot_marker(),
         "command": shlex.join(sys.argv),
         "decision_evidence": decision,
@@ -487,12 +613,18 @@ def prepare_reference_workdir(
             "row_count": row_count,
             "row_group_rows": row_group_rows,
         },
-        "preparation_schema": PREPARATION_SCHEMA,
+        "preparation_schema": preparation_schema,
         "profile": profile,
-        "source_semantics": SOURCE_SEMANTICS,
+        "source_semantics": (
+            SOURCE_SEMANTICS
+            if real_market is None
+            else f"{SOURCE_SEMANTICS}+bounded-real-market-layout-skew-v1"
+        ),
         "datasets": datasets,
         "status": "prepared-for-separated-measurement",
     }
+    if real_market is not None:
+        payload["real_market_evidence"] = real_market
     publish_evidence(preparation_path, payload)
     return preparation_path
 
@@ -562,7 +694,15 @@ def measure_leg(
 ) -> Path:
     work_dir = work_dir.resolve()
     preparation_path = work_dir / "preparation.json"
-    preparation = _load_verified(preparation_path, "preparation_schema", PREPARATION_SCHEMA)
+    preparation = _load_verified_any(
+        preparation_path,
+        "preparation_schema",
+        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2},
+    )
+    preparation_schema = str(preparation["preparation_schema"])
+    measurement_schema = (
+        MEASUREMENT_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else MEASUREMENT_SCHEMA
+    )
     profile = preparation.get("profile")
     if profile == "reference" and cache_proof != "reboot":
         raise ValueError("reference measurement requires reboot cache proof")
@@ -614,13 +754,13 @@ def measure_leg(
                 "warm_seconds": warm_seconds,
             }
         )
-    payload = {
+    payload: dict[str, Any] = {
         "boot_marker": current_boot,
         "cache_proof": cache_proof,
         "command": shlex.join(sys.argv),
         "engine": engine,
         "hardware": _hardware(),
-        "measurement_schema": MEASUREMENT_SCHEMA,
+        "measurement_schema": measurement_schema,
         "measurements": measurements,
         "preparation": {
             "artifact": preparation_path.name,
@@ -632,6 +772,8 @@ def measure_leg(
             "reboot-separated-first-read" if cache_proof == "reboot" else "unverified-smoke-read"
         ),
     }
+    if measurement_schema == MEASUREMENT_SCHEMA_V2:
+        payload["preparation"]["preparation_schema"] = preparation_schema
     publish_evidence(output, payload)
     return output
 
@@ -640,14 +782,23 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
     work_dir = work_dir.resolve()
     output, _receipt = preflight_evidence(output, force=force)
     preparation_path = work_dir / "preparation.json"
-    preparation = _load_verified(preparation_path, "preparation_schema", PREPARATION_SCHEMA)
+    preparation = _load_verified_any(
+        preparation_path,
+        "preparation_schema",
+        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2},
+    )
+    preparation_schema = str(preparation["preparation_schema"])
+    measurement_schema = (
+        MEASUREMENT_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else MEASUREMENT_SCHEMA
+    )
+    final_schema = FINAL_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else FINAL_SCHEMA
     measurement_paths = [
         work_dir / f"measurement-{engine}-{query}.json"
         for engine in ("duckdb", "polars")
         for query in ("single-symbol", "universe-month")
     ]
     measurements = [
-        _load_verified(path, "measurement_schema", MEASUREMENT_SCHEMA) for path in measurement_paths
+        _load_verified(path, "measurement_schema", measurement_schema) for path in measurement_paths
     ]
     expected_legs = {
         (engine, query)
@@ -694,8 +845,8 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
         for dataset in raw_datasets
     ):
         raise ValueError("preparation lacks complete immutable maintenance evidence")
-    payload = {
-        "benchmark_schema": FINAL_SCHEMA,
+    payload: dict[str, Any] = {
+        "benchmark_schema": final_schema,
         "cache_semantics": (
             "unverified local smoke; no cold-cache claim"
             if profile == "smoke"
@@ -707,7 +858,15 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
         "command": shlex.join(sys.argv),
         "hardware": hardware,
         "limitations": [
-            "The input is deterministic exact synthetic data, not real-market-skew evidence.",
+            (
+                "Timed layout rows are deterministic exact synthetic data; bounded real-market "
+                "physical skew is linked separately."
+                if final_schema == FINAL_SCHEMA_V2
+                else (
+                    "The input is deterministic exact synthetic data, not real-market-skew "
+                    "evidence."
+                )
+            ),
             "Owner/PM acceptance is still required for P-001 through P-005 and Gate 1.",
             (
                 "Smoke cache timing is not cold-cache evidence."
@@ -727,9 +886,18 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
         },
         "profile": profile,
         "status": (
-            "local-smoke-only" if profile == "smoke" else "reference-synthetic-protocol-candidate"
+            "local-smoke-only"
+            if profile == "smoke"
+            else (
+                "reference-protocol-candidate"
+                if final_schema == FINAL_SCHEMA_V2
+                else "reference-synthetic-protocol-candidate"
+            )
         ),
     }
+    if final_schema == FINAL_SCHEMA_V2:
+        payload["preparation"]["preparation_schema"] = preparation_schema
+        payload["preparation"]["real_market_evidence"] = preparation["real_market_evidence"]
     publish_evidence(output, payload, force=force)
     return output
 
@@ -749,6 +917,7 @@ def arguments() -> argparse.Namespace:
     prepare.add_argument("--instruments", type=int, required=True)
     prepare.add_argument("--row-group-rows", type=int, default=100_000)
     prepare.add_argument("--generation-chunk-rows", type=int, default=1_000_000)
+    prepare.add_argument("--real-market-evidence", type=Path)
     prepare.add_argument("--force", action="store_true")
 
     measure = commands.add_parser("measure")
@@ -777,6 +946,7 @@ def main() -> int:
             instruments=args.instruments,
             row_group_rows=args.row_group_rows,
             generation_chunk_rows=args.generation_chunk_rows,
+            real_market_evidence=args.real_market_evidence,
             force=args.force,
         )
     elif args.command_name == "measure":

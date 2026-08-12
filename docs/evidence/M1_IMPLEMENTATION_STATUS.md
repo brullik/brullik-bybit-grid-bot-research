@@ -35,6 +35,11 @@
 - Staged ADR-0010 shortlist benchmark protocol with reboot-separated engine/query legs,
   post-timing content verification, immutable monthly repair, fragmented-input compaction, and
   cross-engine exact logical parity. Unverified local timing is forced to `local-smoke-only`.
+- Bounded public real-market skew collector that receipt-verifies its inventory, selects a
+  current-liquid exact-price-stratified sample, requires complete closed 1m candles, writes both
+  exact shortlist layouts outside Git, and publishes only schema-validated aggregates and hashes.
+- V3 capacity calibration that binds the real-market artifact and retains the independent
+  24/40/64-byte planning envelopes and provisional 2 TiB recommendation.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -97,6 +102,11 @@
   current observed funding intervals imply 2,772,401 events and 14,394 requests; using the
   observed 60-minute minimum conservatively gives 14,746,066 events and 74,232 requests. These
   current fields are not dated historical metadata and do not replace the planning envelope.
+- The bounded 2026-07-01 through 2026-07-07 real-market sample contains 80,640 complete closed
+  trade-price 1m candles across eight current-liquid contracts selected at exact price ranks from
+  an 80-contract pool. The close-price range is `0.003998` through `64703.2`, a dynamic range of
+  `16183891.94597298649324662331`; selection is current and therefore not historical-universe
+  evidence.
 
 ## Measured local benchmark evidence
 
@@ -140,6 +150,10 @@
   trade+mark rows gives 47,459,916,819 and 47,932,451,711 bytes, respectively. These synthetic
   projections do not reduce the independent planning envelopes or the provisional 2 TiB storage
   recommendation.
+- On the identical 80,640 real candles, the four-bucket/32 MiB and eight-bucket/16 MiB layouts
+  occupied 2,018,591 and 2,049,946 bytes, or `25.032130456` and `25.420957341` bytes/row. Exact
+  schemas reopened successfully and DuckDB/Polars produced one common logical hash. Real values
+  used `3.883673175` and `3.905117385` times the bytes/row of the deterministic synthetic data.
 - The scaled feature run processed 9,999,500 core rows across all 700 instruments in 2.930438400 s
   (3,412,288.072664424 core rows/s). Five bounded shards read 14,031,500 rows including halos; the
   largest input shard was 3,024,000 rows.
@@ -159,10 +173,12 @@
 - Linear projection at the 100-million-row synthetic candidate rate is 1,147.407324279 s for
   3.681B trade rows and 2,294.814648559 s for 7.363B trade+mark rows. It excludes I/O publication, audits,
   compaction, concurrency, and real-market skew and is not a runtime commitment.
-- The small synthetic layout projects 49.16-185.36 GB for trade+mark, while the independent
-  documented 24/40/64-byte planning envelopes remain 176.72/294.53/471.25 GB. Neither includes
-  raw archives, derived stores, experiments, compaction headroom, backup, or filesystem overhead;
-  the 2 TiB recommendation is intentionally not reduced from smoke compression.
+- Applying observed real trade-row widths to all 7.363B theoretical trade+mark rows projects
+  184,318,805,827 and 187,181,850,475 bytes for the two shortlisted layouts. This is a conservative
+  like-width comparison because mark rows omit volume and turnover and still require their own
+  physical estimate. The independent 24/40/64-byte planning envelopes remain
+  176.72/294.53/471.25 GB. Neither estimate includes raw archives, derived stores, experiments,
+  compaction headroom, backup, or filesystem overhead; the 2 TiB recommendation remains unchanged.
 - The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
   rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
   file metadata before timing, content hashes afterward, expected row counts, and cross-engine
@@ -204,9 +220,9 @@
 ## Evidence still required to close Gate 1
 
 - Run the staged ADR-0010 shortlist protocol on declared reference hardware with four distinct
-  reboot-separated measurement legs, add receipt-verified real-market-skew evidence, then decide
-  P-001 through P-005. The local maintenance/cold-read harness is implemented but its smoke result
-  satisfies none of those reference claims.
+  reboot-separated measurement legs using the now receipt-verified real-market-skew binding, then
+  decide P-001 through P-005. The local maintenance/cold-read harness is implemented but its smoke
+  result satisfies none of those reference claims.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

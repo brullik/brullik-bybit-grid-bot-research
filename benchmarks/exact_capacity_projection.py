@@ -9,6 +9,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from grid_contracts.canonical import canonical_sha256
 from grid_data.evidence import preflight_evidence, publish_evidence
 
 from benchmarks.capacity_projection import (
@@ -19,6 +20,7 @@ from benchmarks.capacity_projection import (
     layout_projection,
     load_verified_evidence,
     planning_envelopes,
+    projected_bytes,
     provenance,
 )
 
@@ -121,6 +123,122 @@ def build_projection(
     }
 
 
+def real_market_layout_projections(
+    layout: dict[str, Any], real_market: dict[str, Any], *, layout_sha256: str
+) -> list[dict[str, Any]]:
+    if (
+        real_market.get("evidence_schema") != "grid.real-market-layout-skew/v1"
+        or real_market.get("status") != "complete-bounded-real-market-skew"
+    ):
+        raise ValueError("real-market projection requires complete v1 skew evidence")
+    content = dict(real_market)
+    embedded_hash = content.pop("content_sha256", None)
+    if not isinstance(embedded_hash, str) or embedded_hash != canonical_sha256(content):
+        raise ValueError("real-market skew evidence content hash does not verify")
+    if real_market.get("decision_evidence", {}).get("artifact_sha256") != layout_sha256:
+        raise ValueError(
+            "real-market skew evidence does not reference the selected layout evidence"
+        )
+    synthetic = {
+        tuple(sorted(item["layout"].items())): item for item in selected_layout_projections(layout)
+    }
+    raw_results = real_market.get("layouts")
+    if not isinstance(raw_results, list) or len(raw_results) != 2:
+        raise ValueError("real-market skew evidence must contain two layouts")
+    observed_row_count = real_market.get("total_row_count")
+    if not isinstance(observed_row_count, int) or observed_row_count <= 0:
+        raise ValueError("real-market skew evidence row count is invalid")
+    projections = []
+    logical_hashes = set()
+    for result in raw_results:
+        candidate = result.get("layout") if isinstance(result, dict) else None
+        if not isinstance(candidate, dict):
+            raise ValueError("real-market layout is malformed")
+        selected = synthetic.get(tuple(sorted(candidate.items())))
+        if selected is None or result.get("exact_schema_verified") is not True:
+            raise ValueError("real-market layout is not an exact selected candidate")
+        logical_summary = result.get("logical_summary")
+        if not isinstance(logical_summary, dict):
+            raise ValueError("real-market layout has no logical summary")
+        logical_hashes.add(logical_summary.get("logical_sha256"))
+        if logical_summary.get("row_count") != observed_row_count:
+            raise ValueError("real-market layout row count does not match its artifact")
+        real_bytes_per_row = Decimal(result["bytes_per_row"])
+        if not real_bytes_per_row.is_finite() or real_bytes_per_row <= 0:
+            raise ValueError("real-market bytes per row must be positive and finite")
+        synthetic_bytes_per_row = Decimal(selected["observed_bytes_per_row"])
+        projections.append(
+            {
+                "layout": candidate,
+                "observed_real_bytes_per_row": decimal_metric(real_bytes_per_row),
+                "observed_real_row_count": observed_row_count,
+                "projected_trade_and_mark_bytes_at_trade_row_width": projected_bytes(
+                    TRADE_AND_MARK_ROWS, real_bytes_per_row
+                ),
+                "projected_trade_bytes": projected_bytes(TRADE_ROWS, real_bytes_per_row),
+                "real_to_synthetic_bytes_per_row_ratio": decimal_metric(
+                    real_bytes_per_row / synthetic_bytes_per_row
+                ),
+                "synthetic_bytes_per_row": decimal_metric(synthetic_bytes_per_row),
+            }
+        )
+    if len(projections) != 2 or len(logical_hashes) != 1 or None in logical_hashes:
+        raise ValueError("real-market layouts must preserve one exact logical result")
+    return projections
+
+
+def build_projection_v3(
+    layout: dict[str, Any],
+    feature: dict[str, Any],
+    workstation: dict[str, Any],
+    real_market: dict[str, Any],
+    *,
+    command: str,
+    sources: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    if "real_market" not in sources:
+        raise ValueError("v3 capacity projection requires real-market provenance")
+    payload = build_projection(
+        layout,
+        feature,
+        workstation,
+        command=command,
+        sources={key: value for key, value in sources.items() if key != "real_market"},
+    )
+    payload["evidence_schema"] = "grid.capacity-projection/v3"
+    payload["limitations"] = [
+        (
+            "Real-market bytes per row come from eight current-liquid, price-stratified "
+            "contracts over seven days and cannot represent all historical regimes."
+        ),
+        (
+            "The trade-and-mark comparison applies the wider trade-row layout to both row sets; "
+            "mark-price rows omit volume and turnover and require a separate physical estimate."
+        ),
+        (
+            "The decision and feature matrices ran on a below-reference workstation without "
+            "the reboot-separated reference protocol."
+        ),
+        (
+            "Projections exclude ingestion, audits, compaction headroom, concurrency, backup, "
+            "filesystem overhead, raw archives, derived stores, and experiments."
+        ),
+        (
+            "Observed real-market compression does not replace the independent 24/40/64-byte "
+            "planning envelopes or provisional 2 TiB recommendation."
+        ),
+        "The result cannot self-approve P-001 through P-005 or Gate 1.",
+    ]
+    payload["provenance"] = sources
+    payload["real_market_layout_projections"] = real_market_layout_projections(
+        layout,
+        real_market,
+        layout_sha256=sources["layout"]["artifact_sha256"],
+    )
+    payload["status"] = "provisional-real-market-calibrated-extrapolation"
+    return payload
+
+
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -138,6 +256,11 @@ def arguments() -> argparse.Namespace:
         type=Path,
         default=Path("benchmarks/results/m1-workstation-snapshot.json"),
     )
+    parser.add_argument(
+        "--real-market",
+        type=Path,
+        default=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
@@ -149,15 +272,18 @@ def main() -> int:
     layout = load_verified_evidence(args.layout)
     feature = load_verified_evidence(args.feature)
     workstation = load_verified_evidence(args.workstation)
+    real_market = load_verified_evidence(args.real_market)
     sources = {
         "feature": provenance(args.feature),
         "layout": provenance(args.layout),
+        "real_market": provenance(args.real_market),
         "workstation": provenance(args.workstation),
     }
-    payload = build_projection(
+    payload = build_projection_v3(
         layout,
         feature,
         workstation,
+        real_market,
         command=shlex.join(sys.argv),
         sources=sources,
     )
