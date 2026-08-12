@@ -1,0 +1,215 @@
+# Run Modes and Isolation
+
+## Goal
+
+History acquisition, research/parameter selection, strategy release, and live operation are independent commands and deployment units. Starting live must not implicitly start a downloader, scan the historical store, run an optimizer, rebuild features, or require research-only dependencies.
+
+## Planned applications
+
+| Application | Typical command family | Runtime purpose | Network | Secrets | Main storage |
+|---|---|---|---|---|---|
+| `grid-data` | `grid-data ...` | acquire, normalize, audit, repair, compact history | Bybit public endpoints / archive host | none for public data | historical market store |
+| `grid-research` | `grid-research ...` | build features/candidates/outcomes, backtest, search, report | normally disabled | none | read-only history + derived stores |
+| `grid-release` | `grid-release ...` | build, verify, promote, revoke strategy bundles | not required | signing/promotion identity only | release registry |
+| `grid-live` | `grid-live ...` | current signals, risk, approval, execution, reconciliation | Bybit public/private + Telegram | trade key without withdrawal | small live state store |
+
+The command names describe the future interface; this repository baseline contains no implementation.
+
+## Separate startup examples
+
+Planned operator intent:
+
+```text
+# Historical download/maintenance only
+grid-data sync-history --universe canonical --target 10y
+grid-data audit --dataset <dataset-id>
+grid-data compact --dataset <dataset-id>
+
+# Research/parameter selection only
+grid-research build-features --market-dataset <dataset-id>
+grid-research build-candidates --feature-dataset <dataset-id>
+grid-research run-experiment --experiment-spec <spec-id>
+grid-research validate --experiment <experiment-id>
+
+# Promotion only
+grid-release build --experiment <experiment-id>
+grid-release verify --release <release-id>
+grid-release promote --release <release-id> --mode shadow
+
+# Live only
+grid-live start --release <promoted-release-id> --mode shadow
+grid-live start --release <promoted-release-id> --mode manual-mainnet
+```
+
+None of the live commands calls a research command as a side effect.
+
+## Dependency isolation
+
+The planned packaging uses separate dependency groups or independently built artifacts:
+
+- `data`: HTTP/archive readers, Arrow/Parquet, Polars, DuckDB, checksums;
+- `research`: data plus simulation, statistics, reporting, experiment orchestration;
+- `release`: contracts, canonical serialization, hashing, signing/verification;
+- `live`: small feature kernel, contracts, current market client, state store, risk, Telegram, private Bybit adapter;
+- `dev`: tests, linting, static analysis, documentation tooling.
+
+`grid-live` must install successfully without DuckDB, notebook tooling, parameter-search frameworks, or bulk archive clients unless a measured runtime requirement justifies an exception.
+
+## Import/dependency direction
+
+```text
+contracts ← data
+contracts ← research
+contracts ← release
+contracts ← live
+
+strategy-core ← research
+strategy-core ← live
+risk-core ← research/backtest
+risk-core ← live
+
+research ✗ live
+market-store ✗ live
+notebooks ✗ production packages
+live ✗ research outputs except promoted release contract
+```
+
+Automated architecture tests will reject forbidden imports.
+
+## Storage isolation
+
+### Data application
+
+Read/write:
+
+- raw landing zone;
+- canonical market datasets;
+- audit and compaction staging;
+- dataset catalog/receipts.
+
+No access:
+
+- trade credentials;
+- live state;
+- live approvals.
+
+### Research application
+
+Read-only:
+
+- complete canonical market datasets;
+- immutable instrument/funding metadata.
+
+Read/write:
+
+- feature, candidate, outcome, experiment, and report stores.
+
+No access:
+
+- trade credentials;
+- live state;
+- promoted-release mutation.
+
+### Release application
+
+Read-only:
+
+- completed research evidence;
+- acceptance results.
+
+Read/write:
+
+- building registry area;
+- append-only promotion and revocation records.
+
+No access:
+
+- trade credentials;
+- historical market mutation.
+
+### Live application
+
+Read-only:
+
+- promoted release registry or deployed release package;
+- rollback release.
+
+Read/write:
+
+- bounded runtime state and journal.
+
+No mount/access:
+
+- raw or canonical historical lake;
+- feature/candidate/outcome stores;
+- optimizer workspace.
+
+## Credentials and operating-system identities
+
+Preferred deployment identities:
+
+- `grid-data`: no private exchange credentials;
+- `grid-research`: no network and no credentials;
+- `grid-release`: promotion/signing identity, no trade permission;
+- `grid-live`: dedicated trade key, no withdrawal permission, restricted filesystem and network.
+
+Local development may run under one user initially, but directory permissions and configuration still model these boundaries so later deployment does not require architectural changes.
+
+## Process isolation
+
+The applications are separate operating-system processes. A process supervisor may manage them independently, but there is no mandatory all-in-one daemon.
+
+Allowed production combinations:
+
+- data workstation: `grid-data` and scheduled maintenance;
+- research workstation: `grid-research` and optional local `grid-release build/verify`;
+- live host: `grid-live` only;
+- operator workstation: promotion/revocation utility only.
+
+## Failure isolation
+
+- A failed historical download must not affect an already-running live instance.
+- A research out-of-memory event must not affect live latency.
+- A revoked release must block future live entries according to policy, even if research is offline.
+- A live incident must not modify historical/research evidence.
+- A live host rebuild must require only configuration, secrets, a promoted release, state backup, and exchange reconciliation—not the historical corpus.
+
+## Configuration isolation
+
+Each application has its own schema and refuses unknown keys. Configuration is not a shared mutable “everything YAML.” Common identifiers are explicit contracts:
+
+- environment ID;
+- dataset/release IDs;
+- instrument identity version;
+- feature version;
+- risk policy version;
+- audit schema version.
+
+Live configuration cannot override a release with looser values. Research configuration cannot promote itself.
+
+## Build and deployment artifacts
+
+Planned artifacts:
+
+- `grid-data` wheel/container;
+- `grid-research` wheel/container;
+- `grid-release` wheel/container;
+- slim `grid-live` wheel/container;
+- immutable strategy release archive;
+- schema/contract package;
+- SBOM and dependency lock for each deployable.
+
+An all-in-one developer installation may exist for convenience, but it is never the production reference deployment.
+
+## Isolation acceptance tests
+
+Before live readiness, CI must prove:
+
+- live builds without research dependency group;
+- live starts with no historical-data path configured;
+- history/research processes are absent and live still reaches shadow-ready state;
+- live fails if only an experiment directory—not a promoted release—is supplied;
+- research cannot load private trade credentials through its schema;
+- data cannot write live state;
+- architecture import rules pass;
+- revocation is honored while research and data are offline.
