@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
+import sys
 from pathlib import Path
 
-from grid_bybit_public import BybitArchiveIndex, BybitPublicClient, UrllibJsonTransport
+from grid_bybit_public import (
+    BybitArchiveIndex,
+    BybitHistoricalDataCatalog,
+    BybitPublicClient,
+    UrllibJsonTransport,
+)
 from grid_contracts.canonical import sha256_file
 
 from grid_data import __version__
@@ -16,6 +23,7 @@ from grid_data.archive_inventory import (
     load_verified_public_inventory,
 )
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
+from grid_data.history_sources import build_history_source_assessment
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 
@@ -51,6 +59,15 @@ def parser() -> argparse.ArgumentParser:
     archive_coverage.add_argument("--output", type=Path, required=True)
     archive_coverage.add_argument("--force", action="store_true")
     archive_coverage.set_defaults(handler=_archive_coverage)
+
+    history_sources = commands.add_parser(
+        "history-source-assessment",
+        help="assess official bulk products and bound required REST backfill",
+    )
+    history_sources.add_argument("--instrument-inventory", type=Path, required=True)
+    history_sources.add_argument("--output", type=Path, required=True)
+    history_sources.add_argument("--force", action="store_true")
+    history_sources.set_defaults(handler=_history_source_assessment)
 
     sample = commands.add_parser(
         "public-sample", help="summarize bounded trade/mark/funding public samples"
@@ -150,6 +167,32 @@ def _public_sample(args: argparse.Namespace) -> int:
                 "datasets": payload["datasets"],
                 "receipt": str(receipt),
                 "sample_status": payload["sample_status"],
+            }
+        )
+    )
+    return 0
+
+
+def _history_source_assessment(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    inventory_path = args.instrument_inventory.resolve()
+    inventory = load_verified_public_inventory(inventory_path)
+    products = BybitHistoricalDataCatalog().products()
+    payload = build_history_source_assessment(
+        products,
+        inventory,
+        command=shlex.join(sys.argv),
+        inventory_artifact=inventory_path.name,
+        inventory_artifact_sha256=sha256_file(inventory_path),
+    )
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "assessment": payload["assessment"],
+                "receipt": str(receipt),
+                "theoretical_rest_envelope": payload["theoretical_rest_envelope"],
             }
         )
     )

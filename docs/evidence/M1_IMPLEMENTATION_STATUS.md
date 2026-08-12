@@ -29,6 +29,9 @@
 - Receipt-linked comparison of all current USDT LinearPerpetual symbols with the official archive
   index, plus bounded direct probes for index exceptions, `PreLaunch` symbols, and a deterministic
   launch-time-stratified sample.
+- Allowlisted, unauthenticated inspection of the official Historical Market Data product catalog,
+  with fail-closed response validation and per-symbol REST capacity estimates linked to the
+  verified current inventory.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -47,9 +50,13 @@
 - The official [Trading MCP create contract](https://github.com/bybit-exchange/trading-mcp/blob/562291168e9fd3d679275bf28c16056d562cefce/src/tools/bot/createFGridBot.ts)
   requires the validated fields plus `total_investment` and identifies `bot_id` as the handle for
   detail and close operations. Its existence is capability evidence, not a live permission.
-- The official [developer portal](https://bybit-exchange.github.io/docs/) advertises public OHLCV
-  and trade-history CSV downloads. It does not identify that OHLCV as canonical mark-price data or
-  advertise funding-event bulk data, so the implementation does not infer either semantic.
+- The official [Historical Market Data page](https://www.bybit.com/en/derivative-activity/history-data)
+  and its public
+  [product catalog](https://api2.bybit.com/quote/public/support/download/list-products) advertised
+  five products when observed on 2026-08-12. Public trades include contracts; mark-price klines
+  are advertised for options only; no funding product is advertised. Linear-contract mark-price
+  1m and funding therefore remain REST datasets unless a later catalog version adds an explicit
+  compatible bulk product.
 
 ## Measured public evidence
 
@@ -77,6 +84,16 @@
   report found no duplicate timestamps, missing candles, or missing internal funding intervals.
 - Each evidence artifact has a verified SHA-256 receipt. The public sample additionally validates
   against `grid.bybit-public-sample/v1`; raw market rows were not committed.
+- The 700-instrument, ten-year planning envelope contains 3,681,644,400 instrument-minutes. At
+  documented per-page limits, linear mark-price 1m needs 3,682,000 requests and conservative
+  60-minute funding needs 307,300 requests, for 3,989,300 combined requests. Request-only time is
+  398,930 seconds at the 10 requests/second planning rate or at least 33,245 seconds at the
+  documented default IP limit of 120 requests/second; both exclude operational overhead.
+- Applying current lifecycle fields to the verified partial inventory gives 884,733,307
+  mark-price rows and 885,222 per-symbol requests across 1,006 USDT linear perpetual records. The
+  current observed funding intervals imply 2,772,401 events and 14,394 requests; using the
+  observed 60-minute minimum conservatively gives 14,746,066 events and 74,232 requests. These
+  current fields are not dated historical metadata and do not replace the planning envelope.
 
 ## Measured local benchmark evidence
 
@@ -175,9 +192,6 @@
 
 ## Evidence still required to close Gate 1
 
-- Obtain authoritative Bybit confirmation whether any bulk OHLCV product is canonical mark-price
-  history and whether funding-event bulk data exists, then size the remaining REST backfill;
-  neither dataset is advertised by name in the observed archive root/developer summary.
 - Rerun the ADR-0010 exact shortlist on declared reference hardware with documented cold-cache,
   real-market-skew, monthly repair, and compaction evidence, then decide P-001 through P-005.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and

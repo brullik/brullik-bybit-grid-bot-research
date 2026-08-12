@@ -33,10 +33,10 @@ hash of the instrument inventory before any network request.
 
 ## Interpretation limits
 
-- The official [Bybit developer portal](https://bybit-exchange.github.io/docs/) advertises public
-  OHLCV and trade-history CSV downloads in its Historical Market Data section. It does not state
-  there that the downloadable OHLCV is canonical mark-price history or that funding events are a
-  bulk product.
+- The separate receipt-pinned
+  [history-source assessment](M1_HISTORY_SOURCE_ASSESSMENT.md) records the product semantics
+  advertised by the official Historical Market Data catalog. This archive report does not infer
+  mark-price or funding semantics from directory names.
 - A symbol absent from the `/trading/` listing may still have an accessible direct archive path.
 - A product name absent from the root index is `not advertised in the observed index`; it is not
   proof that no unlisted path exists.
@@ -44,7 +44,7 @@ hash of the instrument inventory before any network request.
   for historical metadata snapshots.
 - The report inventories daily raw trade archives. It does not relabel premium-index or other
   products as canonical mark-price/funding data.
-- Until Bybit documents those bulk semantics separately, the dedicated V5 mark-kline and funding
-  history REST endpoints remain the authoritative implemented paths for those datasets.
+- The dedicated V5 mark-kline and funding-history REST endpoints remain the implemented paths for
+  linear-contract mark-price 1m and funding datasets.
 - Raw trade files and directory HTML are not committed; only bounded JSON evidence and its
   SHA-256 receipt enter Git.

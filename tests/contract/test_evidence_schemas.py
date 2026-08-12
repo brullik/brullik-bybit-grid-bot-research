@@ -93,6 +93,19 @@ def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     assert verify_evidence(artifact)
 
 
+def test_history_source_assessment_matches_schema_hash_and_receipt() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m1-bybit-history-source-assessment.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "bybit-history-source-assessment.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert verify_evidence(artifact)
+
+
 class FakeValidateTransport:
     environment = "testnet"
 
