@@ -24,6 +24,7 @@ from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostS
 
 JANUARY_1_2026_MS = 1_767_225_600_000
 ACTIVE_BUILDING_BYTES = 90_000_000_000
+SOFTWARE_IDENTITY = f"git:{'a' * 40}"
 
 
 class OnePageClient:
@@ -169,7 +170,7 @@ def test_landing_preflight_publishes_canonical_dataset_and_reruns_idempotently(
         capacity_path,
         snapshot(tmp_path, observed_at_ms=2_000),
         now_ms=2_001,
-        software_identity="git:fixture-commit",
+        software_identity=SOFTWARE_IDENTITY,
     )
 
     assert not store_root.exists()
@@ -184,7 +185,7 @@ def test_landing_preflight_publishes_canonical_dataset_and_reruns_idempotently(
             "dataset_id": resolved.plan.spec.dataset_id,
             "history_manifest_sha256": resolved.completed_history.manifest_sha256,
             "semantic_version": "1.0.0",
-            "software_identity": "git:fixture-commit",
+            "software_identity": SOFTWARE_IDENTITY,
         }
     )
     events: list[str] = []
@@ -210,7 +211,7 @@ def test_landing_preflight_publishes_canonical_dataset_and_reruns_idempotently(
         capacity_path,
         snapshot(tmp_path, observed_at_ms=3_000),
         now_ms=3_001,
-        software_identity="git:fixture-commit",
+        software_identity=SOFTWARE_IDENTITY,
     )
     assert rerun.plan.existing_commit is True
     same = publish_preflighted_history(
@@ -235,7 +236,7 @@ def test_publication_rejects_different_registry_or_capacity_binding(tmp_path: Pa
             capacity_path,
             snapshot(tmp_path, observed_at_ms=2_000),
             now_ms=2_001,
-            software_identity="git:fixture-commit",
+            software_identity=SOFTWARE_IDENTITY,
         )
 
     wrong_capacity = capacity_payload()
@@ -249,5 +250,20 @@ def test_publication_rejects_different_registry_or_capacity_binding(tmp_path: Pa
             wrong_capacity_path,
             snapshot(tmp_path, observed_at_ms=2_000),
             now_ms=2_001,
-            software_identity="git:fixture-commit",
+            software_identity=SOFTWARE_IDENTITY,
+        )
+
+
+def test_publication_requires_immutable_git_commit_identity(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(tmp_path)
+
+    with pytest.raises(HistoryAcquisitionError, match="40-character-lowercase-commit-sha"):
+        preflight_completed_history_publication(
+            tmp_path / "store",
+            job_root,
+            registry_path,
+            capacity_path,
+            snapshot(tmp_path, observed_at_ms=2_000),
+            now_ms=2_001,
+            software_identity="worktree:uncommitted",
         )

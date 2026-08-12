@@ -92,7 +92,8 @@ receipt, source policy, hashes, and exact file allowlist. This proves a Landing 
 
 ## 6. Preflight canonical publication
 
-Use an immutable code identity, normally the full Git commit SHA that contains the publisher:
+Use the mandatory immutable code identity: `git:` followed by the 40-character lowercase Git
+commit SHA that contains the publisher:
 
 ```powershell
 .venv\Scripts\grid-data.exe publish-history-1m `

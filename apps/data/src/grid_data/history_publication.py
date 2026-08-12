@@ -40,7 +40,7 @@ from grid_data.instrument_registry import (
 )
 
 HISTORY_PUBLICATION_CONTRACT: Final = "grid.history-to-canonical-publication/v1"
-SOFTWARE_IDENTITY_RE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+@/-]{2,255}$")
+SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +113,9 @@ def preflight_completed_history_publication(
     """Verify all upstream evidence and plan one immutable canonical dataset without mutation."""
 
     if not SOFTWARE_IDENTITY_RE.fullmatch(software_identity):
-        raise HistoryAcquisitionError("software_identity must be an explicit safe build identity")
+        raise HistoryAcquisitionError(
+            "software_identity must be git:<40-character-lowercase-commit-sha>"
+        )
     completed = verify_completed_history_job(job_root)
     manifest = _object(completed.manifest_path, name="history manifest")
     history_plan = _object(completed.plan_path, name="history plan")

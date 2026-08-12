@@ -29,7 +29,8 @@ Before planning publication, the adapter:
   requires it to equal the Landing plan budget;
 - loads the exact canonical Arrow batch and checks every instrument identity and observed time
   bound against the bound registry snapshot; and
-- requires an explicit safe software identity and binds it into the build-configuration hash.
+- requires `git:<40-character-lowercase-commit-sha>` as an immutable software identity and binds
+  it into the build-configuration hash.
 
 The immutable dataset identity is deterministic:
 
