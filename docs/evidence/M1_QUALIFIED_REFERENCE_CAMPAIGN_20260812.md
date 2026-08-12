@@ -87,4 +87,12 @@ The review pack presents these values without accepting them:
 - P-005: the measured 6-physical-core, 16,476,225,536-byte-RAM laptop with local NVMe and the
   evidence-derived 100,228,313,013-byte free-space requirement.
 
-An explicit owner/PM record remains the only item required before Gate 1 can change state.
+At evidence-publication time, an explicit owner/PM record remained the only item required before
+Gate 1 could change state.
+
+## Subsequent owner decision
+
+On 2026-08-12 the owner selected `hybrid_int64_decimal`, 8 buckets / 16 MiB, ZSTD level 3, and
+the ADR-0019 evidence-admitted laptop; accepted Gate 1; and authorized the Phase 2 canonical 1m
+market-data MVP. ADR-0020 is the authoritative later governance record. The preserved review-pack
+artifact correctly remains `pending-owner-decision` because its receipt predates that decision.

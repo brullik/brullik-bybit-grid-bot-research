@@ -33,6 +33,9 @@ Deliver a high-throughput, auditable research-to-live platform while keeping his
 | M9 Controlled scale | evidence-based concurrency/size increase | G9 |
 | M10 Production posture | hardened deployment, DR, optional autonomy decision | explicit |
 
+Current status: M1/G1 was accepted by the owner/PM on 2026-08-12 in ADR-0020. M2 canonical data
+MVP implementation is authorized; G2 remains closed until its existing evidence is accepted.
+
 ## Planning rules
 
 - One sprint has one measurable outcome and a narrow acceptance pack.

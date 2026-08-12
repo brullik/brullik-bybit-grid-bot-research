@@ -15,6 +15,17 @@ This is the governance summary. Detailed phases are in [Roadmap and Acceptance G
 | G8 Manual mainnet | permit controlled concurrency/size increase | explicit owner decision |
 | G9 Controlled scale | consider autonomous entry/production hardening | formal governance decision |
 
+## Current gate status
+
+| Gate | Status | Decision record |
+|---|---|---|
+| G0 Documentation | accepted | architecture baseline |
+| G1 Feasibility/benchmark | accepted 2026-08-12 | owner/PM decision and ADR-0020 |
+| G2 Canonical data | closed; Phase 2 in progress | requires the unchanged Gate 2 evidence |
+
+Acceptance of G1 opens only the canonical market-data MVP. It grants no live or real-money
+mutation permission.
+
 ## Gate invariants
 
 - A gate is closed by default.

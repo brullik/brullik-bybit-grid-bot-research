@@ -2,9 +2,10 @@
 
 Documentation-first architecture for a high-throughput Bybit Futures Grid Bot research-to-live platform.
 
-> **Repository state:** M1 feasibility implementation is in progress. Public-data tooling,
-> versioned contracts, isolated application packages, bounded public evidence, and benchmark
-> harnesses are present;
+> **Repository state:** M1 feasibility and Gate 1 are accepted; Phase 2 canonical one-minute
+> market-data implementation is authorized and in progress. Public-data tooling, versioned
+> contracts, isolated application packages, bounded public evidence, and benchmark harnesses are
+> present;
 > trading execution remains intentionally absent and all live entries are blocked.
 
 The M1 private feasibility boundary exposes only an owner-controlled Futures Grid `validate` call;
@@ -63,8 +64,8 @@ flowchart LR
 The architecture prioritizes throughput and predictable resource use:
 
 - public V5 REST for trade-price 1m, mark-price 1m, and funding; tick archives are not downloaded;
-- Parquet/ZSTD columnar storage, sorted by instrument and time;
-- monthly time partitions plus a small stable symbol-hash bucket count instead of one tiny partition per symbol;
+- exact-hybrid Parquet/ZSTD-3 candle storage, sorted by instrument and time;
+- monthly time partitions with eight stable symbol-hash buckets and a 16 MiB file target;
 - DuckDB for set-oriented SQL and catalog/audit queries;
 - Polars lazy scans, predicate/projection pushdown, multithreading, and streaming execution;
 - reusable feature materialization so parameter searches do not recompute rolling indicators for every trial;

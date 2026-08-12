@@ -2,6 +2,16 @@
 
 All notable project-governance and architecture changes are recorded here.
 
+## Unreleased
+
+### Governance
+
+- Owner/PM acceptance of Gate 1 and the Phase 2 canonical one-minute market-data MVP.
+- Canonical candle selection: exact hybrid Int64/Decimal representation, eight stable instrument
+  buckets, 16 MiB file target, and ZSTD level 3.
+- Evidence-based selection of the current owner laptop as the reference research host under
+  ADR-0019, retaining fresh memory, NVMe, free-space, and bounded-staging preflight requirements.
+
 ## 0.2.0 — 2026-08-12
 
 ### Added

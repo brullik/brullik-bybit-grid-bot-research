@@ -9,8 +9,8 @@
 | D-003 | Data, research, release, and live are separate deployables | accepted | Live-only startup and failure isolation |
 | D-004 | Live does not require the historical lake or research dependencies | accepted | Small, bounded, safer live runtime |
 | D-005 | Research-to-live interface is an immutable promoted strategy release | accepted | Prevent mutable parameter drift and preserve auditability |
-| D-006 | Canonical analytical store uses Parquet; DuckDB/Polars are baseline engines | accepted pending benchmark | Columnar, pushdown, parallel, streaming execution |
-| D-007 | Partition primarily by time plus stable symbol hash bucket | provisional | Avoid a tiny file/partition per symbol; benchmark 8/16/32 buckets |
+| D-006 | Canonical analytical store uses Parquet; DuckDB/Polars are baseline engines | accepted | Columnar, pushdown, parallel, streaming execution; Gate 1 evidence and ADR-0020 |
+| D-007 | Partition by UTC calendar month plus eight stable instrument buckets; target 16 MiB files | accepted | Qualified 8-bucket/16-MiB layout and owner decision in ADR-0020 |
 | D-008 | Shared features are materialized once; simulation runs on sparse candidates | accepted | Avoid raw-minute × full-parameter cross product |
 | D-009 | Core execution/risk arithmetic uses exact Decimal/scaled integers | accepted | Tick/step rounding can change risk and validity |
 | D-010 | V1 strategy family is horizontal range, Neutral + Geometric | accepted baseline | Controlled initial scope |
@@ -23,16 +23,15 @@
 | D-017 | Optimize architecture with measurement before native extensions | accepted | Avoid premature Rust/C++ while retaining stable extension boundaries |
 | D-018 | Repository starts documentation-only | accepted | Freeze target architecture before implementation |
 | D-019 | V1 downloads and retains one-minute candles and funding, never tick-trade archive bodies | accepted | Owner decision; ADR-0016 and append-only source assessment v2 |
+| D-020 | Canonical candle physical representation is `hybrid_int64_decimal` | accepted | Exact physical-contract benchmark and owner decision; ADR-0010/ADR-0020 |
+| D-021 | Canonical candle Parquet compression is ZSTD level 3 | accepted | Qualified reference campaign and owner decision; ADR-0020 |
+| D-022 | Current owner laptop is the reference research host under evidence-based admission | accepted | Fresh memory/NVMe/free-space/staging preflight remains mandatory; ADR-0019/ADR-0020 |
+| D-023 | Gate 1 is accepted and Phase 2 canonical one-minute market-data implementation is open | accepted | Empty-blocker qualified review pack plus explicit owner/PM decision; ADR-0020 |
 
 ## Decisions requiring benchmark or owner evidence
 
 | ID | Topic | Options | Decision evidence |
 |---|---|---|---|
-| P-001 | canonical numeric physical representation | Float64, Decimal, scaled integer hybrid | compression, scan speed, exactness benchmark |
-| P-002 | symbol bucket count | 8, 16, 32 | single-symbol and all-universe scan benchmark |
-| P-003 | target Parquet file size | 128, 256, 512 MB | cold/warm scan and repair/compaction cost |
-| P-004 | compression | ZSTD levels; optional Snappy comparison | size/throughput benchmark |
-| P-005 | reference research hardware | 32/64/128 GB RAM; core count; NVMe size | end-to-end benchmark and budget |
 | P-007 | intrabar fill ambiguity policy | conservative bounds, lower timeframe unavailable, event model | simulator review and sensitivity evidence |
 | P-008 | exact V1 exit policy | SL-only baseline versus time/condition exit | capital-lock and OOS evidence |
 | P-009 | live deployment | dedicated subaccount/host versus temporary main account | owner risk acceptance and API feasibility |
@@ -42,6 +41,11 @@
 P-006 is resolved by D-019 and ADR-0016: V1 uses verified one-minute sources and excludes
 tick-trade archive bodies. Actual per-symbol REST coverage and gaps remain evidence requirements,
 not an unresolved source-policy choice.
+
+P-001 through P-005 are resolved by D-006, D-007, D-020 through D-023, and ADR-0020. The selected
+pair is eight buckets / 16 MiB with the exact hybrid candle representation and ZSTD level 3. The
+reference host remains subject to fresh evidence-based admission rather than fixed nominal
+hardware totals.
 
 ## Change rule
 

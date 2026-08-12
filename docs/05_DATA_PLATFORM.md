@@ -117,12 +117,12 @@ market-store/
 
 Where:
 
-- `bucket = stable_hash(instrument_id) mod N`;
-- initial benchmark candidates for `N`: 8, 16, and 32;
+- `bucket = stable_hash(instrument_id) mod 8`;
+- Phase 2 freezes the stable hash algorithm in the versioned dataset contract before publication;
 - rows are sorted by `instrument_id, open_time_ms`;
-- files target roughly 128–512 MB, subject to measured compression and query patterns;
+- files use the measured 16 MiB (`16,777,216` byte) target, with explicit tail-file semantics;
 - row groups are sized and sorted to maximize statistics-based skipping;
-- ZSTD is the default compression candidate and must be benchmarked against alternatives.
+- canonical candle files use ZSTD compression level 3.
 
 ### Why not partition by symbol
 
@@ -138,9 +138,15 @@ Very large monolithic files make incremental repair, compaction, concurrency, ba
 
 - timestamps: signed 64-bit UTC milliseconds;
 - `instrument_id`: compact integer;
-- OHLCV/turnover: benchmark `Float64` versus scaled integer representation;
+- OHLC: signed Int64 units of `1e-8` with versioned Arrow/Parquet scale metadata;
+- volume: Decimal128(38, 4);
+- turnover: Decimal128(38, 12);
 - quality/status flags: compact integers/booleans;
 - symbol string is omitted from every candle row and joined through the registry when needed.
+
+The `hybrid_int64_decimal` representation, eight-bucket/16-MiB layout, and ZSTD level 3 were
+accepted in ADR-0020 after the qualified Gate 1 campaign. Values outside the physical precision
+contract require a new schema version and may not be silently rounded.
 
 ### Execution boundary
 
