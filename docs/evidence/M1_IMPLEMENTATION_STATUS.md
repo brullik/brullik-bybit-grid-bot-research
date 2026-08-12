@@ -1,6 +1,6 @@
 # M1 feasibility and benchmark status
 
-**Status:** implementation in progress; Gate 1 remains closed.
+**Status:** M1 implementation and evidence complete; Gate 1 accepted by owner/PM in ADR-0020.
 
 ## Implemented evidence tooling
 
@@ -335,8 +335,9 @@
 - Native Futures Grid validate-only feasibility is resolved successfully on Mainnet. This does
   not close Gate 1 and does not open implementation or execution of the Phase 8 create workflow.
 
-## Evidence still required to close Gate 1
+## Gate 1 disposition
 
-- Record the owner/PM decisions for P-001 through P-005 and Gate 1. The receipt-verified review
-  pack is `ready-for-owner-review`, both layout candidates pass, and its blocker list is empty;
-  implementation still cannot self-approve the gate.
+- The receipt-verified review pack is `ready-for-owner-review`, both layout candidates pass, and
+  its blocker list is empty.
+- On 2026-08-12 the owner/PM selected P-001 through P-005, accepted Gate 1, and authorized Phase 2.
+  ADR-0020 records that decision without changing the evidence artifact or its acceptance gates.

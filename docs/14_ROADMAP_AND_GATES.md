@@ -4,6 +4,12 @@
 
 Work advances through evidence-based gates. A later phase may be designed early, but implementation and especially live permissions are not opened until the preceding acceptance criteria are proven. Implementation pull requests may not edit their own PM-owned acceptance tests or weaken scope.
 
+## Current status
+
+M1 feasibility is complete. The owner/PM accepted Gate 1 on 2026-08-12 through ADR-0020 and
+authorized Phase 2 canonical one-minute market-data implementation. Gate 2 and every later gate
+remain closed; their criteria below are unchanged.
+
 ## Phase 0 — Documentation and governance baseline
 
 Deliverables:

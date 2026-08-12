@@ -131,7 +131,8 @@ processed 99,999,900 rows in 29.047963300 seconds at 3,442,578.709124216 core ro
 completed its four reboot-separated layout legs and feature rerun. Both paired layouts passed all
 provisional performance gates; the feature rerun processed 99,999,900 rows in 30.468537400 seconds
 with 1,509,040,128 bytes peak RSS (9.158894582% of RAM). The review pack is ready with no blockers,
-but P-001 through P-005 and Gate 1 remain pending explicit owner/PM decision.
+and the owner subsequently selected the 8-bucket/16-MiB exact-hybrid ZSTD-3 layout, accepted the
+ADR-0019-admitted laptop, and accepted Gate 1 in ADR-0020.
 
 ### Profile C — live host
 
@@ -201,21 +202,18 @@ Final thresholds must be set after the benchmark spike. Initial targets on docum
 
 These are acceptance hypotheses, not guarantees. The benchmark report must state hardware, versions, cache status, input layout, and exact commands.
 
-## Benchmark matrix before full build
+## Gate 1 benchmark matrix — completed
 
-Test at least:
+The original 8/16/32-bucket and 128/256/512-MB matrix could not attain its per-file targets at
+the measured monthly density. ADR-0010 derived a compatible exact matrix, and the qualified
+campaign compared its two finalists across DuckDB/Polars cold and warm scans, all-universe and
+single-symbol queries, immutable repair, compaction, write time, row width, memory, and local NVMe
+admission.
 
-- bucket counts 8, 16, 32;
-- file targets 128, 256, 512 MB;
-- row-group sizes appropriate to observed row width;
-- ZSTD compression levels versus Snappy if useful;
-- Float64 versus scaled integer canonical representation;
-- DuckDB and Polars scan plans;
-- all-universe time slices;
-- single-symbol full-history scans;
-- feature build with 1,440-minute halo;
-- cold and warm cache;
-- local NVMe and optional S3-compatible storage.
+ADR-0020 selects `hybrid_int64_decimal`, eight buckets, a 16 MiB file target, and ZSTD level 3 for
+Phase 2. Phase 2 must continue to measure row-group behavior, REST staging, canonical audits,
+incremental repair, and compaction on its controlled scale sequence; a later layout change needs a
+superseding ADR and versioned migration.
 
 ## Performance anti-patterns
 
