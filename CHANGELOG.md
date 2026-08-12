@@ -6,6 +6,11 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Stable Bybit-linear instrument registry evidence with deterministic UInt32 identities, exact
+  dated metadata, source receipt binding, and rejection of caller-supplied candle identities.
+- Bounded public trade/mark 1m acquisition with no-mutation host/capacity preflight, fixed
+  1,000-minute pages, conservative global pacing, explicit retries, per-page receipts, durable
+  resume, exact-decimal validation, and a receipt-last verified Landing batch.
 - Receipt-last immutable candle-partition publication with a no-mutation/fresh-recheck host
   preflight, content-addressed Parquet files, canonical manifests/audits, idempotent verification,
   stale-output detection, and Windows-safe closed-handle directory publication.

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/bybit-1m-history-acquisition.schema.json",
+  "title": "Completed Bybit public one-minute Landing manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capacity_evidence_sha256", "completed_at_ms", "contract", "empty_page_count", "host_preflight", "instrument_evidence_sha256", "job_id", "page_count", "pages", "plan_sha256", "request_sha256", "request_bound", "row_count", "source_policy", "status"],
+  "properties": {
+    "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "completed_at_ms": {"type": "integer", "minimum": 0},
+    "contract": {"const": "grid.bybit-1m-history-acquisition/v1"},
+    "empty_page_count": {"type": "integer", "minimum": 0},
+    "host_preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_identity_sha256", "memory_total_bytes", "observed_at_ms", "observed_free_bytes", "planned_peak_memory_bytes", "required_free_bytes", "storage_kind"],
+      "properties": {
+        "device_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "memory_total_bytes": {"type": "integer", "minimum": 1},
+        "observed_at_ms": {"type": "integer", "minimum": 0},
+        "observed_free_bytes": {"type": "integer", "minimum": 0},
+        "planned_peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "required_free_bytes": {"type": "integer", "minimum": 0},
+        "storage_kind": {"enum": ["nvme", "ssd"]}
+      }
+    },
+    "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "job_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "page_count": {"type": "integer", "minimum": 1},
+    "pages": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/page"}},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "request_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actual_http_requests", "max_attempts_per_page", "max_http_requests_per_run", "target_rps", "workers"],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "max_attempts_per_page": {"type": "integer", "minimum": 1, "maximum": 5},
+        "max_http_requests_per_run": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "target_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 32}
+      }
+    },
+    "row_count": {"type": "integer", "minimum": 0},
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mark", "trade", "interval", "tick_rows_requested"],
+      "properties": {
+        "mark": {"const": "/v5/market/mark-price-kline"},
+        "trade": {"const": "/v5/market/kline"},
+        "interval": {"const": "1"},
+        "tick_rows_requested": {"const": false}
+      }
+    },
+    "status": {"const": "complete"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "attempt_count", "end_ms", "ingestion_id", "instrument_id", "row_count", "sequence", "start_ms", "symbol"],
+      "properties": {
+        "artifact": {"type": "string", "pattern": "^pages/[0-9]{8}\\.json$"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "attempt_count": {"type": "integer", "minimum": 1, "maximum": 5},
+        "end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+        "ingestion_id": {"type": "string", "pattern": "^bybit-page-sha256:[0-9a-f]{64}$"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "sequence": {"type": "integer", "minimum": 0},
+        "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    }
+  }
+}

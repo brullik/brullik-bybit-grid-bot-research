@@ -40,6 +40,34 @@ Required concepts:
 
 Symbol strings are attributes, not the only durable identity.
 
+`grid.instrument-registry/v1` binds one receipted Bybit linear inventory snapshot to
+`bybit-linear-source-symbol-id-v1`. In this namespace the positive UInt32 `source_symbol_id` is
+the internal `instrument_id`; rows are sorted and unique by that ID. The registry records exact
+decimal metadata and maps source zero delivery/funding sentinels to null. This is a
+dated snapshot, not permission to apply current status to past decisions.
+
+## Public 1m acquisition request and Landing batch
+
+`grid.bybit-1m-history-request/v1` contains:
+
+- a safe job ID and exactly one kind (`trade` or `mark`);
+- symbol plus inclusive minute-aligned start/end for each series;
+- page, worker, global pacing, retry, and whole-run request bounds.
+
+The request cannot contain an instrument ID. A verified registry supplies that identity, and a
+verified Gate 1 capacity artifact supplies active-plus-building bytes. Every resolved job is one
+dataset/month/eight-bucket partition and includes only closed candles.
+
+`grid.bybit-1m-history-plan/v1` binds the canonical request hash, resolved request,
+registry/capacity artifact hashes,
+capacity budget, and deterministic pages. Each `grid.bybit-1m-history-page/v1` stores exact source
+strings, request identity, row hash/count, and attempt count. The
+`grid.bybit-1m-history-acquisition/v1` manifest inventories every page and is committed by a
+separate `grid.history-acquisition-receipt/v1` written last. A valid Landing receipt is input
+evidence for canonical publication, not a canonical dataset completion marker. Canonical candle
+rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance cannot collide
+between otherwise similar jobs.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

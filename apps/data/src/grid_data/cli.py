@@ -6,6 +6,7 @@ import argparse
 import json
 import shlex
 import sys
+import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -24,10 +25,18 @@ from grid_data.archive_inventory import (
     load_verified_public_inventory,
 )
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
+from grid_data.history_acquisition import (
+    execute_history_job,
+    preflight_history_job,
+    verify_completed_history_job,
+)
+from grid_data.history_request import closed_before_now_ms, resolve_history_request
 from grid_data.history_sources import (
     build_history_source_assessment,
     build_one_minute_history_source_assessment,
 )
+from grid_data.host_probe import probe_host_snapshot
+from grid_data.instrument_registry import build_verified_registry_from_inventory
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 from grid_data.rest_history_boundary import build_rest_history_boundary
@@ -51,6 +60,15 @@ def parser() -> argparse.ArgumentParser:
     inventory.add_argument("--output", type=Path, required=True)
     inventory.add_argument("--force", action="store_true")
     inventory.set_defaults(handler=_inventory)
+
+    registry = commands.add_parser(
+        "instrument-registry",
+        help="publish stable UInt32 identities from a verified linear instrument inventory",
+    )
+    registry.add_argument("--instrument-inventory", type=Path, required=True)
+    registry.add_argument("--output", type=Path, required=True)
+    registry.add_argument("--force", action="store_true")
+    registry.set_defaults(handler=_instrument_registry)
 
     archive = commands.add_parser(
         "archive-inventory", help="inventory official public.bybit.com daily trade archives"
@@ -133,6 +151,28 @@ def parser() -> argparse.ArgumentParser:
     sample.add_argument("--force", action="store_true")
     sample.set_defaults(handler=_public_sample)
 
+    history = commands.add_parser(
+        "history-1m",
+        help="preflight or execute one bounded receipt-resumable public Bybit 1m job",
+    )
+    history.add_argument("--request", type=Path, required=True)
+    history.add_argument("--instrument-registry", type=Path, required=True)
+    history.add_argument("--capacity-evidence", type=Path, required=True)
+    history.add_argument("--staging-root", type=Path, required=True)
+    history.add_argument(
+        "--execute",
+        action="store_true",
+        help="mutate Landing and make public requests; omitted means no-mutation preflight",
+    )
+    history.set_defaults(handler=_history_1m)
+
+    history_verify = commands.add_parser(
+        "verify-history-1m",
+        help="verify one completed history job, all page receipts, and its exact file allowlist",
+    )
+    history_verify.add_argument("job_root", type=Path)
+    history_verify.set_defaults(handler=_verify_history_1m)
+
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
     verify.set_defaults(handler=_verify)
@@ -152,6 +192,100 @@ def _inventory(args: argparse.Namespace) -> int:
     print(
         json.dumps(
             {"artifact": str(artifact), "receipt": str(receipt), "summary": payload["summary"]}
+        )
+    )
+    return 0
+
+
+def _instrument_registry(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    payload = build_verified_registry_from_inventory(args.instrument_inventory)
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "identity_policy": payload["identity_policy"],
+                "receipt": str(receipt),
+                "summary": payload["summary"],
+            }
+        )
+    )
+    return 0
+
+
+def _history_1m(args: argparse.Namespace) -> int:
+    resolved = resolve_history_request(
+        args.request,
+        instrument_registry_path=args.instrument_registry,
+        capacity_evidence_path=args.capacity_evidence,
+    )
+    snapshot = probe_host_snapshot(args.staging_root)
+    now_ms = time.time_ns() // 1_000_000
+    plan = preflight_history_job(
+        args.staging_root,
+        resolved.spec,
+        resolved.budget,
+        snapshot,
+        now_ms=now_ms,
+        closed_before_ms=closed_before_now_ms(now_ms),
+    )
+    summary = {
+        "capacity_evidence_sha256": resolved.capacity_artifact_sha256,
+        "execute": bool(args.execute),
+        "existing_complete": plan.existing_complete,
+        "host_preflight": {
+            "device_identity_sha256": snapshot.device_identity_sha256,
+            "memory_available_bytes": snapshot.memory_available_bytes,
+            "memory_total_bytes": snapshot.memory_total_bytes,
+            "observed_at_ms": snapshot.observed_at_ms,
+            "storage_kind": snapshot.storage_kind,
+            "volume_free_bytes": snapshot.volume_free_bytes,
+        },
+        "instrument_registry_sha256": resolved.registry.artifact_sha256,
+        "job_root": str(plan.paths.job_root),
+        "pending_page_count": len(plan.pending_tasks),
+        "plan_sha256": plan.plan_sha256,
+        "planned_page_count": len(plan.tasks),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "request_sha256": resolved.request_sha256,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    completed = execute_history_job(
+        plan,
+        lambda: BybitPublicClient(
+            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+        ),
+        lambda: probe_host_snapshot(args.staging_root),
+    )
+    summary.update(
+        {
+            "manifest": str(completed.manifest_path),
+            "manifest_sha256": completed.manifest_sha256,
+            "page_count": completed.page_count,
+            "row_count": completed.row_count,
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_history_1m(args: argparse.Namespace) -> int:
+    completed = verify_completed_history_job(args.job_root)
+    print(
+        json.dumps(
+            {
+                "job_root": str(completed.job_root),
+                "manifest_sha256": completed.manifest_sha256,
+                "page_count": completed.page_count,
+                "row_count": completed.row_count,
+                "valid": True,
+            }
         )
     )
     return 0

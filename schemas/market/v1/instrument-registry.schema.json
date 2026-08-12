@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/instrument-registry.schema.json",
+  "title": "Bybit linear instrument registry evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["content_sha256", "evidence_schema", "identity_policy", "records", "source_inventory", "summary"],
+  "properties": {
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.instrument-registry/v1"},
+    "identity_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "category", "instrument_id_expression", "range"],
+      "properties": {
+        "algorithm": {"const": "bybit-linear-source-symbol-id-v1"},
+        "category": {"const": "linear"},
+        "instrument_id_expression": {"const": "source_symbol_id"},
+        "range": {"const": "uint32-positive"}
+      }
+    },
+    "records": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/snapshot"}},
+    "source_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_sha256", "content_sha256", "evidence_schema", "fetched_at_utc", "inventory_status"],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"},
+        "inventory_status": {"enum": ["complete", "partial"]}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument_count", "maximum_instrument_id", "minimum_instrument_id", "usdt_linear_perpetual_count"],
+      "properties": {
+        "instrument_count": {"type": "integer", "minimum": 1},
+        "maximum_instrument_id": {"$ref": "#/$defs/instrumentId"},
+        "minimum_instrument_id": {"$ref": "#/$defs/instrumentId"},
+        "usdt_linear_perpetual_count": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"},
+    "instrumentId": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_time_ms", "category", "instrument_id", "source_symbol_id", "symbol", "contract_type", "status", "base_coin", "quote_coin", "settle_coin", "launch_time_ms", "delivery_time_ms", "tick_size", "quantity_step", "min_order_quantity", "max_order_quantity", "min_leverage", "max_leverage", "funding_interval_minutes", "source_payload_sha256"],
+      "properties": {
+        "snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "category": {"const": "linear"},
+        "instrument_id": {"$ref": "#/$defs/instrumentId"},
+        "source_symbol_id": {"$ref": "#/$defs/instrumentId"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "contract_type": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "base_coin": {"type": "string", "minLength": 1},
+        "quote_coin": {"type": "string", "minLength": 1},
+        "settle_coin": {"type": "string", "minLength": 1},
+        "launch_time_ms": {"type": "integer", "minimum": 0},
+        "delivery_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "tick_size": {"$ref": "#/$defs/decimal"},
+        "quantity_step": {"$ref": "#/$defs/decimal"},
+        "min_order_quantity": {"$ref": "#/$defs/decimal"},
+        "max_order_quantity": {"$ref": "#/$defs/decimal"},
+        "min_leverage": {"$ref": "#/$defs/decimal"},
+        "max_leverage": {"$ref": "#/$defs/decimal"},
+        "funding_interval_minutes": {"type": ["integer", "null"], "minimum": 1},
+        "source_payload_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

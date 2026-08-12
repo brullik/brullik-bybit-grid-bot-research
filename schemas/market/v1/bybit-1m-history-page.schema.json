@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/bybit-1m-history-page.schema.json",
+  "title": "Staged Bybit public one-minute page v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attempt_count", "category", "contract", "end_ms", "instrument_id", "kind", "limit", "row_count", "rows", "rows_sha256", "sequence", "start_ms", "symbol"],
+  "properties": {
+    "attempt_count": {"type": "integer", "minimum": 1, "maximum": 5},
+    "category": {"const": "linear"},
+    "contract": {"const": "grid.bybit-1m-history-page/v1"},
+    "end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "kind": {"enum": ["trade", "mark"]},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "rows": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"type": "array", "minItems": 5, "maxItems": 7, "items": {"type": "string"}}
+    },
+    "rows_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+  }
+}

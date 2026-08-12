@@ -28,6 +28,11 @@ This is a
 finite-run baseline, not an accepted production rate; Phase 2 must add adaptive throttling,
 durable resume, and long-run validation.
 
+ADR-0023 implements the first durable Phase 2 baseline with a global 10-RPS pacer, fixed
+non-overlapping pages, explicit bounded retries, page receipts, and receipt-based resume. It does
+not raise its operating rate automatically; adaptive response-header throttling and long-run
+qualification remain required before a larger campaign.
+
 ## Data layers
 
 ```mermaid
@@ -46,6 +51,10 @@ flowchart LR
 Temporary, preflight-bounded workspace for REST pages or compatible one-minute bulk files. Files
 are untrusted and may be deleted after a committed Bronze/canonical receipt exists. Tick-trade
 archive bodies must not enter Landing.
+
+The first REST implementation stores one canonical JSON artifact and receipt per fixed page under
+`.landing/<job-id>--<plan-hash>/pages/`. A verified completion receipt makes the Landing batch
+loadable; it does not make the batch a committed canonical dataset.
 
 ### Bronze evidence
 
@@ -92,6 +101,11 @@ Symbols are not sufficient primary identities because contracts can change statu
 - eligibility flags.
 
 Research joins by `instrument_id` and effective timestamp, not by today's symbol metadata.
+
+For the Phase 2 Bybit-linear v1 namespace, ADR-0023 freezes
+`instrument_id = source_symbol_id` after verifying positive UInt32 range and snapshot-wide
+uniqueness. Requests contain symbols, never caller-supplied IDs. Other categories or exchanges
+require a new namespace policy rather than reusing these integers silently.
 
 ## Canonical 1m key
 
