@@ -84,6 +84,15 @@
   the current-universe capacity to its exact workstation snapshot, rechecks current CPU/RAM/NVMe
   identity and free bytes, and publishes either qualified or auditable insufficient-space status
   without accepting Gate 1.
+- Append-only feature/layout v3 workload admission that consumes a fresh measured-host
+  qualification, forbids ambiguous legacy-plus-successor admission, binds the measured volume,
+  rechecks current identity and required free space before and after timed work, preserves the 70%
+  feature-memory and four-distinct-reboot gates, and cannot accept Gate 1.
+- Read-only inventory of the owner's older 1m archive: 29,098,027 trade/mark rows across 123
+  symbols in 541,389,842 bytes. Its separate legacy run report measured 29,120,414 rows in 372.558
+  seconds with zero failures. The observation informs capacity and throughput expectations but is
+  not imported as canonical evidence because it lacks current receipts and stores prices as
+  binary floating point.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings

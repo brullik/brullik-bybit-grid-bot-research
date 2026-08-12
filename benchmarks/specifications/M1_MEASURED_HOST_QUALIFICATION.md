@@ -57,5 +57,6 @@ The checked-in run reported `qualified-measured-reference-host`: 100,228,313,013
 ## Remaining boundary
 
 Qualification does not prove the pinned Python 3.12 environment or reboot-separated cold-cache
-measurements. A later append-only implementation must consume this artifact in successor layout,
-feature, review-pack, and campaign-plan contracts before the reference campaign can start.
+measurements. Append-only feature and layout v3 workloads now consume and recheck this artifact.
+Successor review-pack and campaign-plan contracts must still consume their v3 results, and the
+pinned environment must pass, before the reference campaign can start.

@@ -31,6 +31,7 @@ MAXIMUM_FEATURE_MEMORY_PERCENT = Decimal("70")
 OPERATING_RESERVE_BYTES = 8 * GIB
 ALLOWED_STORAGE_KINDS = ("nvme", "ssd")
 MAXIMUM_CAPACITY_AGE = timedelta(hours=24)
+MAXIMUM_QUALIFICATION_AGE = timedelta(hours=24)
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -231,6 +232,97 @@ def current_host_observation(workstation: dict[str, Any], output: Path) -> dict[
         "volume_root": hardware["volume_root"],
         "volume_total_bytes": disk.total,
     }
+
+
+def _parse_utc(value: object, label: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{label} is not a valid timestamp") from error
+    if parsed.tzinfo is None:
+        raise ValueError(f"{label} must include a UTC offset")
+    return parsed.astimezone(UTC)
+
+
+def qualification_summary(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the immutable qualification fields embedded in successor evidence."""
+
+    resolved = path.resolve()
+    return {
+        "artifact": resolved.name,
+        "artifact_sha256": sha256_file(resolved),
+        "evidence_schema": payload["evidence_schema"],
+        "hardware": payload["hardware"],
+        "qualified_at_utc": payload["qualified_at_utc"],
+        "qualification": payload["qualification"],
+        "status": payload["status"],
+    }
+
+
+def recheck_admitted_qualification(
+    summary: dict[str, Any],
+    *,
+    required_volume_path: Path | None = None,
+) -> None:
+    """Fail closed if the current host, volume, or free space drifted after qualification."""
+
+    hardware = summary.get("hardware")
+    measured = summary.get("qualification")
+    if not isinstance(hardware, dict) or not isinstance(measured, dict):
+        raise ValueError("measured host qualification summary is malformed")
+    if current_hardware() != _basic_hardware(hardware):
+        raise ValueError("measured host qualification does not match the current host")
+    volume_root = hardware.get("volume_root")
+    if not isinstance(volume_root, str) or not volume_root:
+        raise ValueError("measured host qualification has no volume root")
+    evidence_volume = Path(volume_root).resolve()
+    if (
+        required_volume_path is not None
+        and volume_root_for_path(required_volume_path) != evidence_volume
+    ):
+        raise ValueError("reference workload is not on the qualified volume")
+    current_kind, current_model = storage_identity(evidence_volume)
+    disk = psutil.disk_usage(str(evidence_volume))
+    required_free = measured.get("required_free_bytes")
+    if (
+        hardware.get("cpu_model") != cpu_model()
+        or current_kind not in ALLOWED_STORAGE_KINDS
+        or hardware.get("storage_kind") != current_kind
+        or hardware.get("storage_model") != current_model
+        or hardware.get("volume_total_bytes") != disk.total
+        or isinstance(required_free, bool)
+        or not isinstance(required_free, int)
+        or required_free <= 0
+    ):
+        raise ValueError("measured host identity or qualification requirement changed")
+    if disk.free < required_free:
+        raise ValueError("qualified volume no longer has the required current free space")
+
+
+def admit_measured_host_qualification(
+    path: Path,
+    *,
+    required_volume_path: Path | None = None,
+    admitted_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Verify a qualification receipt/schema, freshness, identity, volume, and live free space."""
+
+    resolved = path.resolve()
+    payload = load_verified_evidence(resolved, OUTPUT_SCHEMA)
+    if (
+        payload.get("status") != "qualified-measured-reference-host"
+        or payload.get("qualification", {}).get("qualified") is not True
+    ):
+        raise ValueError("measured host qualification is not qualified")
+    now = datetime.now(UTC) if admitted_at is None else admitted_at
+    if now.tzinfo is None:
+        raise ValueError("qualification admission timestamp must include a UTC offset")
+    age = now.astimezone(UTC) - _parse_utc(payload["qualified_at_utc"], "qualification timestamp")
+    if age < timedelta() or age > MAXIMUM_QUALIFICATION_AGE:
+        raise ValueError("measured host qualification is future-dated or older than 24 hours")
+    summary = qualification_summary(resolved, payload)
+    recheck_admitted_qualification(summary, required_volume_path=required_volume_path)
+    return summary
 
 
 def build_qualification(

@@ -83,6 +83,42 @@ def reference_host_summary() -> dict[str, object]:
     }
 
 
+def qualified_host_summary() -> dict[str, object]:
+    return {
+        "artifact": "measured-host-qualification.json",
+        "artifact_sha256": "b" * 64,
+        "evidence_schema": "grid.reference-host-qualification/v1",
+        "hardware": {
+            "cpu_count_logical": 12,
+            "cpu_count_physical": 6,
+            "cpu_model": "Measured CPU",
+            "machine": "AMD64",
+            "platform": "Measured OS",
+            "ram_bytes": 16_476_225_536,
+            "storage_kind": "nvme",
+            "storage_model": "Measured NVMe",
+            "volume_free_bytes": 192_452_521_984,
+            "volume_root": "C:\\",
+            "volume_total_bytes": 511_439_781_888,
+        },
+        "qualified_at_utc": "2026-08-12T12:00:00Z",
+        "qualification": {
+            "campaign_scratch_required_bytes": 1_642_763_483,
+            "canonical_rebuild_required_bytes": 89_995_614_938,
+            "feature_peak_rss_bytes": 1_511_342_080,
+            "feature_peak_rss_percent_of_ram": "9.172865938",
+            "free_space_headroom_bytes": 92_224_208_971,
+            "free_space_shortfall_bytes": 0,
+            "maximum_layout_peak_rss_bytes": 1_108_500_480,
+            "observed_free_bytes": 192_452_521_984,
+            "qualified": True,
+            "required_free_bytes": 100_228_313_013,
+            "same_host_full_scale_evidence": True,
+        },
+        "status": "qualified-measured-reference-host",
+    }
+
+
 def feature_result(*, peak_rss_bytes: int = 1024) -> dict[str, object]:
     aggregate_sums = {
         name: "1.000000000"
@@ -260,7 +296,7 @@ def test_reference_feature_requires_matching_full_profile_before_work(
 
 
 def test_feature_host_evidence_is_reference_only(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="requires --reference-host-evidence"):
+    with pytest.raises(ValueError, match="requires exactly one"):
         feature_benchmark.run_feature_benchmark(
             profile="reference",
             requested_rows=100_000_000,
@@ -359,6 +395,113 @@ def test_reference_feature_binds_host_and_emits_v2_contract(
     assert payload["status"] == "reference-host-feature-candidate"
     assert payload["reference_host_evidence"] == admitted
     assert verify_evidence(output)
+
+
+def test_reference_feature_binds_measured_qualification_and_emits_v3_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admitted = qualified_host_summary()
+    admission_calls: list[tuple[Path, Path | None]] = []
+
+    def admit(path: Path, *, required_volume_path: Path | None = None) -> dict[str, object]:
+        admission_calls.append((path, required_volume_path))
+        return admitted
+
+    monkeypatch.setattr(feature_benchmark, "admit_measured_host_qualification", admit)
+    monkeypatch.setattr(feature_benchmark, "benchmark_shards", lambda *_args: feature_result())
+    monkeypatch.setattr(
+        feature_benchmark,
+        "_hardware",
+        lambda: {
+            "cpu_count_logical": 12,
+            "cpu_count_physical": 6,
+            "machine": "AMD64",
+            "platform": "Measured OS",
+            "ram_bytes": 16_476_225_536,
+        },
+    )
+    monkeypatch.setattr(
+        feature_benchmark.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(total=16_476_225_536),
+    )
+    output = tmp_path / "qualified-feature-reference.json"
+    qualification = Path("measured-host-qualification.json")
+
+    payload = feature_benchmark.run_feature_benchmark(
+        profile="reference",
+        requested_rows=100_000_000,
+        instruments=700,
+        core_minutes=2_880,
+        window_minutes=1_440,
+        memory_limit_percent=70,
+        output=output,
+        reference_host_evidence=None,
+        reference_host_qualification=qualification,
+        command="qualified feature reference test",
+    )
+
+    schema = json.loads(
+        Path("schemas/evidence/v3/feature-benchmark.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    assert admission_calls == [(qualification, output), (qualification, output)]
+    assert payload["benchmark_schema"] == "grid.feature-benchmark/v3"
+    assert payload["status"] == "qualified-host-feature-candidate"
+    assert payload["reference_host_qualification"] == admitted
+    assert verify_evidence(output)
+
+
+def test_reference_feature_rejects_ambiguous_host_admission(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires exactly one"):
+        feature_benchmark.run_feature_benchmark(
+            profile="reference",
+            requested_rows=100_000_000,
+            instruments=700,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=tmp_path / "ambiguous-host.json",
+            reference_host_evidence=Path("legacy-host.json"),
+            reference_host_qualification=Path("measured-host.json"),
+            command="ambiguous feature reference test",
+        )
+
+
+def test_reference_feature_rejects_qualification_drift_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admitted = qualified_host_summary()
+    changed = {**admitted, "artifact_sha256": "c" * 64}
+    summaries = iter((admitted, changed))
+    monkeypatch.setattr(
+        feature_benchmark,
+        "admit_measured_host_qualification",
+        lambda *_args, **_kwargs: next(summaries),
+    )
+    monkeypatch.setattr(feature_benchmark, "benchmark_shards", lambda *_args: feature_result())
+    monkeypatch.setattr(
+        feature_benchmark.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(total=16_476_225_536),
+    )
+    output = tmp_path / "qualified-feature-reference.json"
+
+    with pytest.raises(RuntimeError, match="qualification changed"):
+        feature_benchmark.run_feature_benchmark(
+            profile="reference",
+            requested_rows=100_000_000,
+            instruments=700,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=output,
+            reference_host_evidence=None,
+            reference_host_qualification=Path("measured-host.json"),
+            command="qualified feature drift test",
+        )
+
+    assert not output.exists()
 
 
 def test_reference_feature_publishes_failed_memory_gate_as_rejected(
@@ -764,7 +907,7 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
             "status": "meets-documented-full-research-profile",
         },
     )
-    with pytest.raises(ValueError, match="full-profile host evidence"):
+    with pytest.raises(ValueError, match="exactly one reference-host admission"):
         prepare_reference_workdir(
             work_dir=work_dir,
             decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
@@ -829,12 +972,117 @@ def test_reference_protocol_accepts_only_distinct_post_preparation_boots(
     assert len({item["boot_marker"] for item in payload["measurements"]}) == 4
 
 
+def test_qualified_reference_protocol_rechecks_host_and_emits_v3_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work_dir = tmp_path / "qualified-reference-layout"
+    qualification_path = Path("measured-host-qualification.json")
+    admitted = qualified_host_summary()
+    boot_markers = iter(
+        [
+            "2026-02-01T00:00:00Z",
+            "2026-02-02T00:00:00Z",
+            "2026-02-03T00:00:00Z",
+            "2026-02-04T00:00:00Z",
+            "2026-02-05T00:00:00Z",
+        ]
+    )
+    admission_calls: list[tuple[Path, Path | None]] = []
+    recheck_paths: list[Path | None] = []
+
+    def admit(path: Path, *, required_volume_path: Path | None = None) -> dict[str, object]:
+        admission_calls.append((path, required_volume_path))
+        return admitted
+
+    def recheck(summary: dict[str, object], *, required_volume_path: Path | None = None) -> None:
+        assert summary == admitted
+        recheck_paths.append(required_volume_path)
+
+    monkeypatch.setattr(reference_benchmark, "FULL_MINIMUM_EFFECTIVE_ROWS", 20_000)
+    monkeypatch.setattr(reference_benchmark, "FULL_INSTRUMENTS", 10)
+    monkeypatch.setattr(reference_benchmark, "_boot_marker", lambda: next(boot_markers))
+    monkeypatch.setattr(reference_benchmark, "admit_measured_host_qualification", admit)
+    monkeypatch.setattr(reference_benchmark, "recheck_admitted_qualification", recheck)
+    actual_write_layout = reference_benchmark.write_layout
+
+    def simulated_reference_write(**kwargs: object) -> dict[str, object]:
+        result = actual_write_layout(**kwargs)  # type: ignore[arg-type]
+        return {**result, "target_file_exercised": True}
+
+    monkeypatch.setattr(reference_benchmark, "write_layout", simulated_reference_write)
+    prepare_reference_workdir(
+        work_dir=work_dir,
+        decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+        profile="reference",
+        rows=20_000,
+        instruments=10,
+        row_group_rows=1_000,
+        generation_chunk_rows=2_000,
+        real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+        reference_host_qualification=qualification_path,
+    )
+    for engine in ("duckdb", "polars"):
+        for query_shape in ("single-symbol", "universe-month"):
+            measure_leg(
+                work_dir=work_dir,
+                engine=engine,
+                query_shape=query_shape,
+                cache_proof="reboot",
+            )
+
+    output = tmp_path / "qualified-reference-layout-result.json"
+    finalize_reference_evidence(work_dir=work_dir, output=output)
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    schema_payload = json.loads(json.dumps(payload))
+    schema_payload["preparation"]["input"]["instrument_count"] = 700
+    schema_payload["preparation"]["input"]["row_count"] = 99_999_900
+    schema = json.loads(
+        Path("schemas/evidence/v3/reference-layout-benchmark.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(schema_payload)
+    run_payload = json.loads((work_dir / "run.json").read_text(encoding="utf-8"))
+
+    assert admission_calls == [(qualification_path, work_dir.resolve())]
+    assert len(recheck_paths) == 11
+    assert set(recheck_paths) == {work_dir.resolve()}
+    assert run_payload["run_schema"] == "grid.reference-layout-run/v3"
+    assert payload["benchmark_schema"] == "grid.reference-layout-benchmark/v3"
+    assert payload["status"] == "qualified-reference-protocol-candidate"
+    assert payload["preparation"]["reference_host_qualification"] == admitted
+    assert {item["measurement_schema"] for item in payload["measurements"]} == {
+        "grid.reference-layout-measurement/v3"
+    }
+    assert verify_evidence(output)
+
+
 def test_reference_host_admission_rejects_current_below_profile(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="does not meet"):
         reference_benchmark._reference_host_input(
             Path("benchmarks/results/m1-workstation-snapshot.json"),
             tmp_path / "reference-work",
         )
+
+
+def test_reference_layout_rejects_ambiguous_host_admission_before_work(tmp_path: Path) -> None:
+    work_dir = tmp_path / "ambiguous-reference-work"
+
+    with pytest.raises(ValueError, match="exactly one reference-host admission"):
+        prepare_reference_workdir(
+            work_dir=work_dir,
+            decision_path=Path("benchmarks/results/m1-layout-exact-decision-candidate.json"),
+            profile="reference",
+            rows=100_000_000,
+            instruments=700,
+            row_group_rows=100_000,
+            generation_chunk_rows=1_000_000,
+            real_market_evidence=Path("benchmarks/results/m1-real-market-layout-skew.json"),
+            reference_host_evidence=Path("legacy-host.json"),
+            reference_host_qualification=Path("measured-host.json"),
+        )
+
+    assert not work_dir.exists()
 
 
 def test_invalid_reference_host_does_not_replace_owned_workdir(

@@ -71,6 +71,27 @@ python -m benchmarks.reference_layout_benchmark prepare `
   --reference-host-evidence D:\grid-reference\reference-host.json
 ```
 
+That command preserves the legacy v2 path. The implemented ADR-0019 v3 path replaces only the
+host-admission argument:
+
+```powershell
+python -m benchmarks.reference_layout_benchmark prepare `
+  --work-dir D:\grid-reference\reference-layout-qualified `
+  --profile reference --rows 100000000 --instruments 700 `
+  --row-group-rows 100000 --generation-chunk-rows 1000000 `
+  --real-market-evidence benchmarks/results/m1-real-market-layout-skew.json `
+  --reference-host-qualification `
+    benchmarks/results/m1-owner-measured-host-qualification-20260812.json
+```
+
+Preparation requires exactly one legacy or qualified-host admission. V3 requires a qualification
+no more than 24 hours old, binds the work volume, and rechecks current CPU/RAM/storage identity,
+required free space, and the pinned software before publishing preparation. Each later measurement
+and the finalizer recheck the embedded immutable qualification and current free space without
+reapplying the 24-hour age limit, because four reboot-separated legs may legitimately span more
+than one day. A complete v3 result is `qualified-reference-protocol-candidate`; it still cannot
+accept Gate 1.
+
 For each of the four engine/query combinations:
 
 1. reboot the declared reference host;
