@@ -28,8 +28,9 @@ Add the append-only `grid.reference-campaign-plan/v1` contract and a two-command
 - no generated command contains `--force`, and the campaign root must be a dedicated directory
   outside the repository on the workstation snapshot's measured volume;
 - `status` is read-only, accepts only receipt-marked artifacts in plan order, verifies pinned
-  sources and the current host again, detects invalid/out-of-order evidence, and identifies the
-  next command or required reboot;
+  sources and the current host again, cross-binds the final layout, feature, and review artifacts
+  to the campaign preparation, scale, host, and exact source hashes, detects invalid/out-of-order
+  evidence, and identifies the next command or required reboot;
 - every measurement must bind the current preparation and have a distinct boot marker; and
 - even a complete ready review pack reports Gate 1 as `pending-owner-decision` with automatic
   acceptance disabled.

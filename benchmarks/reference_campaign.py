@@ -406,6 +406,156 @@ def _schema_artifact_state(
     return "complete", payload, None
 
 
+def _expected_reference_input() -> dict[str, int]:
+    return {
+        "generation_chunk_rows": GENERATION_CHUNK_ROWS,
+        "instrument_count": REFERENCE_INSTRUMENTS,
+        "row_count": EFFECTIVE_REFERENCE_ROWS,
+        "row_group_rows": ROW_GROUP_ROWS,
+    }
+
+
+def _matches_source(
+    reference: object,
+    source: Mapping[str, Any],
+    *,
+    schema_key: str,
+) -> bool:
+    if not isinstance(reference, Mapping):
+        return False
+    return all(
+        reference.get(key) == expected
+        for key, expected in (
+            ("artifact", source["artifact"]),
+            ("artifact_sha256", source["artifact_sha256"]),
+            (schema_key, source["schema"]),
+            ("status", source["status"]),
+        )
+    )
+
+
+def _layout_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    *,
+    preparation_hash: str | None,
+) -> str | None:
+    preparation = payload.get("preparation")
+    sources = plan["sources"]
+    if (
+        payload.get("profile") != "reference"
+        or payload.get("status") != "reference-protocol-candidate"
+        or not isinstance(preparation, Mapping)
+        or preparation_hash is None
+        or preparation.get("artifact_sha256") != preparation_hash
+        or preparation.get("input") != _expected_reference_input()
+        or preparation.get("reference_host_evidence") != plan["reference_host"]
+        or not _matches_source(
+            preparation.get("decision_evidence"),
+            sources["decision"],
+            schema_key="benchmark_schema",
+        )
+        or not _matches_source(
+            preparation.get("real_market_evidence"),
+            sources["real_market"],
+            schema_key="evidence_schema",
+        )
+    ):
+        return "final layout does not bind the campaign preparation, scale, host, or sources"
+    return None
+
+
+def _feature_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+) -> str | None:
+    expected_input = {
+        "core_minutes_per_shard": 2880,
+        "instrument_count": REFERENCE_INSTRUMENTS,
+        "row_count": EFFECTIVE_REFERENCE_ROWS,
+        "window_minutes": 1440,
+    }
+    raw_input = payload.get("input")
+    memory_gate = payload.get("memory_gate")
+    status = payload.get("status")
+    if (
+        payload.get("profile") != "reference"
+        or status not in {"reference-host-feature-candidate", "reference-feature-rejected-memory"}
+        or not isinstance(raw_input, Mapping)
+        or any(raw_input.get(key) != value for key, value in expected_input.items())
+        or payload.get("reference_host_evidence") != plan["reference_host"]
+        or not isinstance(memory_gate, Mapping)
+        or memory_gate.get("configured_limit_percent") != 70
+        or (status == "reference-host-feature-candidate") != (memory_gate.get("passed") is True)
+    ):
+        return "feature result does not bind the campaign scale, host, or memory limit"
+    return None
+
+
+def _review_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    *,
+    layout_path: Path,
+    layout_payload: Mapping[str, Any] | None,
+    feature_path: Path,
+    feature_payload: Mapping[str, Any] | None,
+) -> str | None:
+    if layout_payload is None or feature_payload is None:
+        return "review pack exists without valid campaign layout and feature results"
+
+    def source_summary(
+        path: Path, source_payload: Mapping[str, Any], schema_key: str
+    ) -> dict[str, str]:
+        return {
+            "artifact": path.name,
+            "artifact_sha256": sha256_file(path),
+            "schema": str(source_payload[schema_key]),
+            "status": str(source_payload["status"]),
+        }
+
+    sources = plan["sources"]
+    expected_sources = {
+        "decision_layout": {
+            key: sources["decision"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+        "feature": source_summary(feature_path, feature_payload, "benchmark_schema"),
+        "layout": source_summary(layout_path, layout_payload, "benchmark_schema"),
+        "real_market": {
+            key: sources["real_market"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+        "workstation": {
+            key: sources["workstation"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+    }
+    gate = payload.get("gate_1")
+    blockers = gate.get("blockers") if isinstance(gate, Mapping) else None
+    status = payload.get("status")
+    classification_matches_blockers = isinstance(blockers, list) and (
+        (status == "ready-for-owner-review" and not blockers)
+        or (status == "blocked-by-reference-results" and bool(blockers))
+    )
+    if (
+        status not in {"ready-for-owner-review", "blocked-by-reference-results"}
+        or not classification_matches_blockers
+        or payload.get("reference_host") != plan["reference_host"]
+        or payload.get("sources") != expected_sources
+        or payload.get("owner_decision_required") is not True
+        or gate
+        != {
+            "automatic_promotion": False,
+            "blockers": blockers,
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        }
+    ):
+        return "review pack does not bind the campaign results, host, sources, or owner gate"
+    return None
+
+
 def _current_boot_marker() -> str:
     return datetime.fromtimestamp(int(psutil.boot_time()), UTC).isoformat().replace("+00:00", "Z")
 
@@ -447,14 +597,8 @@ def campaign_status(plan_path: Path) -> dict[str, Any]:
     )
     preparation = artifact_states["layout-prepare"][1]
     if preparation is not None:
-        expected_input = {
-            "generation_chunk_rows": GENERATION_CHUNK_ROWS,
-            "instrument_count": REFERENCE_INSTRUMENTS,
-            "row_count": EFFECTIVE_REFERENCE_ROWS,
-            "row_group_rows": ROW_GROUP_ROWS,
-        }
         preparation_mismatch = bool(
-            preparation.get("input") != expected_input
+            preparation.get("input") != _expected_reference_input()
             or preparation.get("reference_host_evidence") != plan["reference_host"]
             or preparation.get("decision_evidence", {}).get("artifact_sha256")
             != plan["sources"]["decision"]["artifact_sha256"]
@@ -498,24 +642,46 @@ def campaign_status(plan_path: Path) -> dict[str, Any]:
                 "measurement does not bind the current preparation",
             )
         artifact_states[step_id] = measurement_state
-    artifact_states["layout-finalize"] = _schema_artifact_state(
-        campaign_root / LAYOUT_OUTPUT_NAME,
-        LAYOUT_SCHEMA,
-    )
-    artifact_states["feature-reference"] = _schema_artifact_state(
-        campaign_root / FEATURE_OUTPUT_NAME,
-        FEATURE_SCHEMA,
-    )
-    artifact_states["gate1-review-pack"] = _schema_artifact_state(
-        campaign_root / REVIEW_OUTPUT_NAME,
-        REVIEW_SCHEMA,
-    )
+    layout_path = campaign_root / LAYOUT_OUTPUT_NAME
+    layout_state = _schema_artifact_state(layout_path, LAYOUT_SCHEMA)
+    if layout_state[0] == "complete" and layout_state[1] is not None:
+        reason = _layout_completion_reason(
+            layout_state[1],
+            plan,
+            preparation_hash=preparation_hash,
+        )
+        if reason is not None:
+            layout_state = ("invalid", None, reason)
+    artifact_states["layout-finalize"] = layout_state
+
+    feature_path = campaign_root / FEATURE_OUTPUT_NAME
+    feature_state = _schema_artifact_state(feature_path, FEATURE_SCHEMA)
+    if feature_state[0] == "complete" and feature_state[1] is not None:
+        reason = _feature_completion_reason(feature_state[1], plan)
+        if reason is not None:
+            feature_state = ("invalid", None, reason)
+    artifact_states["feature-reference"] = feature_state
+
+    review_state = _schema_artifact_state(campaign_root / REVIEW_OUTPUT_NAME, REVIEW_SCHEMA)
+    if review_state[0] == "complete" and review_state[1] is not None:
+        reason = _review_completion_reason(
+            review_state[1],
+            plan,
+            layout_path=layout_path,
+            layout_payload=layout_state[1],
+            feature_path=feature_path,
+            feature_payload=feature_state[1],
+        )
+        if reason is not None:
+            review_state = ("invalid", None, reason)
+    artifact_states["gate1-review-pack"] = review_state
 
     ordered_steps = list(plan["steps"])
     seen_pending = False
     status_rows: list[dict[str, Any]] = []
     invalid_reasons: list[str] = []
     boot_markers: list[str] = []
+    preparation_boot_marker = preparation.get("boot_marker") if preparation is not None else None
     for step in ordered_steps:
         step_id = str(step["id"])
         step_state, payload, reason = artifact_states[step_id]
@@ -528,9 +694,14 @@ def campaign_status(plan_path: Path) -> dict[str, Any]:
             invalid_reasons.append(f"{step_id}: {reason}")
         if payload is not None and step["requires_reboot_before"]:
             marker = payload.get("boot_marker")
-            if not isinstance(marker, str) or not marker or marker in boot_markers:
+            if (
+                not isinstance(marker, str)
+                or not marker
+                or marker == preparation_boot_marker
+                or marker in boot_markers
+            ):
                 step_state = "invalid"
-                reason = "measurement boot marker is missing or not distinct"
+                reason = "measurement boot marker is missing or not distinct from prior stages"
                 invalid_reasons.append(f"{step_id}: {reason}")
             else:
                 boot_markers.append(marker)

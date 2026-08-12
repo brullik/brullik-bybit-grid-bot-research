@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,84 @@ def publish_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path,
     return campaign_root / campaign.PLAN_NAME, payload
 
 
+def final_payloads(
+    plan: dict[str, Any],
+    *,
+    preparation_hash: str,
+    layout_hash: str = "b" * 64,
+    feature_hash: str = "c" * 64,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    sources = plan["sources"]
+    layout = {
+        "benchmark_schema": "grid.reference-layout-benchmark/v2",
+        "preparation": {
+            "artifact_sha256": preparation_hash,
+            "decision_evidence": {
+                "artifact": sources["decision"]["artifact"],
+                "artifact_sha256": sources["decision"]["artifact_sha256"],
+                "benchmark_schema": sources["decision"]["schema"],
+                "status": sources["decision"]["status"],
+            },
+            "input": campaign._expected_reference_input(),
+            "real_market_evidence": {
+                "artifact": sources["real_market"]["artifact"],
+                "artifact_sha256": sources["real_market"]["artifact_sha256"],
+                "evidence_schema": sources["real_market"]["schema"],
+                "status": sources["real_market"]["status"],
+            },
+            "reference_host_evidence": plan["reference_host"],
+        },
+        "profile": "reference",
+        "status": "reference-protocol-candidate",
+    }
+    feature = {
+        "benchmark_schema": "grid.feature-benchmark/v2",
+        "input": {
+            "core_minutes_per_shard": 2880,
+            "instrument_count": 700,
+            "row_count": 99_999_900,
+            "window_minutes": 1440,
+        },
+        "memory_gate": {"configured_limit_percent": 70, "passed": True},
+        "profile": "reference",
+        "reference_host_evidence": plan["reference_host"],
+        "status": "reference-host-feature-candidate",
+    }
+
+    def compact(source: dict[str, Any]) -> dict[str, str]:
+        return {key: source[key] for key in ("artifact", "artifact_sha256", "schema", "status")}
+
+    review = {
+        "gate_1": {
+            "automatic_promotion": False,
+            "blockers": [],
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        },
+        "owner_decision_required": True,
+        "reference_host": plan["reference_host"],
+        "sources": {
+            "decision_layout": compact(sources["decision"]),
+            "feature": {
+                "artifact": campaign.FEATURE_OUTPUT_NAME,
+                "artifact_sha256": feature_hash,
+                "schema": feature["benchmark_schema"],
+                "status": feature["status"],
+            },
+            "layout": {
+                "artifact": campaign.LAYOUT_OUTPUT_NAME,
+                "artifact_sha256": layout_hash,
+                "schema": layout["benchmark_schema"],
+                "status": layout["status"],
+            },
+            "real_market": compact(sources["real_market"]),
+            "workstation": compact(sources["workstation"]),
+        },
+        "status": "ready-for-owner-review",
+    }
+    return layout, feature, review
+
+
 def test_campaign_plan_rejects_below_profile_before_mutation(tmp_path: Path) -> None:
     campaign_root = tmp_path / "rejected-campaign"
 
@@ -213,3 +292,168 @@ def test_campaign_status_blocks_unreceipted_artifact(
     assert status["campaign_status"] == "blocked-invalid-artifact"
     assert status["next_action"] is None
     assert status["invalid_reasons"] == ["layout-prepare: completion receipt does not verify"]
+
+
+def test_campaign_status_rejects_measurement_from_preparation_boot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path, plan = publish_plan(tmp_path, monkeypatch)
+    preparation_path = Path(plan["steps"][0]["expected_artifact"])
+    preparation_boot = "2026-08-12T10:00:00Z"
+    publish_evidence(
+        preparation_path,
+        {
+            "boot_marker": preparation_boot,
+            "decision_evidence": {
+                "artifact_sha256": plan["sources"]["decision"]["artifact_sha256"]
+            },
+            "input": campaign._expected_reference_input(),
+            "preparation_schema": "grid.reference-layout-preparation/v2",
+            "profile": "reference",
+            "real_market_evidence": {
+                "artifact_sha256": plan["sources"]["real_market"]["artifact_sha256"]
+            },
+            "reference_host_evidence": plan["reference_host"],
+            "status": "prepared-for-separated-measurement",
+        },
+    )
+    measurement_path = preparation_path.parent / "measurement-duckdb-single-symbol.json"
+    publish_evidence(
+        measurement_path,
+        {
+            "boot_marker": preparation_boot,
+            "cache_proof": "reboot",
+            "engine": "duckdb",
+            "measurement_schema": "grid.reference-layout-measurement/v2",
+            "preparation": {"artifact_sha256": sha256_file(preparation_path)},
+            "profile": "reference",
+            "query_shape": "single-symbol",
+            "status": "reboot-separated-first-read",
+        },
+    )
+
+    status = campaign.campaign_status(plan_path)
+
+    assert status["campaign_status"] == "blocked-invalid-artifact"
+    assert status["invalid_reasons"] == [
+        "layout-measure-duckdb-single-symbol: measurement boot marker is missing or not "
+        "distinct from prior stages"
+    ]
+
+
+def test_final_artifact_bindings_reject_other_campaign_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _plan_path, plan = publish_plan(tmp_path, monkeypatch)
+    layout_path = tmp_path / campaign.LAYOUT_OUTPUT_NAME
+    feature_path = tmp_path / campaign.FEATURE_OUTPUT_NAME
+    layout_path.write_text("layout\n", encoding="utf-8")
+    feature_path.write_text("feature\n", encoding="utf-8")
+    layout_hash = sha256_file(layout_path)
+    feature_hash = sha256_file(feature_path)
+    layout, feature, review = final_payloads(
+        plan,
+        preparation_hash="a" * 64,
+        layout_hash=layout_hash,
+        feature_hash=feature_hash,
+    )
+
+    assert campaign._layout_completion_reason(layout, plan, preparation_hash="a" * 64) is None
+    assert campaign._feature_completion_reason(feature, plan) is None
+    assert (
+        campaign._review_completion_reason(
+            review,
+            plan,
+            layout_path=layout_path,
+            layout_payload=layout,
+            feature_path=feature_path,
+            feature_payload=feature,
+        )
+        is None
+    )
+
+    foreign_layout = deepcopy(layout)
+    foreign_layout["preparation"]["decision_evidence"]["artifact_sha256"] = "d" * 64
+    assert "does not bind" in str(
+        campaign._layout_completion_reason(
+            foreign_layout,
+            plan,
+            preparation_hash="a" * 64,
+        )
+    )
+
+    foreign_feature = deepcopy(feature)
+    foreign_feature["reference_host_evidence"]["artifact_sha256"] = "e" * 64
+    assert "does not bind" in str(campaign._feature_completion_reason(foreign_feature, plan))
+
+    foreign_review = deepcopy(review)
+    foreign_review["sources"]["layout"]["artifact_sha256"] = "f" * 64
+    assert "does not bind" in str(
+        campaign._review_completion_reason(
+            foreign_review,
+            plan,
+            layout_path=layout_path,
+            layout_payload=layout,
+            feature_path=feature_path,
+            feature_payload=feature,
+        )
+    )
+
+
+def test_campaign_status_blocks_cross_campaign_final_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path, plan = publish_plan(tmp_path, monkeypatch)
+    preparation_path = Path(plan["steps"][0]["expected_artifact"])
+    publish_evidence(
+        preparation_path,
+        {
+            "boot_marker": "2026-08-12T10:00:00Z",
+            "decision_evidence": {
+                "artifact_sha256": plan["sources"]["decision"]["artifact_sha256"]
+            },
+            "input": campaign._expected_reference_input(),
+            "preparation_schema": "grid.reference-layout-preparation/v2",
+            "profile": "reference",
+            "real_market_evidence": {
+                "artifact_sha256": plan["sources"]["real_market"]["artifact_sha256"]
+            },
+            "reference_host_evidence": plan["reference_host"],
+            "status": "prepared-for-separated-measurement",
+        },
+    )
+    preparation_hash = sha256_file(preparation_path)
+    for index, (engine, query_shape) in enumerate(campaign.MEASUREMENT_LEGS, start=1):
+        measurement_path = preparation_path.parent / f"measurement-{engine}-{query_shape}.json"
+        publish_evidence(
+            measurement_path,
+            {
+                "boot_marker": f"2026-08-2{index}T10:00:00Z",
+                "cache_proof": "reboot",
+                "engine": engine,
+                "measurement_schema": "grid.reference-layout-measurement/v2",
+                "preparation": {"artifact_sha256": preparation_hash},
+                "profile": "reference",
+                "query_shape": query_shape,
+                "status": "reboot-separated-first-read",
+            },
+        )
+
+    layout, _feature, _review = final_payloads(plan, preparation_hash=preparation_hash)
+    layout["preparation"]["decision_evidence"]["artifact_sha256"] = "d" * 64
+
+    def schema_state(_path: Path, schema: Path) -> tuple[str, dict[str, Any] | None, str | None]:
+        if schema == campaign.LAYOUT_SCHEMA:
+            return "complete", layout, None
+        return "pending", None, None
+
+    monkeypatch.setattr(campaign, "_schema_artifact_state", schema_state)
+
+    status = campaign.campaign_status(plan_path)
+
+    assert status["campaign_status"] == "blocked-invalid-artifact"
+    assert status["next_action"] is None
+    assert status["invalid_reasons"] == [
+        "layout-finalize: final layout does not bind the campaign preparation, scale, host, "
+        "or sources"
+    ]
