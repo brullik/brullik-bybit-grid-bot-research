@@ -32,6 +32,7 @@ from grid_data.history_acquisition import (
     preflight_history_job,
     verify_completed_history_job,
 )
+from grid_data.history_coverage_audit import build_completed_history_coverage_audit
 from grid_data.history_pilot_evidence import build_history_pilot_evidence
 from grid_data.history_publication import (
     preflight_completed_history_publication,
@@ -214,6 +215,19 @@ def parser() -> argparse.ArgumentParser:
     pilot_evidence.add_argument("--software-identity", required=True)
     pilot_evidence.add_argument("--output", type=Path, required=True)
     pilot_evidence.set_defaults(handler=_history_pilot_evidence)
+
+    coverage_audit = commands.add_parser(
+        "audit-history-1m",
+        help="audit source parity, exact requested coverage, gaps, duplicates, and lifecycle",
+    )
+    coverage_audit.add_argument("--job-root", type=Path, required=True)
+    coverage_audit.add_argument("--instrument-registry", type=Path, required=True)
+    coverage_audit.add_argument("--capacity-evidence", type=Path, required=True)
+    coverage_audit.add_argument("--store-root", type=Path, required=True)
+    coverage_audit.add_argument("--publisher-software-identity", required=True)
+    coverage_audit.add_argument("--audit-software-identity", required=True)
+    coverage_audit.add_argument("--output", type=Path, required=True)
+    coverage_audit.set_defaults(handler=_audit_history_1m)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -431,6 +445,32 @@ def _history_pilot_evidence(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _audit_history_1m(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    audit = build_completed_history_coverage_audit(
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        publisher_software_identity=args.publisher_software_identity,
+        audit_software_identity=args.audit_software_identity,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, audit.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "dataset_id": audit.payload["dataset_id"],
+                "quality": audit.payload["quality"],
+                "receipt": str(receipt),
+                "status": audit.payload["status"],
+            }
+        )
+    )
+    return 0 if audit.passed else 2
 
 
 def _archive_inventory(args: argparse.Namespace) -> int:

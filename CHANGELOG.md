@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Fail-closed canonical 1m coverage audit with exact Landing/Parquet equality, per-series minute
+  accounting, bounded hash-bound gap evidence, lifecycle/duplicate/unexpected/unrequested checks,
+  immutable blocked evidence, and no automatically accepted absence reason.
 - GitHub-authoritative Phase 2 pilot evidence with a strict sanitized schema, exact per-series 1m
   coverage proof, transitive Landing/canonical hashes, immutable publisher identity, receipt-last
   publication, and an explicit ban on market values, local paths, device/account data, and secrets.

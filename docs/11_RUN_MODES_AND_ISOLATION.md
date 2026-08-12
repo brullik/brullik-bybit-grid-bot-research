@@ -38,9 +38,12 @@ grid-data history-pilot-evidence --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --software-identity git:<full-commit-sha> \
   --output benchmarks/results/<sanitized-pilot-evidence>.json
+grid-data audit-history-1m --job-root <completed-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --publisher-software-identity git:<publisher-commit-sha> \
+  --audit-software-identity git:<auditor-commit-sha> --output <audit-evidence.json>
 
 # Planned canonical maintenance commands
-grid-data audit --dataset <dataset-id>
 grid-data compact --dataset <dataset-id>
 
 # Research/parameter selection only

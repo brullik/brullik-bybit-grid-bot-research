@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/canonical-1m-coverage-audit.schema.json",
+  "title": "Canonical one-minute source-parity and requested-coverage audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audit_software_identity",
+    "bindings",
+    "content_sha256",
+    "contract",
+    "dataset_id",
+    "dataset_type",
+    "gap_evidence",
+    "generated_at_utc",
+    "limitations",
+    "quality",
+    "reason_policy",
+    "series",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "audit_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_manifest_sha256",
+        "capacity_evidence_sha256",
+        "history_manifest_sha256",
+        "instrument_registry_sha256",
+        "publisher_software_identity"
+      ],
+      "properties": {
+        "canonical_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "history_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.canonical-1m-coverage-audit/v1"},
+    "dataset_id": {"type": "string", "pattern": "^(trade|mark)-1m-[0-9a-f]{24}$"},
+    "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m"]},
+    "gap_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gap_range_count",
+        "gap_ranges_sha256",
+        "sample_limit",
+        "sample_ranges",
+        "sample_truncated"
+      ],
+      "properties": {
+        "gap_range_count": {"type": "integer", "minimum": 0},
+        "gap_ranges_sha256": {"$ref": "#/$defs/sha256"},
+        "sample_limit": {"const": 20},
+        "sample_ranges": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/gapRange"}
+        },
+        "sample_truncated": {"type": "boolean"}
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_source_table_equal",
+        "conflicting_key_count",
+        "duplicate_key_count",
+        "expected_minute_count",
+        "lifecycle_failure_count",
+        "missing_minute_count",
+        "observed_row_count",
+        "unrequested_row_count",
+        "unexpected_timestamp_count"
+      ],
+      "properties": {
+        "canonical_source_table_equal": {"type": "boolean"},
+        "conflicting_key_count": {"type": "integer", "minimum": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "expected_minute_count": {"type": "integer", "minimum": 1},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "observed_row_count": {"type": "integer", "minimum": 0},
+        "unrequested_row_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "reason_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_reason_codes",
+        "observed_reason_counts",
+        "unaccepted_reason_codes",
+        "unknown_reason_count"
+      ],
+      "properties": {
+        "accepted_reason_codes": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "observed_reason_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rest_returned_no_data": {"type": "integer", "minimum": 1}
+          }
+        },
+        "unaccepted_reason_codes": {
+          "type": "array",
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {"const": "rest_returned_no_data"}
+        },
+        "unknown_reason_count": {"const": 0}
+      }
+    },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/series"}
+    },
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "market_values_included": false,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "gapRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["end_ms", "instrument_id", "minute_count", "start_ms"],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "minute_count": {"type": "integer", "minimum": 1},
+        "start_ms": {"$ref": "#/$defs/minute"}
+      }
+    },
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duplicate_key_count",
+        "end_ms",
+        "expected_minute_count",
+        "gap_range_count",
+        "instrument_id",
+        "missing_minute_count",
+        "observed_row_count",
+        "start_ms",
+        "symbol",
+        "unexpected_timestamp_count",
+        "within_registry_lifecycle_bounds"
+      ],
+      "properties": {
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "expected_minute_count": {"type": "integer", "minimum": 1},
+        "gap_range_count": {"type": "integer", "minimum": 0},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "observed_row_count": {"type": "integer", "minimum": 0},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0},
+        "within_registry_lifecycle_bounds": {"type": "boolean"}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

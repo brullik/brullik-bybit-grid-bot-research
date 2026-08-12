@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pyarrow as pa
 import pytest
 from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.evidence import publish_evidence
@@ -15,19 +16,30 @@ from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
 )
+from grid_data.history_coverage_audit import build_completed_history_coverage_audit
 from grid_data.history_pilot_evidence import build_history_pilot_evidence
 from grid_data.history_publication import (
     HISTORY_PUBLICATION_CONTRACT,
+    history_publication_spec,
+    load_verified_history_publication_input,
     preflight_completed_history_publication,
     publish_preflighted_history,
 )
 from grid_data.instrument_registry import build_instrument_registry
-from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostSnapshot
+from grid_market_store import (
+    MIN_OPERATING_RESERVE_BYTES,
+    CanonicalCandleBatch,
+    CapacityBudget,
+    HostSnapshot,
+    preflight_candle_dataset,
+    publish_candle_dataset,
+)
 from jsonschema import Draft202012Validator, FormatChecker
 
 JANUARY_1_2026_MS = 1_767_225_600_000
 ACTIVE_BUILDING_BYTES = 90_000_000_000
 SOFTWARE_IDENTITY = f"git:{'a' * 40}"
+AUDIT_SOFTWARE_IDENTITY = f"git:{'b' * 40}"
 
 
 class OnePageClient:
@@ -43,6 +55,22 @@ class OnePageClient:
                 "1050.000000000001",
             ),
         )
+
+
+class SparsePageClient:
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        def row(open_time_ms: object) -> tuple[str, ...]:
+            return (
+                str(open_time_ms),
+                "100.00000001",
+                "102",
+                "99.5",
+                "101",
+                "10.5000",
+                "1050.000000000001",
+            )
+
+        return (row(kwargs["end_ms"]), row(kwargs["start_ms"]))
 
 
 def snapshot(root: Path, *, observed_at_ms: int = 1_000) -> HostSnapshot:
@@ -113,7 +141,12 @@ def capacity_payload() -> dict[str, object]:
     }
 
 
-def completed_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
+def completed_inputs(
+    tmp_path: Path,
+    *,
+    end_ms: int = JANUARY_1_2026_MS,
+    client_factory: type[OnePageClient] | type[SparsePageClient] = OnePageClient,
+) -> tuple[Path, Path, Path]:
     registry_payload = build_instrument_registry(
         inventory_payload(), inventory_artifact_sha256="a" * 64
     )
@@ -128,7 +161,7 @@ def completed_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
                 symbol="AAAUSDT",
                 instrument_id=1,
                 start_ms=JANUARY_1_2026_MS,
-                end_ms=JANUARY_1_2026_MS,
+                end_ms=end_ms,
             ),
         ),
         request_sha256="c" * 64,
@@ -150,11 +183,11 @@ def completed_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
         budget,
         snapshot(tmp_path),
         now_ms=1_001,
-        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+        closed_before_ms=end_ms + 60_000,
     )
     completed = execute_history_job(
         history_plan,
-        OnePageClient,
+        client_factory,
         lambda: snapshot(tmp_path, observed_at_ms=1_002),
         now_ms=lambda: 1_003,
     )
@@ -344,3 +377,157 @@ def test_verified_publication_builds_sanitized_pilot_evidence(tmp_path: Path) ->
     rendered = json.dumps(payload)
     assert str(tmp_path) not in rendered
     assert "100.00000001" not in rendered
+
+
+def test_canonical_coverage_audit_passes_exact_source_parity(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(tmp_path)
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-12T20:03:32Z",
+    )
+
+    assert audit.passed is True
+    assert audit.payload["status"] == "passed"
+    assert audit.payload["quality"] == {
+        "canonical_source_table_equal": True,
+        "conflicting_key_count": 0,
+        "duplicate_key_count": 0,
+        "expected_minute_count": 1,
+        "lifecycle_failure_count": 0,
+        "missing_minute_count": 0,
+        "observed_row_count": 1,
+        "unrequested_row_count": 0,
+        "unexpected_timestamp_count": 0,
+    }
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-1m-coverage-audit.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(audit.payload)
+
+
+def test_canonical_coverage_audit_blocks_rest_returned_gap(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(
+        tmp_path,
+        end_ms=JANUARY_1_2026_MS + 2 * 60_000,
+        client_factory=SparsePageClient,
+    )
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-12T20:03:32Z",
+    )
+
+    assert audit.passed is False
+    assert audit.payload["status"] == "blocked"
+    assert audit.payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {"rest_returned_no_data": 1},
+        "unaccepted_reason_codes": ["rest_returned_no_data"],
+        "unknown_reason_count": 0,
+    }
+    gap_evidence = audit.payload["gap_evidence"]
+    assert isinstance(gap_evidence, dict)
+    assert gap_evidence["sample_ranges"] == [
+        {
+            "end_ms": JANUARY_1_2026_MS + 60_000,
+            "instrument_id": 1,
+            "minute_count": 1,
+            "start_ms": JANUARY_1_2026_MS + 60_000,
+        }
+    ]
+
+
+def test_canonical_coverage_audit_blocks_source_value_mismatch(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(tmp_path)
+    store_root = tmp_path / "market-store"
+    verified = load_verified_history_publication_input(
+        job_root,
+        registry_path,
+        capacity_path,
+    )
+    close_index = verified.batch.table.schema.get_field_index("close")
+    changed_table = verified.batch.table.set_column(
+        close_index,
+        verified.batch.table.schema.field(close_index),
+        pa.array([10_050_000_000], type=pa.int64()),
+    )
+    changed_batch = CanonicalCandleBatch(
+        dataset_type=verified.batch.dataset_type,
+        partition_path=verified.batch.partition_path,
+        table=changed_table,
+    )
+    plan = preflight_candle_dataset(
+        store_root,
+        history_publication_spec(verified, software_identity=SOFTWARE_IDENTITY),
+        changed_batch,
+        verified.budget,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+    )
+    publish_candle_dataset(
+        plan,
+        snapshot(tmp_path, observed_at_ms=2_002),
+        committed_at_ms=2_003,
+    )
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-12T20:03:32Z",
+    )
+
+    assert audit.passed is False
+    quality = audit.payload["quality"]
+    assert isinstance(quality, dict)
+    assert quality["canonical_source_table_equal"] is False

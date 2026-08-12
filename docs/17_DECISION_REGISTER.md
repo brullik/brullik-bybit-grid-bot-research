@@ -30,6 +30,7 @@
 | D-024 | Bybit-linear v1 uses verified `source_symbol_id` as stable UInt32 `instrument_id`; 1m acquisition uses fixed receipted pages | accepted | Current inventory uniqueness/range evidence and fail-closed resume contract; ADR-0023 |
 | D-025 | A completed 1m Landing manifest deterministically identifies one evidence-bound immutable canonical publication | accepted | Receipt/hash substitution resistance, fresh host admission, and idempotent receipt-last publication; ADR-0024 |
 | D-026 | GitHub is authoritative for implementation, decisions, contracts, and sanitized receipt-bound runtime evidence; market datasets remain outside Git | accepted | Owner direction, public-repository safety, and reproducible hash bindings; ADR-0025 |
+| D-027 | Canonical 1m requested-range audit requires exact Landing parity and accepts no missing-minute reason in v1 | accepted | Gap hashes/samples, lifecycle bounds, negative evidence, and fail-closed Gate 2 separation; ADR-0026 |
 
 ## Decisions requiring benchmark or owner evidence
 
