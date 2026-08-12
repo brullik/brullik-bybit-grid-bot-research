@@ -14,8 +14,9 @@ History acquisition, research/parameter selection, strategy release, and live op
 | `grid-live` | `grid-live ...` | current signals, risk, approval, execution, reconciliation | Bybit public/private + Telegram | trade key without withdrawal | small live state store |
 
 The package boundaries are implemented. Phase 2 currently exposes stable-registry publication,
-no-mutation history preflight, bounded public 1m acquisition, and completed-Landing verification;
-the full audit/repair/compaction/catalog command family remains in progress.
+no-mutation history preflight, bounded public 1m acquisition, completed-Landing verification, and
+receipt-last canonical publication; the full audit/repair/compaction/catalog command family
+remains in progress.
 
 ## Separate startup examples
 
@@ -28,6 +29,11 @@ grid-data history-1m --request <request.json> --instrument-registry <registry.js
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data verify-history-1m <completed-job-root>
+grid-data publish-history-1m --job-root <completed-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --software-identity git:<full-commit-sha>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data verify-canonical-candle <committed-dataset-root>
 
 # Planned canonical maintenance commands
 grid-data audit --dataset <dataset-id>

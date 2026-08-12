@@ -188,6 +188,12 @@ ADR-0022 additionally requires a no-mutation host/capacity preflight, a fresh re
 before the first write, same-volume building/final paths, closed Parquet handles before the atomic
 directory rename, canonical manifest/receipt bytes, and orphan detection.
 
+ADR-0024 binds a verified Landing completion to this writer. The adapter re-verifies and hash-binds
+the Landing manifest, instrument registry, accepted capacity evidence, exact Arrow input, physical
+layout, and explicit software identity. Its deterministic dataset ID is derived from the complete
+Landing manifest hash. Publication is no-mutation by default and repeats a fresh host observation
+before `--execute`; successful writing is not lifecycle/gap acceptance.
+
 ## Quality checks
 
 Required checks include:

@@ -89,5 +89,39 @@ Use the exact `job_root` printed by preflight/execution:
 
 Verification checks the plan, every page and receipt, actual attempt/row totals, completion
 receipt, source policy, hashes, and exact file allowlist. This proves a Landing batch only.
-Canonical publication, gap/lifecycle acceptance, compaction, and catalog registration are later
-Phase 2 steps; Gate 2 remains closed.
+
+## 6. Preflight canonical publication
+
+Use the mandatory immutable code identity: `git:` followed by the 40-character lowercase Git
+commit SHA that contains the publisher:
+
+```powershell
+.venv\Scripts\grid-data.exe publish-history-1m `
+  --job-root data\history\.landing\trade-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-commit-sha>
+```
+
+Without `--execute`, no canonical directory is created. The command re-verifies every Landing,
+registry, and capacity receipt; checks their hash bindings and lifecycle bounds; takes a fresh
+host snapshot; and prints the deterministic dataset ID, row count, memory bound, and required
+free space. Preserve the exact software identity for the execution and all idempotent reruns.
+
+## 7. Publish and verify the canonical dataset
+
+After reviewing the preflight, repeat the exact command with `--execute`, then verify the printed
+dataset root:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-canonical-candle `
+  data\market-store\datasets\trade-1m-<landing-manifest-prefix>
+```
+
+Publication repeats the current memory, storage, and free-space checks before its first write and
+writes the completion receipt last. Repeating an identical publication returns the existing
+verified commit. A conflicting identity or incomplete directory fails closed and is not deleted.
+
+Canonical publication does not accept missing lifecycle ranges. Gap/lifecycle classification,
+repair, compaction, and catalog registration remain later Phase 2 steps; Gate 2 remains closed.
