@@ -44,7 +44,8 @@ hash of the instrument inventory before any network request.
   for historical metadata snapshots.
 - The report inventories daily raw trade archives. It does not relabel premium-index or other
   products as canonical mark-price/funding data.
-- The dedicated V5 mark-kline and funding-history REST endpoints remain the implemented paths for
-  linear-contract mark-price 1m and funding datasets.
+- ADR-0016 later classified these tick-level trade archives as incompatible with V1. They are not
+  downloaded or retained. Dedicated V5 trade-kline, mark-kline, and funding-history REST endpoints
+  are the current one-minute/funding source paths.
 - Raw trade files and directory HTML are not committed; only bounded JSON evidence and its
   SHA-256 receipt enter Git.

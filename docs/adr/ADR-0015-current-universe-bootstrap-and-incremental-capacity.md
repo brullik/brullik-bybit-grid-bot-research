@@ -2,6 +2,7 @@
 
 - Status: proposed; Gate 1 evidence only
 - Date: 2026-08-12
+- Superseded in part by: ADR-0016 (raw tick source and staging assumptions only)
 
 ## Context
 

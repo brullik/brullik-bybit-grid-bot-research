@@ -15,6 +15,7 @@ THEORETICAL_INSTRUMENT_MINUTES = 3_681_644_400
 TEN_YEAR_MINUTES_PER_INSTRUMENT = THEORETICAL_INSTRUMENT_MINUTES // THEORETICAL_INSTRUMENTS
 MINUTE_MS = 60_000
 MARK_PAGE_LIMIT = 1_000
+TRADE_PAGE_LIMIT = 1_000
 FUNDING_PAGE_LIMIT = 200
 MIN_OBSERVED_FUNDING_INTERVAL_MINUTES = 60
 PLANNING_REQUESTS_PER_SECOND = 10
@@ -167,6 +168,79 @@ def _theoretical_rest_envelope() -> dict[str, Any]:
     }
 
 
+def _request_only_seconds(requests: int) -> dict[str, int]:
+    return {
+        "at_default_ip_limit": _ceil_div(requests, DEFAULT_HTTP_IP_REQUESTS_PER_SECOND),
+        "at_planning_10_per_second": _ceil_div(requests, PLANNING_REQUESTS_PER_SECOND),
+    }
+
+
+def _one_minute_inventory_backfill(inventory: Mapping[str, Any]) -> dict[str, Any]:
+    estimate = _inventory_backfill(inventory)
+    mark_price = estimate["mark_price_1m"]
+    kline_requests = int(mark_price["estimated_requests"])
+    kline_rows = int(mark_price["estimated_rows"])
+    current_funding_requests = int(estimate["current_interval_funding"]["estimated_requests"])
+    conservative_funding_requests = int(
+        estimate["conservative_observed_minimum_funding_interval"]["estimated_requests"]
+    )
+    current_combined = 2 * kline_requests + current_funding_requests
+    conservative_combined = 2 * kline_requests + conservative_funding_requests
+    estimate["trade_price_1m"] = {
+        "estimated_requests": kline_requests,
+        "estimated_rows": kline_rows,
+    }
+    estimate["combined_requests"] = {
+        "current_funding_intervals": current_combined,
+        "conservative_60m_funding_interval": conservative_combined,
+    }
+    estimate["request_only_seconds"] = {
+        "current_funding_intervals": _request_only_seconds(current_combined),
+        "conservative_60m_funding_interval": _request_only_seconds(conservative_combined),
+    }
+    return estimate
+
+
+def _one_minute_theoretical_rest_envelope() -> dict[str, Any]:
+    kline_requests = THEORETICAL_INSTRUMENTS * _ceil_div(
+        TEN_YEAR_MINUTES_PER_INSTRUMENT, TRADE_PAGE_LIMIT
+    )
+    funding_events_per_instrument = _ceil_div(
+        TEN_YEAR_MINUTES_PER_INSTRUMENT, MIN_OBSERVED_FUNDING_INTERVAL_MINUTES
+    )
+    funding_requests = THEORETICAL_INSTRUMENTS * _ceil_div(
+        funding_events_per_instrument, FUNDING_PAGE_LIMIT
+    )
+    combined_requests = 2 * kline_requests + funding_requests
+    return {
+        "combined_requests": combined_requests,
+        "funding": {
+            "estimated_events": funding_events_per_instrument * THEORETICAL_INSTRUMENTS,
+            "estimated_requests": funding_requests,
+            "interval_minutes": MIN_OBSERVED_FUNDING_INTERVAL_MINUTES,
+            "page_limit": FUNDING_PAGE_LIMIT,
+        },
+        "instrument_count": THEORETICAL_INSTRUMENTS,
+        "instrument_minutes_per_candle_dataset": THEORETICAL_INSTRUMENT_MINUTES,
+        "mark_price_1m": {
+            "estimated_requests": kline_requests,
+            "page_limit": MARK_PAGE_LIMIT,
+            "rows": THEORETICAL_INSTRUMENT_MINUTES,
+        },
+        "minimum_request_only_seconds_at_default_ip_limit": _ceil_div(
+            combined_requests, DEFAULT_HTTP_IP_REQUESTS_PER_SECOND
+        ),
+        "planning_request_only_seconds_at_10_per_second": _ceil_div(
+            combined_requests, PLANNING_REQUESTS_PER_SECOND
+        ),
+        "trade_price_1m": {
+            "estimated_requests": kline_requests,
+            "page_limit": TRADE_PAGE_LIMIT,
+            "rows": THEORETICAL_INSTRUMENT_MINUTES,
+        },
+    }
+
+
 def _normalized_products(products: Sequence[HistoricalDataProduct]) -> list[dict[str, Any]]:
     if not products:
         raise ValueError("historical product catalog must not be empty")
@@ -280,6 +354,142 @@ def build_history_source_assessment(
         },
         "status": "catalog-observed-rest-capacity-bounded",
         "theoretical_rest_envelope": _theoretical_rest_envelope(),
+    }
+    hash_input = dict(payload)
+    hash_input.pop("content_sha256")
+    payload["content_sha256"] = canonical_sha256(hash_input)
+    return payload
+
+
+def build_one_minute_history_source_assessment(
+    products: Sequence[HistoricalDataProduct],
+    inventory: Mapping[str, Any],
+    *,
+    command: str,
+    inventory_artifact: str,
+    inventory_artifact_sha256: str,
+) -> dict[str, Any]:
+    """Build the owner-approved 1m-only source plan without downloading market rows."""
+    normalized = _normalized_products(products)
+
+    def product_matches(term: str, business_type: str) -> bool:
+        return any(
+            term in f"{product['product_id']} {product['name']}".casefold()
+            and business_type in product["business_types"]
+            for product in normalized
+        )
+
+    funding_products = [
+        product["product_id"]
+        for product in normalized
+        if "fund" in f"{product['product_id']} {product['name']}".casefold()
+    ]
+    payload: dict[str, Any] = {
+        "assessment": {
+            "any_funding_bulk_advertised": bool(funding_products),
+            "contract_funding_bulk_advertised": product_matches("fund", "contract"),
+            "contract_mark_price_bulk_advertised": product_matches("mark", "contract"),
+            "contract_trade_bulk_advertised": product_matches("trad", "contract"),
+            "contract_trade_bulk_compatible_with_policy": False,
+            "funding_product_ids": funding_products,
+            "granularity_policy": "one-minute-only",
+            "option_mark_price_bulk_advertised": product_matches("mark", "option"),
+            "required_rest_datasets": [
+                "linear-contract-trade-price-1m",
+                "linear-contract-mark-price-1m",
+                "funding",
+            ],
+            "semantics": (
+                "V1 accepts canonical one-minute candles and funding only. The advertised "
+                "contract trade product contains tick-level public trades, so it is incompatible "
+                "with this source policy. Trade-price 1m, mark-price 1m, and funding are planned "
+                "from versioned public V5 REST endpoints unless Bybit later advertises a verified "
+                "one-minute bulk product."
+            ),
+            "tick_data_downloaded": False,
+            "tick_data_retained": False,
+        },
+        "catalog": {
+            "product_count": len(normalized),
+            "products": normalized,
+        },
+        "command": command,
+        "content_sha256": "",
+        "evidence_schema": "grid.bybit-history-source-assessment/v2",
+        "fetched_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "inventory_backfill_estimate": _one_minute_inventory_backfill(inventory),
+        "inventory_source": {
+            "artifact": inventory_artifact,
+            "artifact_sha256": inventory_artifact_sha256,
+            "evidence_schema": inventory["evidence_schema"],
+            "fetched_at_utc": inventory["fetched_at_utc"],
+            "inventory_status": inventory.get("inventory_status"),
+        },
+        "limitations": [
+            (
+                "The frontend catalog endpoint is public and official but is not a versioned "
+                "V5 API contract."
+            ),
+            (
+                "Catalog absence proves not-advertised-at-observation-time, not permanent "
+                "nonexistence."
+            ),
+            (
+                "The current inventory is partial and omits historical symbols absent from "
+                "the snapshot."
+            ),
+            "Current funding intervals and lifecycle fields are not dated historical metadata.",
+            (
+                "Lifecycle minutes estimate request capacity; they do not prove that REST "
+                "returns complete history for every interval."
+            ),
+            (
+                "Request-only time excludes latency, throttling headroom, retry, validation, "
+                "and publication."
+            ),
+            (
+                "This assessment downloads no candle, funding, or tick rows and does not "
+                "authorize Phase 2."
+            ),
+        ],
+        "owner_decision": {
+            "adr": "ADR-0016",
+            "decision_id": "D-019",
+            "recorded_date": "2026-08-12",
+        },
+        "source_policy": {
+            "funding": {
+                "endpoint": "/v5/market/funding/history",
+                "page_limit": FUNDING_PAGE_LIMIT,
+                "source_type": "public-rest",
+            },
+            "mark_price_1m": {
+                "endpoint": "/v5/market/mark-price-kline",
+                "interval": "1",
+                "page_limit": MARK_PAGE_LIMIT,
+                "source_type": "public-rest",
+            },
+            "trade_price_1m": {
+                "endpoint": "/v5/market/kline",
+                "interval": "1",
+                "page_limit": TRADE_PAGE_LIMIT,
+                "source_type": "public-rest",
+            },
+        },
+        "sources": {
+            "catalog_endpoint": CATALOG_ENDPOINT,
+            "funding_history_documentation": (
+                "https://bybit-exchange.github.io/docs/v5/market/history-fund-rate"
+            ),
+            "historical_data_page": "https://www.bybit.com/en/derivative-activity/history-data",
+            "mark_price_documentation": (
+                "https://bybit-exchange.github.io/docs/v5/market/mark-kline"
+            ),
+            "rate_limit_documentation": "https://bybit-exchange.github.io/docs/v5/rate-limit",
+            "trade_price_documentation": "https://bybit-exchange.github.io/docs/v5/market/kline",
+        },
+        "status": "owner-approved-one-minute-rest-capacity-bounded",
+        "theoretical_rest_envelope": _one_minute_theoretical_rest_envelope(),
     }
     hash_input = dict(payload)
     hash_input.pop("content_sha256")

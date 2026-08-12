@@ -6,9 +6,12 @@ The data platform must ingest, validate, version, and serve a theoretical 3.68-b
 
 ## Source priority
 
-1. **Official Bybit historical downloads** for bulk backfill where the required dataset and period are available.
-2. **Bybit public REST** for recent data, missing archive periods, deterministic gap repair, and metadata.
+1. **Bybit public V5 REST** for trade-price 1m, mark-price 1m, funding, and metadata.
+2. **Verified one-minute bulk products** may replace matching REST ranges if Bybit advertises a
+   compatible schema and the project verifies semantics, provenance, and conflict handling.
 3. **Bybit public WebSocket** for live current candles; REST backfill closes reconnect gaps.
+
+Tick-level public-trade archive bodies are not a V1 source and are neither downloaded nor retained.
 
 Source provenance is retained per file/range. A value from one source cannot silently overwrite a conflicting value from another source.
 
@@ -16,7 +19,7 @@ Source provenance is retained per file/range. A value from one source cannot sil
 
 ```mermaid
 flowchart LR
-    S[Source archives / API pages] --> L[Landing]
+    S[1m API pages / compatible 1m bulk] --> L[Landing]
     L --> B[Bronze evidence]
     B --> C[Canonical 1m store]
     C --> F[Reusable feature store]
@@ -27,11 +30,15 @@ flowchart LR
 
 ### Landing
 
-Temporary download workspace. Files are untrusted and may be deleted after a committed Bronze/canonical receipt exists.
+Temporary, preflight-bounded workspace for REST pages or compatible one-minute bulk files. Files
+are untrusted and may be deleted after a committed Bronze/canonical receipt exists. Tick-trade
+archive bodies must not enter Landing.
 
 ### Bronze evidence
 
-Preserves source file identity, checksum, request range, download time, source URL/endpoint identity, and parser version. Retaining every raw JSON page is optional; retaining official compressed source archives and request receipts is preferred.
+Preserves source identity, checksum where available, request range, download time, endpoint
+identity, and parser version. Retaining every raw JSON page is optional; request receipts and
+canonical provenance are mandatory. Tick-trade archives are not retained as Bronze evidence.
 
 ### Canonical market store
 

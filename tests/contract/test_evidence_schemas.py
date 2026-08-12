@@ -118,6 +118,27 @@ def test_history_source_assessment_matches_schema_hash_and_receipt() -> None:
     assert verify_evidence(artifact)
 
 
+def test_one_minute_source_assessment_matches_v2_schema_hash_and_receipt() -> None:
+    artifact = (
+        ROOT / "benchmarks" / "results" / "m1-bybit-one-minute-source-assessment-20260812.json"
+    )
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v2" / "bybit-history-source-assessment.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert payload["assessment"]["tick_data_downloaded"] is False
+    assert payload["assessment"]["tick_data_retained"] is False
+    assert payload["inventory_backfill_estimate"]["combined_requests"] == {
+        "conservative_60m_funding_interval": 1_845_401,
+        "current_funding_intervals": 1_785_544,
+    }
+    assert verify_evidence(artifact)
+
+
 def test_reference_layout_protocol_smoke_matches_schema_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-reference-layout-protocol-smoke.json"
     schema = load_json(

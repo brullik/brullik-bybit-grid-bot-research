@@ -15,7 +15,7 @@ A modular monorepo with four independently deployable applications and versioned
 flowchart TB
     subgraph DataPlane[Data plane — grid-data]
       U[Universe registry]
-      DL[Bulk/API downloader]
+      DL[1m source downloader]
       N[Normalizer]
       Q[Quality auditor]
       C[Compactor]
@@ -98,7 +98,7 @@ Forbidden dependencies:
 Responsibilities:
 
 - universe snapshots and stable instrument IDs;
-- bulk archive discovery/download;
+- compatible one-minute bulk discovery/download when available;
 - paginated REST backfill;
 - normalization and schema validation;
 - duplicate/conflict/gap detection;
