@@ -14,6 +14,8 @@ from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
+from benchmarks.measured_host_qualification import qualification_summary
+
 TRADE_ROWS = 3_681_644_400
 TRADE_AND_MARK_ROWS = 7_363_288_800
 TEN_YEAR_MINUTES = 5_259_492
@@ -31,6 +33,12 @@ REVIEW_SCHEMA = ROOT / "schemas" / "evidence" / "v1" / "gate1-review-pack.schema
 DECISION_SCHEMA = ROOT / "schemas" / "evidence" / "v3" / "layout-benchmark.schema.json"
 REAL_MARKET_SCHEMA = ROOT / "schemas" / "evidence" / "v1" / "real-market-layout-skew.schema.json"
 WORKSTATION_SCHEMA = ROOT / "schemas" / "evidence" / "v1" / "workstation-snapshot.schema.json"
+LAYOUT_SCHEMA_V3 = ROOT / "schemas" / "evidence" / "v3" / "reference-layout-benchmark.schema.json"
+FEATURE_SCHEMA_V3 = ROOT / "schemas" / "evidence" / "v3" / "feature-benchmark.schema.json"
+REVIEW_SCHEMA_V2 = ROOT / "schemas" / "evidence" / "v2" / "gate1-review-pack.schema.json"
+QUALIFICATION_SCHEMA = (
+    ROOT / "schemas" / "evidence" / "v1" / "reference-host-qualification.schema.json"
+)
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -531,6 +539,228 @@ def publish_review_pack(
     return payload
 
 
+def build_qualified_review_pack(
+    layout: dict[str, Any],
+    feature: dict[str, Any],
+    real_market: dict[str, Any],
+    qualification: dict[str, Any],
+    *,
+    command: str,
+    real_market_path: Path,
+    qualification_path: Path,
+    layout_source: dict[str, str],
+    feature_source: dict[str, str],
+    decision_source: dict[str, str],
+    real_market_source: dict[str, str],
+    qualification_source: dict[str, str],
+) -> dict[str, Any]:
+    """Cross-bind ADR-0019 v3 workloads without reinterpreting the legacy review pack."""
+
+    layout_host = layout["preparation"]["reference_host_qualification"]
+    feature_host = feature["reference_host_qualification"]
+    expected_host = qualification_summary(qualification_path, qualification)
+    if layout_host != feature_host or layout_host != expected_host:
+        raise ValueError("layout and feature evidence do not bind the supplied host qualification")
+    if layout["hardware"] != feature["hardware"]:
+        raise ValueError("layout and feature evidence report different current hardware")
+    expected_hardware = {
+        key: layout_host["hardware"][key]
+        for key in (
+            "cpu_count_logical",
+            "cpu_count_physical",
+            "machine",
+            "platform",
+            "ram_bytes",
+        )
+    }
+    if layout["hardware"] != expected_hardware:
+        raise ValueError("reference benchmark hardware does not match its host qualification")
+    if layout["preparation"]["software"] != layout["software"]:
+        raise ValueError("reference layout preparation and final software differ")
+    shared_versions = ("polars", "psutil", "python")
+    if any(layout["software"][name] != feature["software"][name] for name in shared_versions):
+        raise ValueError("layout and feature evidence use incompatible shared software versions")
+
+    reference_rows = int(layout["preparation"]["input"]["row_count"])
+    instrument_count = int(layout["preparation"]["input"]["instrument_count"])
+    if (
+        reference_rows != REFERENCE_ROWS
+        or feature["input"]["row_count"] != reference_rows
+        or feature["input"]["instrument_count"] != instrument_count
+    ):
+        raise ValueError("layout and feature evidence do not bind the same reference row scale")
+    expected_decision = {
+        "artifact": decision_source["artifact"],
+        "artifact_sha256": decision_source["artifact_sha256"],
+        "benchmark_schema": decision_source["schema"],
+        "status": decision_source["status"],
+    }
+    if layout["preparation"]["decision_evidence"] != expected_decision:
+        raise ValueError("reference layout does not bind the supplied decision evidence")
+    expected_real_market = _real_market_summary(real_market_path, real_market)
+    if layout["preparation"]["real_market_evidence"] != expected_real_market:
+        raise ValueError("reference layout does not bind the supplied real-market evidence")
+    real_market_content = dict(real_market)
+    embedded_real_market_hash = real_market_content.pop("content_sha256", None)
+    if embedded_real_market_hash != canonical_sha256(real_market_content):
+        raise ValueError("real-market evidence embedded content hash does not verify")
+
+    measurement_index = _measurement_index(layout)
+    real_by_layout = {
+        _layout_key(item["layout"]): item
+        for item in layout["preparation"]["real_market_evidence"]["layouts"]
+    }
+    candidates = []
+    for dataset in layout["preparation"]["datasets"]:
+        key = _layout_key(dataset["layout"])
+        if key not in real_by_layout:
+            raise ValueError("reference dataset has no matching real-market layout evidence")
+        candidates.append(
+            _candidate(
+                dataset,
+                real_layout=real_by_layout[key],
+                measurements=measurement_index,
+                reference_rows=reference_rows,
+                instrument_count=instrument_count,
+            )
+        )
+    candidates.sort(key=lambda item: int(item["layout"]["bucket_count"]))
+    if len(candidates) != 2 or {item["layout"]["bucket_count"] for item in candidates} != {4, 8}:
+        raise ValueError("Gate 1 review requires the complete two-layout reference shortlist")
+
+    feature_capacity = _feature_capacity(feature)
+    eligible = [item for item in candidates if item["gates"]["provisional_performance_passed"]]
+    blockers: list[str] = []
+    if not eligible:
+        blockers.append("no-layout-meets-provisional-performance-targets")
+    if not feature_capacity["memory_gate_passed"]:
+        blockers.append("feature-memory-gate-failed")
+    ready = not blockers
+    decision_status = "owner-decision-required" if ready else "blocked-by-reference-results"
+    decision_layouts = eligible if ready else []
+    hardware = layout_host["hardware"]
+    p005_value = (
+        f"{hardware['cpu_count_physical']} physical cores; "
+        f"{hardware['ram_bytes']} RAM bytes; "
+        f"{hardware['storage_model']}; "
+        f"{hardware['volume_total_bytes']} volume bytes; "
+        f"{layout_host['qualification']['required_free_bytes']} required free bytes"
+    )
+    payload = {
+        "capacity": {
+            "feature": feature_capacity,
+            "reference_volume_bytes": hardware["volume_total_bytes"],
+            "required_free_bytes": layout_host["qualification"]["required_free_bytes"],
+            "theoretical_trade_and_mark_rows": TRADE_AND_MARK_ROWS,
+            "theoretical_trade_rows": TRADE_ROWS,
+        },
+        "command": command,
+        "decisions": {
+            "P-001": _decision(
+                decision_status,
+                sorted(
+                    {str(item["layout"]["numeric_representation"]) for item in decision_layouts}
+                ),
+            ),
+            "P-002": _decision(
+                decision_status,
+                [str(item["layout"]["bucket_count"]) for item in decision_layouts],
+            ),
+            "P-003": _decision(
+                decision_status,
+                [f"{item['layout']['target_file_mb']} MiB" for item in decision_layouts],
+            ),
+            "P-004": _decision(
+                decision_status,
+                sorted(
+                    {
+                        f"{item['layout']['compression']}-{item['layout']['compression_level']}"
+                        for item in decision_layouts
+                    }
+                ),
+            ),
+            "P-005": _decision("owner-decision-required", [p005_value]),
+        },
+        "evidence_schema": "grid.gate1-review-pack/v2",
+        "gate_1": {
+            "automatic_promotion": False,
+            "blockers": blockers,
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        },
+        "layout_candidates": candidates,
+        "limitations": [
+            "Single-symbol ten-year timings are linear projections from the observed reference "
+            "row span, not direct ten-year scans.",
+            "Real-market row width is a bounded current trade-price sample and is applied to mark "
+            "rows only as a conservative like-width comparison.",
+            "Storage projections exclude raw archives, features, outcomes, experiments, compaction "
+            "headroom, filesystem overhead, and backup.",
+            "Reboot separation reduces cache ambiguity but cannot prevent unrelated host reads.",
+            "This pack cannot approve P-001 through P-005, close Gate 1, or authorize Phase 2.",
+        ],
+        "owner_decision_required": True,
+        "reference_host_qualification": layout_host,
+        "software": layout["software"],
+        "sources": {
+            "decision_layout": {
+                key: decision_source[key]
+                for key in ("artifact", "artifact_sha256", "schema", "status")
+            },
+            "feature": feature_source,
+            "layout": layout_source,
+            "qualification": qualification_source,
+            "real_market": {
+                key: real_market_source[key]
+                for key in ("artifact", "artifact_sha256", "schema", "status")
+            },
+        },
+        "status": "ready-for-owner-review" if ready else "blocked-by-reference-results",
+    }
+    Draft202012Validator(
+        _schema(REVIEW_SCHEMA_V2),
+        format_checker=FormatChecker(),
+    ).validate(payload)
+    return payload
+
+
+def publish_qualified_review_pack(
+    *,
+    layout_path: Path,
+    feature_path: Path,
+    decision_path: Path,
+    real_market_path: Path,
+    qualification_path: Path,
+    output: Path,
+    force: bool = False,
+    command: str | None = None,
+) -> dict[str, Any]:
+    """Publish the append-only ADR-0019 owner-review pack."""
+
+    layout = load_verified_evidence(layout_path, LAYOUT_SCHEMA_V3)
+    feature = load_verified_evidence(feature_path, FEATURE_SCHEMA_V3)
+    decision = load_verified_evidence(decision_path, DECISION_SCHEMA)
+    real_market = load_verified_evidence(real_market_path, REAL_MARKET_SCHEMA)
+    qualification = load_verified_evidence(qualification_path, QUALIFICATION_SCHEMA)
+    payload = build_qualified_review_pack(
+        layout,
+        feature,
+        real_market,
+        qualification,
+        command=shlex.join(sys.argv) if command is None else command,
+        real_market_path=real_market_path,
+        qualification_path=qualification_path,
+        layout_source=_source(layout_path, layout, "benchmark_schema"),
+        feature_source=_source(feature_path, feature, "benchmark_schema"),
+        decision_source=_source(decision_path, decision, "benchmark_schema"),
+        real_market_source=_source(real_market_path, real_market, "evidence_schema"),
+        qualification_source=_source(qualification_path, qualification, "evidence_schema"),
+    )
+    output, _receipt = preflight_evidence(output, force=force)
+    publish_evidence(output, payload, force=force)
+    return payload
+
+
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--layout", type=Path, required=True)
@@ -545,7 +775,8 @@ def arguments() -> argparse.Namespace:
         type=Path,
         default=Path("benchmarks/results/m1-real-market-layout-skew.json"),
     )
-    parser.add_argument("--workstation", type=Path, required=True)
+    parser.add_argument("--workstation", type=Path)
+    parser.add_argument("--reference-host-qualification", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
@@ -553,15 +784,33 @@ def arguments() -> argparse.Namespace:
 
 def main() -> int:
     args = arguments()
-    payload = publish_review_pack(
-        layout_path=args.layout,
-        feature_path=args.feature,
-        decision_path=args.decision,
-        real_market_path=args.real_market,
-        workstation_path=args.workstation,
-        output=args.output,
-        force=args.force,
+    admission_count = sum(
+        path is not None for path in (args.workstation, args.reference_host_qualification)
     )
+    if admission_count != 1:
+        raise ValueError(
+            "exactly one of --workstation or --reference-host-qualification is required"
+        )
+    if args.reference_host_qualification is not None:
+        payload = publish_qualified_review_pack(
+            layout_path=args.layout,
+            feature_path=args.feature,
+            decision_path=args.decision,
+            real_market_path=args.real_market,
+            qualification_path=args.reference_host_qualification,
+            output=args.output,
+            force=args.force,
+        )
+    else:
+        payload = publish_review_pack(
+            layout_path=args.layout,
+            feature_path=args.feature,
+            decision_path=args.decision,
+            real_market_path=args.real_market,
+            workstation_path=args.workstation,
+            output=args.output,
+            force=args.force,
+        )
     return 0 if payload["status"] == "ready-for-owner-review" else 2
 
 

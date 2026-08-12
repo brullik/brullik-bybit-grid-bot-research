@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -10,11 +11,15 @@ from grid_data.evidence import publish_evidence, verify_evidence
 
 import benchmarks.reference_campaign as campaign
 from benchmarks.gate1_review_pack import load_verified_evidence
+from benchmarks.measured_host_qualification import qualification_summary
 
 ROOT = Path(__file__).parents[2]
 DECISION = ROOT / "benchmarks" / "results" / "m1-layout-exact-decision-candidate.json"
 REAL_MARKET = ROOT / "benchmarks" / "results" / "m1-real-market-layout-skew.json"
 BELOW_PROFILE = ROOT / "benchmarks" / "results" / "m1-workstation-snapshot.json"
+QUALIFICATION = (
+    ROOT / "benchmarks" / "results" / "m1-owner-measured-host-qualification-20260812.json"
+)
 
 
 def workstation_payload() -> dict[str, Any]:
@@ -101,6 +106,47 @@ def manifest_summary() -> dict[str, Any]:
     }
 
 
+def environment_report() -> dict[str, Any]:
+    checks = {
+        name: True
+        for name in (
+            "canonical_origin",
+            "clean_worktree",
+            "constraint_contract",
+            "constrained_versions_match",
+            "exact_python_3_12",
+            "head_matches_origin_main",
+            "isolated_virtual_environment",
+            "main_branch_checked_out",
+            "monorepo_distributions_installed",
+            "pip_dependencies_consistent",
+            "private_exchange_environment_absent",
+            "required_modules_importable",
+            "source_manifest_verified",
+            "working_directory_is_repository_root",
+        )
+    }
+    pins = {f"pin-{index}": "1.0" for index in range(9)}
+    installed = {f"distribution-{index}": "1.0" for index in range(17)}
+    return {
+        "checks": checks,
+        "constraints": {
+            "artifact": "requirements/reference-campaign.txt",
+            "artifact_sha256": "9" * 64,
+            "pins": pins,
+        },
+        "failures": [],
+        "observed": {
+            "git_branch": "main",
+            "git_head": "8" * 40,
+            "installed_versions": installed,
+            "private_exchange_environment_names": [],
+            "python": "3.12.10",
+        },
+        "status": "ready-for-reference-campaign",
+    }
+
+
 def publish_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, dict[str, Any]]:
     host_path = tmp_path / "reference-host.json"
     publish_evidence(host_path, workstation_payload())
@@ -116,6 +162,31 @@ def publish_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path,
     payload = campaign.publish_campaign_plan(
         campaign_root=campaign_root,
         reference_host_path=host_path,
+        decision_path=DECISION,
+        real_market_path=REAL_MARKET,
+    )
+    return campaign_root / campaign.PLAN_NAME, payload
+
+
+def publish_qualified_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, dict[str, Any]]:
+    qualification_path = tmp_path / "qualification.json"
+    qualification = json.loads(QUALIFICATION.read_text(encoding="utf-8"))
+    publish_evidence(qualification_path, qualification)
+    admitted = qualification_summary(qualification_path, qualification)
+    monkeypatch.setattr(
+        campaign,
+        "admit_measured_host_qualification",
+        lambda *_args, **_kwargs: admitted,
+    )
+    monkeypatch.setattr(campaign, "recheck_admitted_qualification", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(campaign, "_require_reference_environment", environment_report)
+    monkeypatch.setattr(campaign, "_source_manifest_summary", manifest_summary)
+    campaign_root = tmp_path / "qualified-campaign"
+    payload = campaign.publish_qualified_campaign_plan(
+        campaign_root=campaign_root,
+        qualification_path=qualification_path,
         decision_path=DECISION,
         real_market_path=REAL_MARKET,
     )
@@ -242,6 +313,31 @@ def test_campaign_plan_pins_eight_ordered_commands_and_never_accepts_gate(
     assert prepare[prepare.index("--profile") + 1] == "reference"
     assert prepare[prepare.index("--rows") + 1] == "100000000"
     assert prepare[prepare.index("--instruments") + 1] == "700"
+
+
+def test_qualified_campaign_plan_pins_v3_commands_and_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path, payload = publish_qualified_plan(tmp_path, monkeypatch)
+
+    assert verify_evidence(plan_path)
+    load_verified_evidence(plan_path, campaign.PLAN_SCHEMA_V2)
+    assert payload["evidence_schema"] == "grid.reference-campaign-plan/v2"
+    assert payload["environment"]["status"] == "ready-for-reference-campaign"
+    assert payload["gate_1"]["status"] == "pending-owner-decision"
+    assert payload["sources"]["qualification"]["schema"] == ("grid.reference-host-qualification/v1")
+    prepare = payload["steps"][0]["argv"]
+    feature = payload["steps"][6]["argv"]
+    review = payload["steps"][7]["argv"]
+    assert "--reference-host-qualification" in prepare
+    assert "--reference-host-qualification" in feature
+    assert "--reference-host-qualification" in review
+    assert "--reference-host-evidence" not in prepare
+    assert "--workstation" not in review
+
+    status = campaign.campaign_status(plan_path)
+    assert status["campaign_status"] == "ready"
+    assert status["next_action"]["step"]["id"] == "layout-prepare"
 
 
 def test_campaign_plan_rejects_environment_drift_before_root_mutation(

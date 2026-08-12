@@ -54,9 +54,17 @@ The checked-in run reported `qualified-measured-reference-host`: 100,228,313,013
 192,452,521,984 current free bytes, and 92,224,208,971 bytes of headroom. Gate 1 remains
 `pending-owner-decision`.
 
-## Remaining boundary
+## Successor campaign boundary
 
-Qualification does not prove the pinned Python 3.12 environment or reboot-separated cold-cache
-measurements. Append-only feature and layout v3 workloads now consume and recheck this artifact.
-Successor review-pack and campaign-plan contracts must still consume their v3 results, and the
-pinned environment must pass, before the reference campaign can start.
+Qualification alone does not prove the pinned Python 3.12 environment or reboot-separated
+cold-cache measurements. Append-only feature/layout v3, Gate 1 review-pack v2, and campaign-plan
+v2 contracts now consume this artifact without changing any legacy receipt. The campaign plan
+also embeds the complete passing environment-doctor report and source manifest, then rechecks the
+unchanged qualification, current host/free space, environment, and repository source before each
+status transition.
+
+On 2026-08-12 the owner laptop passed the pinned doctor under Python 3.12.10 and completed the
+qualified 99,999,900-row feature v3 workload in 29.047963300 seconds. Peak RSS was 1,515,790,336
+bytes, or 9.199863966% of observed RAM. This is a standalone workload candidate, not the final
+campaign feature leg or a Gate 1 decision. The four reboot-separated layout measurements remain
+required.

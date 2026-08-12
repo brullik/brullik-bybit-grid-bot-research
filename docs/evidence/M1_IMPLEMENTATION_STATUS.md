@@ -88,6 +88,14 @@
   qualification, forbids ambiguous legacy-plus-successor admission, binds the measured volume,
   rechecks current identity and required free space before and after timed work, preserves the 70%
   feature-memory and four-distinct-reboot gates, and cannot accept Gate 1.
+- Append-only `grid.gate1-review-pack/v2` and `grid.reference-campaign-plan/v2` contracts that bind
+  the exact ADR-0019 qualification to layout/feature v3, preserve all legacy schemas, embed the
+  full clean Python 3.12 environment/source manifest, expose one run-or-reboot action at a time,
+  and leave Gate 1 pending explicit owner/PM review.
+- A passing Python 3.12.10 reference-environment doctor on the owner laptop and a standalone
+  qualified feature v3 run over 99,999,900 rows: 29.047963300 seconds,
+  3,442,578.709124216 core rows/s, 1,515,790,336 bytes peak RSS, and 9.199863966% of observed RAM.
+  The campaign feature leg and four reboot-separated layout measurements remain outstanding.
 - Read-only inventory of the owner's older 1m archive: 29,098,027 trade/mark rows across 123
   symbols in 541,389,842 bytes. Its separate legacy run report measured 29,120,414 rows in 372.558
   seconds with zero failures. The observation informs capacity and throughput expectations but is
@@ -327,17 +335,9 @@
 
 ## Evidence still required to close Gate 1
 
-- Extend the qualified ADR-0019 host artifact into append-only layout/feature, review-pack, and
-  campaign-plan contracts. They must consume the receipt-verified qualification, recheck current
-  free space and identity, and bind the clean pinned environment without changing legacy receipts.
 - Run the staged ADR-0010 shortlist protocol on the newly admitted host with four distinct
   reboot-separated measurement legs using the receipt-verified real-market-skew binding, then
   decide P-001 through P-005. The local maintenance/cold-read smoke result remains non-reference.
-- Repeat the host-bound 100-million-row feature benchmark under the pinned reference environment
-  and replace the provisional runtime/storage/hardware projection with accepted evidence.
-- Build the append-only successor Gate 1 review pack from the completed layout/feature reference
-  artifacts; immutable legacy projections and review contracts retain their original semantics.
-- Update `benchmarks.reference_campaign` and `ops/runbooks/M1_REFERENCE_CAMPAIGN.md` to the
-  append-only ADR-0019 admission, then bind the four reboot-separated legs, feature run, and
-  review-pack build on the freshly admitted owner laptop.
+- Follow the immutable campaign-plan v2 sequence to finalize layout v3, rerun the feature v3 leg
+  under the pinned plan environment, and build Gate 1 review-pack v2 from those exact artifacts.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

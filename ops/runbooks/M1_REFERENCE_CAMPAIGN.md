@@ -1,8 +1,8 @@
-# M1 external reference campaign runbook
+# M1 qualified reference campaign runbook
 
 ## Purpose and boundary
 
-This runbook completes the remaining external-host measurements needed for an owner/PM Gate 1
+This runbook completes the remaining qualified-host measurements needed for an owner/PM Gate 1
 review. It does not accept Gate 1 and does not authorize or start the Phase 2 history downloader.
 
 Owner-approved ADR-0019 requirements for the successor admission contract:
@@ -10,7 +10,7 @@ Owner-approved ADR-0019 requirements for the successor admission contract:
 - receipt-verified 99,999,900-row/700-instrument layout and feature trials on the same host;
 - feature peak RSS no greater than 70% of observed RAM;
 - local SSD/NVMe with current free bytes covering verified active-plus-building history,
-  measured retained campaign scratch, bounded staging, and an 8 GiB operating reserve;
+  measured retained campaign scratch, and an 8 GiB operating reserve;
 - stable host/storage identity and a pinned clean environment;
 - an idle host during every timed measurement and every existing performance/correctness gate.
 
@@ -18,10 +18,9 @@ There is no longer a fixed 16-core/64-GiB/2-TiB admission rule. On checked-in ev
 laptop is a hardware candidate: the present calculation requires 100,228,313,013 bytes
 (93.345 GiB) free and the receipt-bound snapshot observed 193,679,237,120 bytes (180.378 GiB).
 
-The append-only host qualification now verifies those hardware/storage conditions, but the
-commands below still publish legacy fixed-profile campaign evidence. Do not start the campaign
-until its successor plan/layout/feature/review contracts consume the qualification. That follow-up
-must also pass the pinned environment before any campaign directory is created.
+The append-only host qualification, layout/feature v3, Gate 1 review-pack v2, and campaign-plan v2
+contracts now implement those requirements without changing legacy receipts. The plan must still
+pass the pinned environment and fresh qualification checks before creating a campaign directory.
 
 ## 0. Verify the measured host candidate
 
@@ -102,25 +101,15 @@ or prints credential values.
 Do not continue if any command fails. Do not upgrade dependencies, fetch a newer commit, recreate
 the environment, or set Bybit credentials after the immutable campaign plan is published.
 
-## 2. Capture the qualifying host
+## 2. Select the qualified evidence chain
 
-Choose a dedicated root on the measured NVMe volume. The example uses `D:\grid-reference`:
+Use the checked-in qualification and adjacent completion receipt without copying or editing
+either file. Campaign-plan creation verifies both files, their transitive sources, the current
+identity, volume placement, and required free bytes before it mutates the campaign root.
 
-```powershell
-& $python -m benchmarks.workstation_snapshot `
-  --output D:\grid-reference\reference-host.json
-```
-
-Linux equivalent:
-
-```bash
-"$PYTHON" -m benchmarks.workstation_snapshot \
-  --output /mnt/grid-reference/reference-host.json
-```
-
-In the legacy implementation, the artifact status is
-`meets-documented-full-research-profile`. ADR-0019 explicitly leaves that v1 meaning immutable;
-the follow-up implementation must publish a new evidence version instead of relabelling it.
+If the qualification is stale when a new plan is created, publish a new qualification from fresh
+capacity/workstation evidence under a new filename. Do not extend the initial age threshold or
+replace the old receipt.
 
 ## 3. Publish the immutable campaign plan
 
@@ -128,8 +117,9 @@ Use a new campaign root on the same volume. Do not reuse a failed or completed r
 
 ```powershell
 & $python -m benchmarks.reference_campaign plan `
-  --campaign-root D:\grid-reference\campaign-001 `
-  --reference-host-evidence D:\grid-reference\reference-host.json
+  --campaign-root C:\grid-reference\campaign-001 `
+  --reference-host-qualification `
+    benchmarks/results/m1-owner-measured-host-qualification-20260812.json
 ```
 
 Linux equivalent:
@@ -137,19 +127,22 @@ Linux equivalent:
 ```bash
 "$PYTHON" -m benchmarks.reference_campaign plan \
   --campaign-root /mnt/grid-reference/campaign-001 \
-  --reference-host-evidence /mnt/grid-reference/reference-host.json
+  --reference-host-qualification \
+    benchmarks/results/m1-owner-measured-host-qualification-20260812.json
 ```
 
-The legacy command validates all inputs before creating `campaign-plan.json` and its receipt but
-still rejects the owner laptop on the superseded fixed profile. The append-only successor must
-reject insufficient current free space, a different volume/host, a stale source manifest,
-modified qualification evidence, or reserved output paths.
+The command publishes `grid.reference-campaign-plan/v2` only after validating all inputs. It
+rejects insufficient current free space, a different volume/host, an initially stale
+qualification, a stale source manifest, a changed environment, modified qualification evidence,
+or reserved output paths. The embedded qualification remains usable across the planned reboots;
+status rechecks its content and current host/free space but does not reapply the initial 24-hour
+age gate mid-campaign.
 
 ## 4. Follow status one action at a time
 
 ```powershell
 & $python -m benchmarks.reference_campaign status `
-  --plan D:\grid-reference\campaign-001\campaign-plan.json
+  --plan C:\grid-reference\campaign-001\campaign-plan.json
 ```
 
 Linux equivalent:

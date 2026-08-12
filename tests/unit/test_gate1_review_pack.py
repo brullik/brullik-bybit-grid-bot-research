@@ -8,7 +8,8 @@ import pytest
 from grid_contracts.canonical import sha256_file
 from grid_data.evidence import publish_evidence, verify_evidence
 
-from benchmarks.gate1_review_pack import publish_review_pack
+from benchmarks.gate1_review_pack import publish_qualified_review_pack, publish_review_pack
+from benchmarks.measured_host_qualification import qualification_summary
 
 ROW_COUNT = 99_999_900
 INSTRUMENTS = 700
@@ -36,6 +37,9 @@ FEATURE_COLUMNS = [
 ROOT = Path(__file__).resolve().parents[2]
 DECISION_PATH = ROOT / "benchmarks" / "results" / "m1-layout-exact-decision-candidate.json"
 REAL_MARKET_PATH = ROOT / "benchmarks" / "results" / "m1-real-market-layout-skew.json"
+QUALIFICATION_PATH = (
+    ROOT / "benchmarks" / "results" / "m1-owner-measured-host-qualification-20260812.json"
+)
 
 
 def host_summary(*, artifact_hash: str = "a" * 64) -> dict[str, Any]:
@@ -375,6 +379,37 @@ def publish_sources(
     return layout_path, feature_path, DECISION_PATH, REAL_MARKET_PATH, workstation_path
 
 
+def publish_qualified_sources(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
+    qualification_path = tmp_path / "qualification.json"
+    qualification = json.loads(QUALIFICATION_PATH.read_text(encoding="utf-8"))
+    publish_evidence(qualification_path, qualification)
+    host = qualification_summary(qualification_path, qualification)
+    qualified_layout = layout_payload(
+        host,
+        decision_evidence=decision_summary(),
+        real_market_evidence=real_market_summary(),
+    )
+    qualified_layout["benchmark_schema"] = "grid.reference-layout-benchmark/v3"
+    qualified_layout["status"] = "qualified-reference-protocol-candidate"
+    preparation = qualified_layout["preparation"]
+    preparation["preparation_schema"] = "grid.reference-layout-preparation/v3"
+    preparation["reference_host_qualification"] = preparation.pop("reference_host_evidence")
+    for measurement in qualified_layout["measurements"]:
+        measurement["measurement_schema"] = "grid.reference-layout-measurement/v3"
+        measurement["preparation"]["preparation_schema"] = "grid.reference-layout-preparation/v3"
+    qualified_feature = feature_payload(host)
+    qualified_feature["benchmark_schema"] = "grid.feature-benchmark/v3"
+    qualified_feature["reference_host_qualification"] = qualified_feature.pop(
+        "reference_host_evidence"
+    )
+    qualified_feature["status"] = "qualified-host-feature-candidate"
+    layout_path = tmp_path / "qualified-layout.json"
+    feature_path = tmp_path / "qualified-feature.json"
+    publish_evidence(layout_path, qualified_layout)
+    publish_evidence(feature_path, qualified_feature)
+    return layout_path, feature_path, DECISION_PATH, REAL_MARKET_PATH, qualification_path
+
+
 def test_gate1_pack_is_ready_but_cannot_approve_owner_decisions(tmp_path: Path) -> None:
     layout_path, feature_path, decision_path, real_market_path, workstation_path = publish_sources(
         tmp_path
@@ -404,6 +439,31 @@ def test_gate1_pack_is_ready_but_cannot_approve_owner_decisions(tmp_path: Path) 
         candidate["gates"]["provisional_performance_passed"]
         for candidate in payload["layout_candidates"]
     )
+    assert verify_evidence(output)
+
+
+def test_qualified_gate1_pack_binds_v3_workloads_without_accepting_gate(tmp_path: Path) -> None:
+    layout_path, feature_path, decision_path, real_market_path, qualification_path = (
+        publish_qualified_sources(tmp_path)
+    )
+    output = tmp_path / "qualified-gate1-review.json"
+
+    payload = publish_qualified_review_pack(
+        layout_path=layout_path,
+        feature_path=feature_path,
+        decision_path=decision_path,
+        real_market_path=real_market_path,
+        qualification_path=qualification_path,
+        output=output,
+        command="qualified gate1 review test",
+    )
+
+    assert payload["evidence_schema"] == "grid.gate1-review-pack/v2"
+    assert payload["status"] == "ready-for-owner-review"
+    assert payload["gate_1"]["status"] == "pending-owner-decision"
+    assert payload["reference_host_qualification"]["artifact"] == qualification_path.name
+    assert payload["sources"]["qualification"]["artifact"] == qualification_path.name
+    assert payload["capacity"]["required_free_bytes"] == 100_228_313_013
     assert verify_evidence(output)
 
 

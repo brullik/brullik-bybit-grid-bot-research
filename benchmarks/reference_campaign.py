@@ -21,11 +21,19 @@ from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[impor
 from benchmarks.gate1_review_pack import (
     DECISION_SCHEMA,
     FEATURE_SCHEMA,
+    FEATURE_SCHEMA_V3,
     LAYOUT_SCHEMA,
+    LAYOUT_SCHEMA_V3,
+    QUALIFICATION_SCHEMA,
     REAL_MARKET_SCHEMA,
     REVIEW_SCHEMA,
+    REVIEW_SCHEMA_V2,
     WORKSTATION_SCHEMA,
     load_verified_evidence,
+)
+from benchmarks.measured_host_qualification import (
+    admit_measured_host_qualification,
+    recheck_admitted_qualification,
 )
 from benchmarks.reference_environment import collect_reference_environment
 from benchmarks.reference_host import admit_reference_host
@@ -34,6 +42,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "MANIFEST.sha256"
 PLAN_SCHEMA_NAME = "grid.reference-campaign-plan/v1"
 PLAN_SCHEMA = ROOT / "schemas" / "evidence" / "v1" / "reference-campaign-plan.schema.json"
+PLAN_SCHEMA_NAME_V2 = "grid.reference-campaign-plan/v2"
+PLAN_SCHEMA_V2 = ROOT / "schemas" / "evidence" / "v2" / "reference-campaign-plan.schema.json"
 REFERENCE_ROWS = 100_000_000
 REFERENCE_INSTRUMENTS = 700
 EFFECTIVE_REFERENCE_ROWS = REFERENCE_ROWS - REFERENCE_ROWS % REFERENCE_INSTRUMENTS
@@ -147,6 +157,7 @@ def _commands(
     decision_path: Path,
     real_market_path: Path,
     reference_host_path: Path,
+    qualified: bool = False,
 ) -> list[dict[str, Any]]:
     python = str(Path(sys.executable).resolve())
     work_dir = campaign_root / LAYOUT_WORK_DIR_NAME
@@ -177,7 +188,7 @@ def _commands(
             str(decision_path),
             "--real-market-evidence",
             str(real_market_path),
-            "--reference-host-evidence",
+            ("--reference-host-qualification" if qualified else "--reference-host-evidence"),
             str(reference_host_path),
         ),
         expected_artifact=preparation,
@@ -246,7 +257,7 @@ def _commands(
                 "1440",
                 "--memory-limit-percent",
                 "70",
-                "--reference-host-evidence",
+                ("--reference-host-qualification" if qualified else "--reference-host-evidence"),
                 str(reference_host_path),
                 "--output",
                 str(feature_output),
@@ -270,7 +281,7 @@ def _commands(
                 str(decision_path),
                 "--real-market",
                 str(real_market_path),
-                "--workstation",
+                ("--reference-host-qualification" if qualified else "--workstation"),
                 str(reference_host_path),
                 "--output",
                 str(review_output),
@@ -375,6 +386,104 @@ def publish_campaign_plan(
     payload["content_sha256"] = canonical_sha256(hash_input)
     Draft202012Validator(
         _load_json(PLAN_SCHEMA),
+        format_checker=FormatChecker(),
+    ).validate(payload)
+    publish_evidence(plan_path, payload)
+    return payload
+
+
+def publish_qualified_campaign_plan(
+    *,
+    campaign_root: Path,
+    qualification_path: Path,
+    decision_path: Path,
+    real_market_path: Path,
+) -> dict[str, Any]:
+    """Publish an immutable ADR-0019 campaign plan after every preflight passes."""
+
+    campaign_root = _safe_campaign_root(campaign_root)
+    qualification_path = qualification_path.resolve()
+    decision_path = decision_path.resolve()
+    real_market_path = real_market_path.resolve()
+    qualification = load_verified_evidence(qualification_path, QUALIFICATION_SCHEMA)
+    admitted = admit_measured_host_qualification(
+        qualification_path,
+        required_volume_path=campaign_root,
+    )
+    decision = load_verified_evidence(decision_path, DECISION_SCHEMA)
+    real_market = load_verified_evidence(real_market_path, REAL_MARKET_SCHEMA)
+    if decision.get("status") != "decision-matrix-candidate":
+        raise ValueError("layout decision evidence is not a decision-matrix candidate")
+    if real_market.get("status") != "complete-bounded-real-market-skew":
+        raise ValueError("real-market evidence is not a complete bounded layout result")
+    environment = _require_reference_environment()
+    source_manifest = _source_manifest_summary()
+
+    plan_path = campaign_root / PLAN_NAME
+    preflight_evidence(plan_path)
+    reserved_paths = (
+        campaign_root / LAYOUT_WORK_DIR_NAME,
+        campaign_root / LAYOUT_OUTPUT_NAME,
+        campaign_root / FEATURE_OUTPUT_NAME,
+        campaign_root / REVIEW_OUTPUT_NAME,
+    )
+    if any(path.exists() for path in reserved_paths):
+        raise ValueError("campaign root already contains a reserved benchmark output path")
+    steps = _commands(
+        campaign_root=campaign_root,
+        decision_path=decision_path,
+        real_market_path=real_market_path,
+        reference_host_path=qualification_path,
+        qualified=True,
+    )
+    payload: dict[str, Any] = {
+        "campaign_root": str(campaign_root),
+        "content_sha256": "",
+        "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "environment": environment,
+        "evidence_schema": PLAN_SCHEMA_NAME_V2,
+        "gate_1": {
+            "automatic_acceptance": False,
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        },
+        "limitations": [
+            "The plan orchestrates evidence commands but does not execute, approve, or promote "
+            "them.",
+            "Each layout measurement requires a distinct reboot and an otherwise idle host.",
+            "A complete review pack still requires an explicit owner/PM Gate 1 decision.",
+            "Phase 2 history ingestion remains unauthorized while Gate 1 is pending.",
+        ],
+        "reference_host_qualification": admitted,
+        "repository_source": {
+            "root": str(ROOT),
+            "source_manifest": source_manifest,
+        },
+        "sources": {
+            "decision": _source_summary(
+                decision_path,
+                decision,
+                schema_key="benchmark_schema",
+            ),
+            "qualification": _source_summary(
+                qualification_path,
+                qualification,
+                schema_key="evidence_schema",
+            ),
+            "real_market": _source_summary(
+                real_market_path,
+                real_market,
+                schema_key="evidence_schema",
+            ),
+        },
+        "status": "ready-to-run",
+        "steps": steps,
+    }
+    hash_input = dict(payload)
+    hash_input.pop("content_sha256")
+    payload["content_sha256"] = canonical_sha256(hash_input)
+    Draft202012Validator(
+        _load_json(PLAN_SCHEMA_V2),
         format_checker=FormatChecker(),
     ).validate(payload)
     publish_evidence(plan_path, payload)
@@ -567,6 +676,128 @@ def _review_completion_reason(
     return None
 
 
+def _qualified_layout_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    *,
+    preparation_hash: str | None,
+) -> str | None:
+    preparation = payload.get("preparation")
+    sources = plan["sources"]
+    if (
+        payload.get("profile") != "reference"
+        or payload.get("status") != "qualified-reference-protocol-candidate"
+        or not isinstance(preparation, Mapping)
+        or preparation_hash is None
+        or preparation.get("artifact_sha256") != preparation_hash
+        or preparation.get("input") != _expected_reference_input()
+        or preparation.get("reference_host_qualification") != plan["reference_host_qualification"]
+        or not _matches_source(
+            preparation.get("decision_evidence"),
+            sources["decision"],
+            schema_key="benchmark_schema",
+        )
+        or not _matches_source(
+            preparation.get("real_market_evidence"),
+            sources["real_market"],
+            schema_key="evidence_schema",
+        )
+    ):
+        return "qualified layout does not bind the campaign preparation, scale, host, or sources"
+    return None
+
+
+def _qualified_feature_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+) -> str | None:
+    expected_input = {
+        "core_minutes_per_shard": 2880,
+        "instrument_count": REFERENCE_INSTRUMENTS,
+        "row_count": EFFECTIVE_REFERENCE_ROWS,
+        "window_minutes": 1440,
+    }
+    raw_input = payload.get("input")
+    memory_gate = payload.get("memory_gate")
+    status = payload.get("status")
+    if (
+        payload.get("profile") != "reference"
+        or status not in {"qualified-host-feature-candidate", "qualified-feature-rejected-memory"}
+        or not isinstance(raw_input, Mapping)
+        or any(raw_input.get(key) != value for key, value in expected_input.items())
+        or payload.get("reference_host_qualification") != plan["reference_host_qualification"]
+        or not isinstance(memory_gate, Mapping)
+        or memory_gate.get("configured_limit_percent") != 70
+        or (status == "qualified-host-feature-candidate") != (memory_gate.get("passed") is True)
+    ):
+        return "qualified feature does not bind the campaign scale, host, or memory limit"
+    return None
+
+
+def _qualified_review_completion_reason(
+    payload: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    *,
+    layout_path: Path,
+    layout_payload: Mapping[str, Any] | None,
+    feature_path: Path,
+    feature_payload: Mapping[str, Any] | None,
+) -> str | None:
+    if layout_payload is None or feature_payload is None:
+        return "review pack exists without valid campaign layout and feature results"
+
+    def source_summary(
+        path: Path, source_payload: Mapping[str, Any], schema_key: str
+    ) -> dict[str, str]:
+        return {
+            "artifact": path.name,
+            "artifact_sha256": sha256_file(path),
+            "schema": str(source_payload[schema_key]),
+            "status": str(source_payload["status"]),
+        }
+
+    sources = plan["sources"]
+    expected_sources = {
+        "decision_layout": {
+            key: sources["decision"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+        "feature": source_summary(feature_path, feature_payload, "benchmark_schema"),
+        "layout": source_summary(layout_path, layout_payload, "benchmark_schema"),
+        "qualification": {
+            key: sources["qualification"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+        "real_market": {
+            key: sources["real_market"][key]
+            for key in ("artifact", "artifact_sha256", "schema", "status")
+        },
+    }
+    gate = payload.get("gate_1")
+    blockers = gate.get("blockers") if isinstance(gate, Mapping) else None
+    status = payload.get("status")
+    classification_matches_blockers = isinstance(blockers, list) and (
+        (status == "ready-for-owner-review" and not blockers)
+        or (status == "blocked-by-reference-results" and bool(blockers))
+    )
+    if (
+        status not in {"ready-for-owner-review", "blocked-by-reference-results"}
+        or not classification_matches_blockers
+        or payload.get("reference_host_qualification") != plan["reference_host_qualification"]
+        or payload.get("sources") != expected_sources
+        or payload.get("owner_decision_required") is not True
+        or gate
+        != {
+            "automatic_promotion": False,
+            "blockers": blockers,
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        }
+    ):
+        return "qualified review pack does not bind the campaign results and pending Gate 1"
+    return None
+
+
 def _current_boot_marker() -> str:
     return datetime.fromtimestamp(int(psutil.boot_time()), UTC).isoformat().replace("+00:00", "Z")
 
@@ -575,6 +806,8 @@ def campaign_status(plan_path: Path) -> dict[str, Any]:
     """Inspect only receipt-marked artifacts and return the next safe operator action."""
 
     plan_path = plan_path.resolve()
+    if _load_json(plan_path).get("evidence_schema") == PLAN_SCHEMA_NAME_V2:
+        return qualified_campaign_status(plan_path)
     plan = load_verified_evidence(plan_path, PLAN_SCHEMA)
     hash_input = dict(plan)
     embedded_hash = hash_input.pop("content_sha256")
@@ -768,12 +1001,211 @@ def campaign_status(plan_path: Path) -> dict[str, Any]:
     }
 
 
+def qualified_campaign_status(plan_path: Path) -> dict[str, Any]:
+    """Inspect an ADR-0019 campaign without reapplying the initial 24-hour age gate."""
+
+    plan_path = plan_path.resolve()
+    plan = load_verified_evidence(plan_path, PLAN_SCHEMA_V2)
+    hash_input = dict(plan)
+    embedded_hash = hash_input.pop("content_sha256")
+    if embedded_hash != canonical_sha256(hash_input):
+        raise ValueError("campaign plan embedded content hash does not verify")
+    campaign_root = _safe_campaign_root(Path(str(plan["campaign_root"])))
+    if plan_path != campaign_root / PLAN_NAME:
+        raise ValueError("campaign plan path does not match its declared campaign root")
+    qualification = plan.get("reference_host_qualification")
+    if not isinstance(qualification, dict):
+        raise ValueError("campaign plan has no host qualification")
+    recheck_admitted_qualification(qualification, required_volume_path=campaign_root)
+    if _require_reference_environment() != plan["environment"]:
+        raise ValueError("current reference environment differs from the campaign plan")
+    if _source_manifest_summary() != plan["repository_source"]["source_manifest"]:
+        raise ValueError("current repository source manifest differs from the campaign plan")
+    for source in plan["sources"].values():
+        path = Path(str(source["path"]))
+        if not verify_evidence(path) or sha256_file(path) != source["artifact_sha256"]:
+            raise ValueError(f"campaign source no longer verifies: {path}")
+
+    work_dir = campaign_root / LAYOUT_WORK_DIR_NAME
+    artifact_states: dict[str, tuple[str, dict[str, Any] | None, str | None]] = {}
+    artifact_states["layout-prepare"] = _basic_artifact_state(
+        work_dir / "preparation.json",
+        schema_key="preparation_schema",
+        expected_schema="grid.reference-layout-preparation/v3",
+        expected_fields={
+            "profile": "reference",
+            "status": "prepared-for-separated-measurement",
+        },
+    )
+    preparation = artifact_states["layout-prepare"][1]
+    if preparation is not None:
+        preparation_mismatch = bool(
+            preparation.get("input") != _expected_reference_input()
+            or preparation.get("reference_host_qualification") != qualification
+            or preparation.get("decision_evidence", {}).get("artifact_sha256")
+            != plan["sources"]["decision"]["artifact_sha256"]
+            or preparation.get("real_market_evidence", {}).get("artifact_sha256")
+            != plan["sources"]["real_market"]["artifact_sha256"]
+        )
+        if preparation_mismatch:
+            artifact_states["layout-prepare"] = (
+                "invalid",
+                None,
+                "preparation does not bind the campaign scale, host, or source evidence",
+            )
+            preparation = None
+    preparation_hash = (
+        sha256_file(work_dir / "preparation.json") if preparation is not None else None
+    )
+    for engine, query_shape in MEASUREMENT_LEGS:
+        step_id = f"layout-measure-{engine}-{query_shape}"
+        measurement_state = _basic_artifact_state(
+            work_dir / f"measurement-{engine}-{query_shape}.json",
+            schema_key="measurement_schema",
+            expected_schema="grid.reference-layout-measurement/v3",
+            expected_fields={
+                "cache_proof": "reboot",
+                "engine": engine,
+                "profile": "reference",
+                "query_shape": query_shape,
+                "status": "reboot-separated-first-read",
+            },
+        )
+        if (
+            measurement_state[0] == "complete"
+            and preparation_hash is not None
+            and measurement_state[1] is not None
+            and measurement_state[1].get("preparation", {}).get("artifact_sha256")
+            != preparation_hash
+        ):
+            measurement_state = (
+                "invalid",
+                None,
+                "measurement does not bind the current preparation",
+            )
+        artifact_states[step_id] = measurement_state
+    layout_path = campaign_root / LAYOUT_OUTPUT_NAME
+    layout_state = _schema_artifact_state(layout_path, LAYOUT_SCHEMA_V3)
+    if layout_state[0] == "complete" and layout_state[1] is not None:
+        reason = _qualified_layout_completion_reason(
+            layout_state[1],
+            plan,
+            preparation_hash=preparation_hash,
+        )
+        if reason is not None:
+            layout_state = ("invalid", None, reason)
+    artifact_states["layout-finalize"] = layout_state
+
+    feature_path = campaign_root / FEATURE_OUTPUT_NAME
+    feature_state = _schema_artifact_state(feature_path, FEATURE_SCHEMA_V3)
+    if feature_state[0] == "complete" and feature_state[1] is not None:
+        reason = _qualified_feature_completion_reason(feature_state[1], plan)
+        if reason is not None:
+            feature_state = ("invalid", None, reason)
+    artifact_states["feature-reference"] = feature_state
+
+    review_state = _schema_artifact_state(campaign_root / REVIEW_OUTPUT_NAME, REVIEW_SCHEMA_V2)
+    if review_state[0] == "complete" and review_state[1] is not None:
+        reason = _qualified_review_completion_reason(
+            review_state[1],
+            plan,
+            layout_path=layout_path,
+            layout_payload=layout_state[1],
+            feature_path=feature_path,
+            feature_payload=feature_state[1],
+        )
+        if reason is not None:
+            review_state = ("invalid", None, reason)
+    artifact_states["gate1-review-pack"] = review_state
+
+    ordered_steps = list(plan["steps"])
+    seen_pending = False
+    status_rows: list[dict[str, Any]] = []
+    invalid_reasons: list[str] = []
+    boot_markers: list[str] = []
+    preparation_boot_marker = preparation.get("boot_marker") if preparation is not None else None
+    for step in ordered_steps:
+        step_id = str(step["id"])
+        step_state, payload, reason = artifact_states[step_id]
+        if step_state == "pending":
+            seen_pending = True
+        elif step_state == "complete" and seen_pending:
+            step_state = "invalid"
+            reason = "artifact exists out of campaign order"
+        if step_state == "invalid":
+            invalid_reasons.append(f"{step_id}: {reason}")
+        if payload is not None and step["requires_reboot_before"]:
+            marker = payload.get("boot_marker")
+            if (
+                not isinstance(marker, str)
+                or not marker
+                or marker == preparation_boot_marker
+                or marker in boot_markers
+            ):
+                step_state = "invalid"
+                reason = "measurement boot marker is missing or not distinct from prior stages"
+                invalid_reasons.append(f"{step_id}: {reason}")
+            else:
+                boot_markers.append(marker)
+        status_rows.append({"id": step_id, "reason": reason, "state": step_state})
+
+    next_step = next(
+        (
+            step
+            for step, row in zip(ordered_steps, status_rows, strict=True)
+            if row["state"] == "pending"
+        ),
+        None,
+    )
+    if invalid_reasons:
+        campaign_state = "blocked-invalid-artifact"
+        next_action = None
+    elif next_step is None:
+        review = artifact_states["gate1-review-pack"][1]
+        campaign_state = (
+            "complete-ready-for-owner-review"
+            if review is not None and review.get("status") == "ready-for-owner-review"
+            else "complete-blocked-by-reference-results"
+        )
+        next_action = None
+    elif next_step["requires_reboot_before"]:
+        prior_markers = []
+        if preparation is not None:
+            marker = preparation.get("boot_marker")
+            if isinstance(marker, str):
+                prior_markers.append(marker)
+        prior_markers.extend(boot_markers)
+        if _current_boot_marker() in prior_markers:
+            campaign_state = "reboot-required"
+            next_action = {"action": "reboot", "then": next_step}
+        else:
+            campaign_state = "ready"
+            next_action = {"action": "run", "step": next_step}
+    else:
+        campaign_state = "ready"
+        next_action = {"action": "run", "step": next_step}
+
+    return {
+        "campaign_root": str(campaign_root),
+        "campaign_status": campaign_state,
+        "gate_1": {
+            "automatic_acceptance": False,
+            "owner_decision_required": True,
+            "status": "pending-owner-decision",
+        },
+        "invalid_reasons": invalid_reasons,
+        "next_action": next_action,
+        "steps": status_rows,
+    }
+
+
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command_name", required=True)
     plan = commands.add_parser("plan")
     plan.add_argument("--campaign-root", type=Path, required=True)
-    plan.add_argument("--reference-host-evidence", type=Path, required=True)
+    plan.add_argument("--reference-host-evidence", type=Path)
+    plan.add_argument("--reference-host-qualification", type=Path)
     plan.add_argument(
         "--decision-evidence",
         type=Path,
@@ -793,12 +1225,29 @@ def main() -> int:
     args = arguments()
     try:
         if args.command_name == "plan":
-            payload = publish_campaign_plan(
-                campaign_root=args.campaign_root,
-                reference_host_path=args.reference_host_evidence,
-                decision_path=args.decision_evidence,
-                real_market_path=args.real_market_evidence,
+            admission_count = sum(
+                path is not None
+                for path in (args.reference_host_evidence, args.reference_host_qualification)
             )
+            if admission_count != 1:
+                raise ValueError(
+                    "exactly one of --reference-host-evidence or "
+                    "--reference-host-qualification is required"
+                )
+            if args.reference_host_qualification is not None:
+                payload = publish_qualified_campaign_plan(
+                    campaign_root=args.campaign_root,
+                    qualification_path=args.reference_host_qualification,
+                    decision_path=args.decision_evidence,
+                    real_market_path=args.real_market_evidence,
+                )
+            else:
+                payload = publish_campaign_plan(
+                    campaign_root=args.campaign_root,
+                    reference_host_path=args.reference_host_evidence,
+                    decision_path=args.decision_evidence,
+                    real_market_path=args.real_market_evidence,
+                )
             result = {
                 "artifact": str((Path(payload["campaign_root"]) / PLAN_NAME).resolve()),
                 "status": payload["status"],
