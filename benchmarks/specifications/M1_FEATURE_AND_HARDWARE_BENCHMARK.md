@@ -60,8 +60,9 @@ python benchmarks/capacity_projection.py `
 
 That command reproduces the immutable legacy v1 provisional projection from the checked-in local
 feature evidence. It does not consume or downgrade a host-bound v2 feature artifact. A later
-append-only Gate 1 aggregation contract must bind the accepted reference layout and feature
-results before the provisional runtime/hardware projection can be replaced.
+append-only Gate 1 aggregation contract binds the reference layout, feature, workstation,
+ADR-0010 decision, and real-market artifacts without changing v1-v3 semantics; see
+[M1_GATE1_REVIEW_PACK.md](M1_GATE1_REVIEW_PACK.md).
 
 ## Correctness and resource interpretation
 

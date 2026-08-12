@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0014 — Gate 1 reference evidence aggregation](ADR-0014-gate1-reference-evidence-aggregation.md)
 - [ADR-0013 — Shared reference-host admission for feature evidence](ADR-0013-shared-reference-host-feature-admission.md)
 - [ADR-0012 — Bounded real-market layout-skew evidence](ADR-0012-bounded-real-market-layout-skew.md)
 - [ADR-0011 — Staged reference layout benchmark](ADR-0011-staged-reference-layout-benchmark.md)

@@ -47,6 +47,11 @@
   use `grid.feature-benchmark/v2`, verify the same ≥16-core/64 GiB/2 TiB NVMe host before and after
   the workload, freeze Polars/psutil/Python versions, and publish a candidate only when the memory
   gate passes. Linux snapshots measure the actual longest matching mount.
+- Append-only `grid.gate1-review-pack/v1` aggregation that accepts only receipt/schema-verified
+  host-bound layout and feature v2 artifacts, re-verifies their workstation/ADR-0010/real-market
+  sources, rejects cross-host/version/scale evidence, calculates documented provisional query,
+  write, memory, and capacity checks, preserves negative results, and always leaves P-001—P-005
+  plus Gate 1 pending for owner/PM review.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -236,7 +241,6 @@
   replace the provisional runtime/storage/hardware projection with accepted evidence. The feature
   CLI now rejects the checked-in below-profile workstation snapshot before computation or output
   replacement and requires a v2 host-bound result.
-- Add an append-only Gate 1 aggregation contract that consumes the host-bound feature v2 and
-  reference-layout v2 artifacts; the immutable v1-v3 provisional projections intentionally do not
-  reinterpret the stronger evidence contract.
+- Build the v1 Gate 1 review pack from the completed external layout/feature reference artifacts;
+  immutable v1-v3 provisional projections intentionally retain their original local semantics.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

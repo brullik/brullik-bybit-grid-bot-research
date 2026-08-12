@@ -83,6 +83,9 @@ Preparation also fails closed unless each 100-million-row shortlist dataset actu
 its declared target file size. Python, DuckDB, Polars, PyArrow, and psutil versions are captured at
 preparation and must remain identical in all four legs.
 
+After the host-bound feature run also completes, build the independent owner-review artifact using
+[M1_GATE1_REVIEW_PACK.md](M1_GATE1_REVIEW_PACK.md). The review pack cannot accept Gate 1 itself.
+
 ## Maintenance semantics
 
 Preparation selects the first UTC calendar-month/symbol-bucket unit of each shortlisted layout.

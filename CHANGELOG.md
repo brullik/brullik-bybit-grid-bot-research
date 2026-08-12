@@ -45,6 +45,9 @@ All notable project-governance and architecture changes are recorded here.
 - Shared fail-closed reference-host admission for layout and feature benchmarks, append-only v2
   feature evidence, pre/post-run host and software binding, auditable memory-gate rejection, and
   actual mounted-volume discovery for Linux workstation snapshots.
+- Receipt-linked Gate 1 owner-review aggregation with transitive source verification, same-host/
+  scale/runtime binding, provisional scan/write/memory/capacity checks, explicit P-001—P-005
+  candidates, preserved negative evidence, and no automatic gate or Phase 2 approval.
 
 ### Safety
 
