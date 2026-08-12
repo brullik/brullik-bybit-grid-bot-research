@@ -20,8 +20,11 @@ The current workstation cannot run the reference campaign: its receipt-verified 
 Add the append-only `grid.reference-campaign-plan/v1` contract and a two-command campaign helper:
 
 - `plan` admits the current host and measured campaign volume, validates receipt/schema-pinned
-  decision, real-market, workstation, and repository source-manifest inputs, rejects reserved
-  output collisions, and only then publishes an immutable eight-step plan;
+  decision, real-market, workstation, and repository source-manifest inputs, and requires the
+  read-only reference-environment doctor to prove Python 3.12, the reviewed exact direct
+  dependency constraints, every editable monorepo package, a clean canonical `main` checkout,
+  consistent dependencies, required imports, and absence of Bybit credential variables before
+  it rejects reserved output collisions and publishes an immutable eight-step plan;
 - the plan fixes the 100,000,000 requested rows, 700 instruments, two ADR-0010 layouts, four
   engine/query measurement legs, feature reference run, and Gate 1 review-pack command;
 - command `argv` arrays are authoritative; display strings are informational;
@@ -41,6 +44,8 @@ the returned command explicitly and call `status` again afterward.
 ## Consequences
 
 - External-host handoff becomes deterministic and machine-readable.
+- A clean-machine install cannot begin the expensive campaign with missing monorepo packages,
+  dependency drift, a feature branch, stale `origin/main`, or private exchange credentials.
 - A below-profile or mismatched host fails before campaign-root creation or benchmark mutation.
 - Reboots remain manual and explicit; the helper never attempts to restart the machine.
 - Existing benchmark and review evidence contracts remain authoritative; the campaign plan does

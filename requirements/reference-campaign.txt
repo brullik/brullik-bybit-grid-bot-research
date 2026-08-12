@@ -1,0 +1,14 @@
+# Exact direct dependencies for the Gate 1 reference campaign.
+#
+# CI installs the same constraints before accepting changes. Transitive dependencies remain
+# resolved by the declared project extras; benchmark artifacts additionally bind the observed
+# engine/runtime versions on the admitted host.
+duckdb==1.5.5
+jsonschema==4.26.0
+mypy==2.3.0
+polars==1.43.2
+psutil==7.2.2
+pyarrow==25.0.1
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.2

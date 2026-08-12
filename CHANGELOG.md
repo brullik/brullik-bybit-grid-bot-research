@@ -63,6 +63,9 @@ All notable project-governance and architecture changes are recorded here.
 - Immutable external reference-campaign plans with qualifying-host/source admission, exact
   eight-step argv handoff, read-only receipt-aware progress status, explicit reboot boundaries,
   and permanent owner/PM control of the Gate 1 decision.
+- Reproducible clean-host reference bootstrap with CI-shared exact dependency constraints,
+  explicit monorepo editable installs, a read-only environment doctor, canonical clean-main
+  enforcement, and rejection of private Bybit environment variables before plan publication.
 
 ### Safety
 
