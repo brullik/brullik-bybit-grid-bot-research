@@ -36,6 +36,9 @@
   most 200 events and requires the contemporaneous instrument funding interval.
 - The official [rate-limit table](https://bybit-exchange.github.io/docs/v5/rate-limit) lists the
   private `POST /v5/fgridbot/validate` endpoint at 10 requests/second.
+- The official [developer portal](https://bybit-exchange.github.io/docs/) advertises public OHLCV
+  and trade-history CSV downloads. It does not identify that OHLCV as canonical mark-price data or
+  advertise funding-event bulk data, so the implementation does not infer either semantic.
 
 ## Measured public evidence
 
@@ -100,8 +103,9 @@
 
 ## Evidence still required to close Gate 1
 
-- Obtain authoritative Bybit confirmation for bulk mark-price/funding availability and size the
-  required REST backfill; neither dataset is advertised by name in the observed archive root.
+- Obtain authoritative Bybit confirmation whether any bulk OHLCV product is canonical mark-price
+  history and whether funding-event bulk data exists, then size the remaining REST backfill;
+  neither dataset is advertised by name in the observed archive root/developer summary.
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
 - Repeat the feature-throughput/memory benchmark at representative scale on that hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
