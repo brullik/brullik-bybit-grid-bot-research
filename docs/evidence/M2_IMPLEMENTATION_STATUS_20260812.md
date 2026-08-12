@@ -47,9 +47,16 @@ hashes and receipt relationships are in the evidence artifact under ADR-0025.
 `grid-data audit-history-1m` and `grid.canonical-1m-coverage-audit/v1` implement a read-only,
 fail-closed audit for exact Landing/Parquet equality, every requested minute, duplicates,
 unexpected or unrequested rows, and registry lifecycle bounds. A REST-returned missing minute is
-preserved as blocked evidence and is not accepted automatically. The measured audit of the public
-pilot must be produced only after the auditor has an immutable merged Git SHA, so it remains a
-separate GitHub evidence PR.
+preserved as blocked evidence and is not accepted automatically.
+
+The receipt-verified measured audit is
+[`m2-canonical-coverage-audit-20260812.json`](../../benchmarks/results/m2-canonical-coverage-audit-20260812.json).
+It ran under auditor merge identity `git:374ddcc7d9763f7a991818cab4eaf4ce0cd7614b`
+against publisher identity `git:0f3b0a164c7f7f9765b0d77168e56f4957368fcf`. Exact
+Landing/canonical table equality passed across all 20,160 requested rows. Missing, duplicate,
+conflicting, unexpected, unrequested, and lifecycle-invalid counts were all zero; the complete gap
+range list was empty and hash-bound. This establishes only the bounded requested ranges, not the
+complete historical universe or Gate 2.
 
 ## Still required before Gate 2
 
