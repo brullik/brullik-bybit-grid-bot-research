@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/reference-campaign-plan.schema.json",
+  "title": "ADR-0019 qualified-host reference campaign plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["campaign_root", "content_sha256", "created_at_utc", "environment", "evidence_schema", "gate_1", "limitations", "reference_host_qualification", "repository_source", "sources", "status", "steps"],
+  "properties": {
+    "campaign_root": {"type": "string", "minLength": 2},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "environment": {"$ref": "#/$defs/environment"},
+    "evidence_schema": {"const": "grid.reference-campaign-plan/v2"},
+    "gate_1": {"const": {"automatic_acceptance": false, "owner_decision_required": true, "status": "pending-owner-decision"}},
+    "limitations": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "reference_host_qualification": {"$ref": "#/$defs/qualificationSummary"},
+    "repository_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "source_manifest"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "source_manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "path", "source_file_count"],
+          "properties": {
+            "artifact": {"const": "MANIFEST.sha256"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "path": {"type": "string", "minLength": 1},
+            "source_file_count": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "qualification", "real_market"],
+      "properties": {
+        "decision": {"$ref": "#/$defs/source"},
+        "qualification": {"$ref": "#/$defs/source"},
+        "real_market": {"$ref": "#/$defs/source"}
+      }
+    },
+    "status": {"const": "ready-to-run"},
+    "steps": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/$defs/step"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decimal": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "path", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "path": {"type": "string", "minLength": 1},
+        "schema": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "depends_on", "display_command", "expected_artifact", "id", "requires_reboot_before"],
+      "properties": {
+        "argv": {"type": "array", "minItems": 3, "items": {"type": "string", "minLength": 1}},
+        "depends_on": {"type": "array", "maxItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "display_command": {"type": "string", "minLength": 1},
+        "expected_artifact": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "requires_reboot_before": {"type": "boolean"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks", "constraints", "failures", "observed", "status"],
+      "properties": {
+        "checks": {
+          "type": "object",
+          "minProperties": 14,
+          "additionalProperties": {"const": true}
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "pins"],
+          "properties": {
+            "artifact": {"const": "requirements/reference-campaign.txt"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "pins": {"type": "object", "minProperties": 9, "additionalProperties": {"type": "string", "minLength": 1}}
+          }
+        },
+        "failures": {"const": []},
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["git_branch", "git_head", "installed_versions", "private_exchange_environment_names", "python"],
+          "properties": {
+            "git_branch": {"const": "main"},
+            "git_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+            "installed_versions": {"type": "object", "minProperties": 17, "additionalProperties": {"type": ["string", "null"]}},
+            "private_exchange_environment_names": {"const": []},
+            "python": {"type": "string", "pattern": "^3\\.12\\.[0-9]+$"}
+          }
+        },
+        "status": {"const": "ready-for-reference-campaign"}
+      }
+    },
+    "qualifiedHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualificationMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_scratch_required_bytes", "canonical_rebuild_required_bytes", "feature_peak_rss_bytes", "feature_peak_rss_percent_of_ram", "free_space_headroom_bytes", "free_space_shortfall_bytes", "maximum_layout_peak_rss_bytes", "observed_free_bytes", "qualified", "required_free_bytes", "same_host_full_scale_evidence"],
+      "properties": {
+        "campaign_scratch_required_bytes": {"type": "integer", "minimum": 1},
+        "canonical_rebuild_required_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_percent_of_ram": {"$ref": "#/$defs/decimal"},
+        "free_space_headroom_bytes": {"type": "integer", "minimum": 0},
+        "free_space_shortfall_bytes": {"const": 0},
+        "maximum_layout_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "observed_free_bytes": {"type": "integer", "minimum": 1},
+        "qualified": {"const": true},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "same_host_full_scale_evidence": {"const": true}
+      }
+    },
+    "qualificationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "hardware", "qualified_at_utc", "qualification", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.reference-host-qualification/v1"},
+        "hardware": {"$ref": "#/$defs/qualifiedHardware"},
+        "qualified_at_utc": {"type": "string", "format": "date-time"},
+        "qualification": {"$ref": "#/$defs/qualificationMetrics"},
+        "status": {"const": "qualified-measured-reference-host"}
+      }
+    }
+  }
+}

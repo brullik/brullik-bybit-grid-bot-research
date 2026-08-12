@@ -1,6 +1,6 @@
 # ADR-0019: Evidence-Based Reference-Host Admission
 
-- Status: accepted by owner; qualification and workload admission implemented
+- Status: accepted by owner; qualification, workloads, review pack, and campaign admission implemented
 - Date: 2026-08-12
 - Supersedes in part: ADR-0011, ADR-0013, ADR-0015, and ADR-0018 (fixed hardware thresholds only)
 
@@ -74,6 +74,12 @@ corpus merely to simplify implementation. Tick data remains out of scope.
 Existing `grid.workstation-snapshot/v1`, reference layout/feature, review-pack, and campaign-plan
 artifacts retain their original fixed-profile semantics. Implementation of this decision must use
 append-only versioned contracts; it may not reinterpret old receipts.
+
+The implemented successor chain is `grid.reference-host-qualification/v1`, layout/feature v3,
+`grid.gate1-review-pack/v2`, and `grid.reference-campaign-plan/v2`. The plan embeds the complete
+pinned environment report and repository source-manifest hash; status rechecks those bindings and
+the current host/free-space admission before exposing the next command. All legacy schemas remain
+unchanged.
 
 On the currently checked-in evidence, the owner laptop is a **hardware candidate** for the new
 admission: 6 physical/12 logical cores, 16,476,225,536 bytes RAM, a 511,439,781,888-byte NVMe

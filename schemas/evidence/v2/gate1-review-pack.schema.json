@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/gate1-review-pack.schema.json",
+  "title": "ADR-0019 qualified-host Gate 1 owner-review pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capacity", "command", "decisions", "evidence_schema", "gate_1", "layout_candidates", "limitations", "owner_decision_required", "reference_host_qualification", "software", "sources", "status"],
+  "properties": {
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature", "reference_volume_bytes", "required_free_bytes", "theoretical_trade_and_mark_rows", "theoretical_trade_rows"],
+      "properties": {
+        "feature": {"$ref": "#/$defs/featureCapacity"},
+        "reference_volume_bytes": {"type": "integer", "minimum": 1},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "theoretical_trade_and_mark_rows": {"const": 7363288800},
+        "theoretical_trade_rows": {"const": 3681644400}
+      }
+    },
+    "command": {"type": "string", "minLength": 1},
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["P-001", "P-002", "P-003", "P-004", "P-005"],
+      "properties": {
+        "P-001": {"$ref": "#/$defs/decision"},
+        "P-002": {"$ref": "#/$defs/decision"},
+        "P-003": {"$ref": "#/$defs/decision"},
+        "P-004": {"$ref": "#/$defs/decision"},
+        "P-005": {"$ref": "#/$defs/decision"}
+      }
+    },
+    "evidence_schema": {"const": "grid.gate1-review-pack/v2"},
+    "gate_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatic_promotion", "blockers", "owner_decision_required", "status"],
+      "properties": {
+        "automatic_promotion": {"const": false},
+        "blockers": {"type": "array", "uniqueItems": true, "items": {"enum": ["feature-memory-gate-failed", "no-layout-meets-provisional-performance-targets"]}},
+        "owner_decision_required": {"const": true},
+        "status": {"const": "pending-owner-decision"}
+      }
+    },
+    "layout_candidates": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/layoutCandidate"},
+      "allOf": [
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 4}}}}}},
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 8}}}}}}
+      ]
+    },
+    "limitations": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "owner_decision_required": {"const": true},
+    "reference_host_qualification": {"$ref": "#/$defs/qualificationSummary"},
+    "software": {"$ref": "#/$defs/software"},
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_layout", "feature", "layout", "qualification", "real_market"],
+      "properties": {
+        "decision_layout": {"$ref": "#/$defs/source"},
+        "feature": {"$ref": "#/$defs/source"},
+        "layout": {"$ref": "#/$defs/source"},
+        "qualification": {"$ref": "#/$defs/source"},
+        "real_market": {"$ref": "#/$defs/source"}
+      }
+    },
+    "status": {"enum": ["ready-for-owner-review", "blocked-by-reference-results"]}
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_values", "status"],
+      "properties": {
+        "candidate_values": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "status": {"enum": ["owner-decision-required", "blocked-by-reference-results"]}
+      }
+    },
+    "featureCapacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configured_memory_limit_percent", "memory_gate_passed", "observed_core_rows_per_second", "peak_rss_bytes", "peak_rss_percent_of_ram", "projected_trade_and_mark_seconds", "projected_trade_seconds"],
+      "properties": {
+        "configured_memory_limit_percent": {"type": "integer", "minimum": 1, "maximum": 70},
+        "memory_gate_passed": {"type": "boolean"},
+        "observed_core_rows_per_second": {"$ref": "#/$defs/decimal"},
+        "peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "peak_rss_percent_of_ram": {"$ref": "#/$defs/decimal"},
+        "projected_trade_and_mark_seconds": {"$ref": "#/$defs/decimal"},
+        "projected_trade_seconds": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"const": "zstd"},
+        "compression_level": {"const": 3},
+        "numeric_representation": {"const": "hybrid_int64_decimal"},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "layoutCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gates", "layout", "maintenance", "observed", "projections"],
+      "properties": {
+        "gates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provisional_performance_passed", "single_symbol_cold_10y_under_15_seconds", "single_symbol_warm_10y_under_5_seconds", "universe_month_cold_under_15_seconds", "write_100m_under_20_minutes"],
+          "properties": {
+            "provisional_performance_passed": {"type": "boolean"},
+            "single_symbol_cold_10y_under_15_seconds": {"type": "boolean"},
+            "single_symbol_warm_10y_under_5_seconds": {"type": "boolean"},
+            "universe_month_cold_under_15_seconds": {"type": "boolean"},
+            "write_100m_under_20_minutes": {"type": "boolean"}
+          }
+        },
+        "layout": {"$ref": "#/$defs/layout"},
+        "maintenance": {"type": "object"},
+        "observed": {"type": "object"},
+        "projections": {"type": "object"}
+      }
+    },
+    "qualifiedHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualificationMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_scratch_required_bytes", "canonical_rebuild_required_bytes", "feature_peak_rss_bytes", "feature_peak_rss_percent_of_ram", "free_space_headroom_bytes", "free_space_shortfall_bytes", "maximum_layout_peak_rss_bytes", "observed_free_bytes", "qualified", "required_free_bytes", "same_host_full_scale_evidence"],
+      "properties": {
+        "campaign_scratch_required_bytes": {"type": "integer", "minimum": 1},
+        "canonical_rebuild_required_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_percent_of_ram": {"$ref": "#/$defs/decimal"},
+        "free_space_headroom_bytes": {"type": "integer", "minimum": 0},
+        "free_space_shortfall_bytes": {"const": 0},
+        "maximum_layout_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "observed_free_bytes": {"type": "integer", "minimum": 1},
+        "qualified": {"const": true},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "same_host_full_scale_evidence": {"const": true}
+      }
+    },
+    "qualificationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "hardware", "qualified_at_utc", "qualification", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.reference-host-qualification/v1"},
+        "hardware": {"$ref": "#/$defs/qualifiedHardware"},
+        "qualified_at_utc": {"type": "string", "format": "date-time"},
+        "qualification": {"$ref": "#/$defs/qualificationMetrics"},
+        "status": {"const": "qualified-measured-reference-host"}
+      }
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "psutil", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "psutil": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "schema": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

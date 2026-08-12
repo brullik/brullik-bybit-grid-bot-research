@@ -125,8 +125,10 @@ affected monthly partitions. See
 CPU count, installed RAM, and total disk capacity are recorded for reproducibility and influence
 duration. They are not hard admission thresholds after ADR-0019. The currently evidenced owner
 laptop (6 physical/12 logical cores and 16.48 GB RAM) has already completed the qualifying-scale
-trial workloads; a fresh append-only admission implementation is still required before the
-reference campaign starts.
+trial workloads. Under the pinned Python 3.12.10 environment, its admitted feature v3 rerun
+processed 99,999,900 rows in 29.047963300 seconds at 3,442,578.709124216 core rows/s and used
+1,515,790,336 bytes peak RSS (9.199863966% of RAM). The append-only campaign admission is now
+implemented; reboot-separated layout measurements and explicit Gate 1 review remain required.
 
 ### Profile C — live host
 

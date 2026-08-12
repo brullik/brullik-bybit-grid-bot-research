@@ -19,8 +19,13 @@ The current workstation cannot run the legacy v1 reference campaign: its receipt
 ADR-0019 replaces this fixed external-workstation conclusion for future append-only contracts.
 The owner laptop has since demonstrated the 100-million-row layout and feature workloads and has
 enough observed free space for the current-universe immutable rebuild plus retained campaign
-scratch and reserve. The existing v1 plan remains fixed-profile; its successor must implement the
-evidence-based admission before the laptop can publish a campaign plan.
+scratch and reserve. The existing v1 plan remains fixed-profile; the append-only successor was
+required to implement evidence-based admission before the laptop could publish a campaign plan.
+
+The successor is now implemented as `grid.reference-campaign-plan/v2`. It consumes the exact
+receipt-verified ADR-0019 qualification, emits layout/feature v3 and review-pack v2 commands, and
+binds the full passing Python 3.12 environment report. V1 remains immutable for historical
+verification.
 
 ## Decision
 

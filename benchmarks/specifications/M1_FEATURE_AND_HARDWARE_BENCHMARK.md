@@ -14,7 +14,7 @@ and mid crossings. It is benchmark code, not the Phase 3 production feature cont
 All-universe scaled run used for the checked-in evidence:
 
 ```powershell
-python benchmarks/feature_benchmark.py `
+python -m benchmarks.feature_benchmark `
   --profile scaled --rows 10000000 --instruments 700 `
   --core-minutes 2880 --window-minutes 1440 `
   --output benchmarks/results/m1-feature-scaled.json --force
@@ -26,7 +26,7 @@ Reference candidate (minimum scale):
 python benchmarks/workstation_snapshot.py `
   --output D:\grid-reference\reference-host.json --force
 
-python benchmarks/feature_benchmark.py `
+python -m benchmarks.feature_benchmark `
   --profile reference --rows 100000000 --instruments 700 `
   --core-minutes 2880 --window-minutes 1440 `
   --reference-host-evidence D:\grid-reference\reference-host.json `
@@ -37,7 +37,7 @@ The command above preserves the immutable legacy v2 path. The ADR-0019 successor
 fresh measured-host qualification instead:
 
 ```powershell
-python benchmarks/feature_benchmark.py `
+python -m benchmarks.feature_benchmark `
   --profile reference --rows 100000000 --instruments 700 `
   --core-minutes 2880 --window-minutes 1440 `
   --reference-host-qualification `
@@ -62,6 +62,13 @@ and required free space before and after the workload, and publishes
 The checked-in `m1-feature-reference-candidate.json` is an immutable v1 artifact produced before
 reference-host admission existed. It remains useful 100-million-row local scale evidence, but its
 `reference-scale-candidate` status is not reference-hardware evidence and cannot close Gate 1.
+
+The checked-in `m1-feature-qualified-reference-20260812.json` is a standalone v3 admission run
+under Python 3.12.10. It processed 99,999,900 core rows in 29.047963300 seconds
+(3,442,578.709124216 core rows/s), with 1,515,790,336 bytes peak RSS
+(9.199863966% of observed RAM), and passed the 70% gate. It demonstrates that the qualified laptop
+can execute the feature workload; the campaign still reruns this leg after the reboot-separated
+layout protocol and leaves Gate 1 pending.
 
 Workstation snapshot:
 
