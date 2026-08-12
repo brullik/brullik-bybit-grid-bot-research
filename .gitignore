@@ -1,0 +1,52 @@
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# Runtime and account state
+data/
+market-data/
+artifacts/
+releases/private/
+runtime/
+state/
+logs/
+reports/private/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Python and tools
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large or generated research artifacts
+*.parquet
+*.arrow
+*.feather
+*.duckdb
+*.csv.gz
+*.jsonl.gz
+*.zip
+*.tar.gz
+*.bin
+*.model
+
+# Keep documentation archives out of nested Git history
+*.bundle
