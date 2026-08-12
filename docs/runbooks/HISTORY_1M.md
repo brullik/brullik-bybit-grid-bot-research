@@ -170,3 +170,27 @@ zero missing, duplicate, unexpected, unrequested, or lifecycle-invalid rows insi
 ranges. Exit code 2 means blocked evidence was written. In v1, even a fully verified REST page with
 no candle is `rest_returned_no_data` and remains unaccepted; do not edit the audit or classify it as
 no-trade manually. Repair and reason-policy changes require their own contract and review.
+
+## 10. Plan a blocked missing-minute repair
+
+Run this only for an immutable blocked v1 audit. The command performs no Bybit request and no
+canonical write. It re-verifies the audit receipt, recomputes the complete gap list from the
+original runtime inputs, and refuses every blocker except missing requested minutes observed as
+`rest_returned_no_data`:
+
+```powershell
+.venv\Scripts\grid-data.exe plan-history-repair `
+  --coverage-audit benchmarks\results\m2-canonical-coverage-audit-<date>.json `
+  --job-root data\history\.landing\<completed-job> `
+  --instrument-registry data\evidence\instrument-registry-<date>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --planner-software-identity git:<planner-commit-sha> `
+  --output data\evidence\m2-gap-repair-plan-<date>.json
+```
+
+The receipt-last result embeds one standard, hash-bound history request per contiguous gap and
+accounts for every missing minute. Do not run it for a passing audit, edit an embedded request, or
+treat the plan as permission to download or replace canonical data. Repair execution and
+immutable replacement publication are separate reviewed steps. The successful bounded pilot has
+no gaps, so it correctly produces no repair plan.

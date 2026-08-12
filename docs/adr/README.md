@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0027 — Verified gap audit to bounded repair plan](ADR-0027-verified-gap-audit-to-bounded-repair-plan.md)
 - [ADR-0026 — Fail-closed canonical coverage audit](ADR-0026-fail-closed-canonical-coverage-audit.md)
 - [ADR-0025 — GitHub truth with sanitized runtime evidence](ADR-0025-github-truth-with-sanitized-runtime-evidence.md)
 - [ADR-0024 — Verified Landing to canonical publication](ADR-0024-verified-landing-to-canonical-publication.md)

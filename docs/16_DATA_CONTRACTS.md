@@ -91,6 +91,14 @@ gap-range list is hash-bound while only 20 diagnostic samples are embedded. In v
 `rest_returned_no_data` is observed but never accepted: any gap blocks status and cannot be
 silently classified as a no-trade interval.
 
+`grid.bybit-1m-gap-repair-plan/v1` is a receipt-last, no-network plan derived from a recomputed,
+receipt-verified blocked coverage audit. It is valid only when missing minutes classified as
+`rest_returned_no_data` are the sole blocker. It hash-binds the audit artifact/content, Landing
+manifest, canonical manifest, planner Git identity, and one exact standard
+`grid.bybit-1m-history-request/v1` per contiguous gap. The complete plan is limited to 1,000 tasks
+and 100,000 maximum HTTP attempts. It authorizes neither request execution nor mutation of a
+committed canonical dataset; repaired publication needs explicit immutable replacement lineage.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

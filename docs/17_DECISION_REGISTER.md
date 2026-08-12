@@ -31,6 +31,7 @@
 | D-025 | A completed 1m Landing manifest deterministically identifies one evidence-bound immutable canonical publication | accepted | Receipt/hash substitution resistance, fresh host admission, and idempotent receipt-last publication; ADR-0024 |
 | D-026 | GitHub is authoritative for implementation, decisions, contracts, and sanitized receipt-bound runtime evidence; market datasets remain outside Git | accepted | Owner direction, public-repository safety, and reproducible hash bindings; ADR-0025 |
 | D-027 | Canonical 1m requested-range audit requires exact Landing parity and accepts no missing-minute reason in v1 | accepted | Gap hashes/samples, lifecycle bounds, negative evidence, and fail-closed Gate 2 separation; ADR-0026 |
+| D-028 | A gap repair plan is derived only from a recomputed blocked audit and embeds bounded standard history requests without network or canonical mutation | accepted | Complete gap accounting, Git/hash bindings, standard executor compatibility, and immutable replacement separation; ADR-0027 |
 
 ## Decisions requiring benchmark or owner evidence
 

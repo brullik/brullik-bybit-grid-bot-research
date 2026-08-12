@@ -238,10 +238,17 @@ rows. V1 accepts no absence reason; a verified REST response with no candle is r
 `rest_returned_no_data` and blocks. Exact historical lifecycle-bound discovery remains a separate
 requirement, so a passing bounded audit is not full-universe completeness.
 
+ADR-0027 implements deterministic repair planning without downloading or mutating data. It
+recomputes a receipt-verified blocked audit, permits only `rest_returned_no_data` missing-minute
+blockers, and emits one standard bounded history request per complete contiguous gap. The plan
+binds the original Landing and canonical manifests, every embedded request hash, and the planner's
+Git commit. Repair execution and immutable replacement lineage remain separate later steps.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
 - Late corrections create a new dataset version or partition replacement with lineage; committed files are not edited in place.
+- Gap repair is planned from a recomputed blocked audit; planning never edits the committed dataset or performs a market request.
 - Periodic compaction merges small incremental files into target-size files.
 - Catalog statistics allow research jobs to select only required partitions.
 - Resume uses receipts, not directory guessing.

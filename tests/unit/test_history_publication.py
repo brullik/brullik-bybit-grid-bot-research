@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
-from grid_contracts.canonical import canonical_sha256, sha256_file
+from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha256_file
 from grid_data.evidence import publish_evidence
 from grid_data.history_acquisition import (
     MAX_PAGE_ARTIFACT_BYTES,
@@ -25,6 +25,8 @@ from grid_data.history_publication import (
     preflight_completed_history_publication,
     publish_preflighted_history,
 )
+from grid_data.history_repair_plan import build_gap_repair_plan
+from grid_data.history_request import resolve_history_request
 from grid_data.instrument_registry import build_instrument_registry
 from grid_market_store import (
     MIN_OPERATING_RESERVE_BYTES,
@@ -40,6 +42,7 @@ JANUARY_1_2026_MS = 1_767_225_600_000
 ACTIVE_BUILDING_BYTES = 90_000_000_000
 SOFTWARE_IDENTITY = f"git:{'a' * 40}"
 AUDIT_SOFTWARE_IDENTITY = f"git:{'b' * 40}"
+PLANNER_SOFTWARE_IDENTITY = f"git:{'c' * 40}"
 
 
 class OnePageClient:
@@ -531,3 +534,149 @@ def test_canonical_coverage_audit_blocks_source_value_mismatch(tmp_path: Path) -
     quality = audit.payload["quality"]
     assert isinstance(quality, dict)
     assert quality["canonical_source_table_equal"] is False
+
+
+def test_gap_repair_plan_embeds_exact_standard_history_request(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(
+        tmp_path,
+        end_ms=JANUARY_1_2026_MS + 2 * 60_000,
+        client_factory=SparsePageClient,
+    )
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-12T20:03:32Z",
+    )
+    audit_path, _ = publish_evidence(tmp_path / "blocked-audit.json", audit.payload)
+
+    plan = build_gap_repair_plan(
+        audit_path,
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        generated_at_utc="2026-08-12T20:04:00Z",
+        planner_software_identity=PLANNER_SOFTWARE_IDENTITY,
+    )
+
+    assert plan.task_count == 1
+    assert plan.planned_max_http_requests == 1
+    assert plan.payload["planner_software_identity"] == PLANNER_SOFTWARE_IDENTITY
+    tasks = plan.payload["tasks"]
+    assert isinstance(tasks, list)
+    task = tasks[0]
+    assert isinstance(task, dict)
+    assert task["minute_count"] == 1
+    request = task["request"]
+    assert isinstance(request, dict)
+    assert request == {
+        "contract": "grid.bybit-1m-history-request/v1",
+        "job_id": request["job_id"],
+        "kind": "trade",
+        "max_attempts": 1,
+        "max_http_requests": 1,
+        "page_limit": 1000,
+        "series": [
+            {
+                "end_ms": JANUARY_1_2026_MS + 60_000,
+                "start_ms": JANUARY_1_2026_MS + 60_000,
+                "symbol": "AAAUSDT",
+            }
+        ],
+        "target_rps": 96,
+        "workers": 1,
+    }
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "bybit-1m-gap-repair-plan.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(plan.payload)
+    hash_input = dict(plan.payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    repair_request_path = tmp_path / "repair-request.json"
+    repair_request_path.write_bytes(canonical_json_bytes(request) + b"\n")
+    resolved_repair = resolve_history_request(
+        repair_request_path,
+        instrument_registry_path=registry_path,
+        capacity_evidence_path=capacity_path,
+    )
+    assert resolved_repair.request_sha256 == task["request_sha256"]
+    assert resolved_repair.spec.series[0].start_ms == JANUARY_1_2026_MS + 60_000
+
+
+def test_gap_repair_plan_rejects_passing_audit(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(tmp_path)
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-12T20:03:32Z",
+    )
+    audit_path, _ = publish_evidence(tmp_path / "passing-audit.json", audit.payload)
+
+    with pytest.raises(HistoryAcquisitionError, match="requires a blocked"):
+        build_gap_repair_plan(
+            audit_path,
+            job_root,
+            registry_path,
+            capacity_path,
+            store_root,
+            generated_at_utc="2026-08-12T20:04:00Z",
+            planner_software_identity=PLANNER_SOFTWARE_IDENTITY,
+        )
+
+
+def test_gap_repair_plan_requires_full_git_identity(tmp_path: Path) -> None:
+    with pytest.raises(HistoryAcquisitionError, match="planner_software_identity"):
+        build_gap_repair_plan(
+            tmp_path / "not-read.json",
+            tmp_path / "not-read-job",
+            tmp_path / "not-read-registry.json",
+            tmp_path / "not-read-capacity.json",
+            tmp_path / "not-read-store",
+            generated_at_utc="2026-08-12T20:04:00Z",
+            planner_software_identity="worktree:uncommitted",
+        )

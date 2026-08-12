@@ -38,6 +38,7 @@ from grid_data.history_publication import (
     preflight_completed_history_publication,
     publish_preflighted_history,
 )
+from grid_data.history_repair_plan import build_gap_repair_plan
 from grid_data.history_request import closed_before_now_ms, resolve_history_request
 from grid_data.history_sources import (
     build_history_source_assessment,
@@ -228,6 +229,19 @@ def parser() -> argparse.ArgumentParser:
     coverage_audit.add_argument("--audit-software-identity", required=True)
     coverage_audit.add_argument("--output", type=Path, required=True)
     coverage_audit.set_defaults(handler=_audit_history_1m)
+
+    repair_plan = commands.add_parser(
+        "plan-history-repair",
+        help="build bounded standard 1m requests from a verified blocked coverage audit",
+    )
+    repair_plan.add_argument("--coverage-audit", type=Path, required=True)
+    repair_plan.add_argument("--job-root", type=Path, required=True)
+    repair_plan.add_argument("--instrument-registry", type=Path, required=True)
+    repair_plan.add_argument("--capacity-evidence", type=Path, required=True)
+    repair_plan.add_argument("--store-root", type=Path, required=True)
+    repair_plan.add_argument("--planner-software-identity", required=True)
+    repair_plan.add_argument("--output", type=Path, required=True)
+    repair_plan.set_defaults(handler=_plan_history_repair)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -471,6 +485,33 @@ def _audit_history_1m(args: argparse.Namespace) -> int:
         )
     )
     return 0 if audit.passed else 2
+
+
+def _plan_history_repair(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    plan = build_gap_repair_plan(
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        planner_software_identity=args.planner_software_identity,
+    )
+    artifact, receipt = publish_evidence(output, plan.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "dataset_id": plan.payload["dataset_id"],
+                "planned_max_http_requests": plan.planned_max_http_requests,
+                "receipt": str(receipt),
+                "status": plan.payload["status"],
+                "task_count": plan.task_count,
+            }
+        )
+    )
+    return 0
 
 
 def _archive_inventory(args: argparse.Namespace) -> int:

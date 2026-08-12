@@ -31,6 +31,7 @@ MAX_GAP_EXAMPLES: Final = 20
 class CoverageAudit:
     payload: dict[str, object]
     passed: bool
+    gap_ranges: tuple[dict[str, object], ...]
 
 
 def _object(path: Path, *, name: str) -> dict[str, object]:
@@ -291,4 +292,4 @@ def build_completed_history_coverage_audit(
         },
     }
     payload["content_sha256"] = canonical_sha256(payload)
-    return CoverageAudit(payload=payload, passed=passed)
+    return CoverageAudit(payload=payload, passed=passed, gap_ranges=tuple(all_ranges))
