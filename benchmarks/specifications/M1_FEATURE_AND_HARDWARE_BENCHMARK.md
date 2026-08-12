@@ -37,6 +37,9 @@ Because 100,000,000 is not divisible by 700, the recorded core row count is 99,9
 profile threshold applies to the requested scale; the exact normalized count is always retained in
 the artifact. The reference command requires a receipt-verified snapshot from the current host
 that reports at least 16 physical cores, 64 GiB RAM, and a measured NVMe volume of at least 2 TiB.
+This sentence defines the immutable legacy v1/v2 contract only. Owner-accepted ADR-0019 replaces
+those fixed thresholds for a future append-only contract with same-host 99,999,900-row evidence,
+the 70% memory gate, suitable local SSD/NVMe identity, and evidence-derived current free space.
 It verifies the host before and after the workload and freezes Polars, psutil, and Python versions.
 A memory-passing v2 run is `reference-host-feature-candidate`; owner/PM acceptance is still required.
 

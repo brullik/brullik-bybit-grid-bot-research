@@ -98,7 +98,8 @@ python -m benchmarks.exact_capacity_projection `
 ```
 
 This projection retains the independent 24/40/64-byte planning envelopes and the provisional
-2 TiB recommendation. The seven-day, eight-contract calibration does not replace a
+2 TiB legacy recommendation. ADR-0019 supersedes that value as a hard admission threshold; the
+seven-day, eight-contract calibration does not replace a
 reference-hardware run, broader historical regimes, a mark-price physical estimate, filesystem
 overhead, compaction, or backup sizing. The bounded collection method is specified in
 [M1_REAL_MARKET_LAYOUT_SKEW.md](M1_REAL_MARKET_LAYOUT_SKEW.md).

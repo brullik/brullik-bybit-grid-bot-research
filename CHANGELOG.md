@@ -66,6 +66,10 @@ All notable project-governance and architecture changes are recorded here.
 - Reproducible clean-host reference bootstrap with CI-shared exact dependency constraints,
   explicit monorepo editable installs, a read-only environment doctor, canonical clean-main
   enforcement, and rejection of private Bybit environment variables before plan publication.
+- Owner-approved ADR-0019 replacement of the provisional 16-core/64-GiB/2-TiB blocker with
+  evidence-based same-host scale, memory, current free-space, storage-identity, and measured
+  performance admission. Existing fixed-profile evidence remains immutable; append-only
+  implementation is deliberately separated from this governance change.
 
 ### Safety
 

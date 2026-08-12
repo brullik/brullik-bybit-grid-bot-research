@@ -24,6 +24,9 @@ This is the governance summary. Detailed phases are in [Roadmap and Acceptance G
 - “Works on my machine” is not a gate result.
 - A failed or incomplete required audit blocks the gate.
 - Scope reductions or exceptions require a recorded owner decision and cannot be hidden in implementation.
+- Gate 1 host admission follows owner-accepted ADR-0019: nominal CPU/RAM/total-volume values are
+  descriptive, while same-host scale, memory, current free-space, and performance evidence are
+  mandatory.
 - Live permissions are tied to a release ID, environment, mode, and limits—not granted globally.
 
 ## Emergency gate closure

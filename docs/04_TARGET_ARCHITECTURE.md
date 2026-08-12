@@ -165,7 +165,10 @@ Four commands/environments may share one workstation but use separate directorie
 
 ### Research workstation
 
-High-core-count CPU, 64–128 GB RAM, NVMe scratch/store. No live trade credentials.
+Evidence-admitted local SSD/NVMe host with same-host full-scale trials, bounded memory, current
+free-space preflight, and measured performance. More CPU/RAM/storage may reduce elapsed time or
+support more retained derived data, but ADR-0019 does not make nominal hardware a Gate 1 proxy.
+No live trade credentials.
 
 ### Live host
 

@@ -3,6 +3,7 @@
 - Status: proposed; Gate 1 evidence only
 - Date: 2026-08-12
 - Superseded in part by: ADR-0016 (raw tick source and staging assumptions only)
+- Superseded in part by: ADR-0019 (hardware admission and free-space use)
 
 ## Context
 
@@ -49,9 +50,10 @@ or rewrite unaffected immutable partitions. Raw source-archive headroom remains 
 `unknown-headroom-requires-downloader-preflight`; none of the canonical scenarios may be used to
 declare a full archive bootstrap safe.
 
-The point-in-time projection does not reduce the formal 700 × ten-year capacity objective, change
-the provisional hardware recommendation, select P-001 through P-005, close Gate 1, or authorize
-Phase 2.
+The point-in-time projection does not reduce the formal 700 × ten-year capacity objective, select
+P-001 through P-005, close Gate 1, or authorize Phase 2. ADR-0019 now permits its verified
+`full-rebuild-active-plus-building` scenario to participate in a fresh free-space admission; this
+does not reinterpret the existing projection receipt.
 
 ## Consequences
 

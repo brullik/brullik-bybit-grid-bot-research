@@ -5,16 +5,23 @@
 This runbook completes the remaining external-host measurements needed for an owner/PM Gate 1
 review. It does not accept Gate 1 and does not authorize or start the Phase 2 history downloader.
 
-Required host and volume:
+Owner-approved ADR-0019 requirements for the successor admission contract:
 
-- at least 16 observed physical/high-performance cores;
-- at least 64 GiB RAM;
-- an NVMe campaign volume of at least 2 TiB;
-- a separate backup destination sized by the owner;
-- an idle host during every timed measurement.
+- receipt-verified 99,999,900-row/700-instrument layout and feature trials on the same host;
+- feature peak RSS no greater than 70% of observed RAM;
+- local SSD/NVMe with current free bytes covering verified active-plus-building history,
+  measured retained campaign scratch, bounded staging, and an 8 GiB operating reserve;
+- stable host/storage identity and a pinned clean environment;
+- an idle host during every timed measurement and every existing performance/correctness gate.
 
-The current owner computer does not meet this profile. Run every command below on the qualifying
-host from one clean checkout of the repository.
+There is no longer a fixed 16-core/64-GiB/2-TiB admission rule. On checked-in evidence the owner
+laptop is a hardware candidate: the present calculation requires 100,228,313,013 bytes
+(93.345 GiB) free and the receipt-bound snapshot observed 193,679,237,120 bytes (180.378 GiB).
+
+**Implementation boundary:** the commands below still publish legacy v1 fixed-profile evidence
+until the append-only ADR-0019 contracts land. Do not start the campaign from this governance-only
+revision. The follow-up implementation must update this runbook and pass fresh identity,
+free-space, environment, and source preflight before any campaign directory is created.
 
 ## 1. Build one exact clean environment
 
@@ -93,8 +100,9 @@ Linux equivalent:
   --output /mnt/grid-reference/reference-host.json
 ```
 
-Verify the artifact and receipt exist. Its status must be
-`meets-documented-full-research-profile`; the campaign preflight independently checks it again.
+In the legacy implementation, the artifact status is
+`meets-documented-full-research-profile`. ADR-0019 explicitly leaves that v1 meaning immutable;
+the follow-up implementation must publish a new evidence version instead of relabelling it.
 
 ## 3. Publish the immutable campaign plan
 
@@ -114,9 +122,10 @@ Linux equivalent:
   --reference-host-evidence /mnt/grid-reference/reference-host.json
 ```
 
-The command validates all inputs before creating `campaign-plan.json` and its receipt. It rejects
-the current machine, a different volume, a stale source manifest, modified evidence, or reserved
-output paths.
+The legacy command validates all inputs before creating `campaign-plan.json` and its receipt but
+still rejects the owner laptop on the superseded fixed profile. The append-only successor must
+reject insufficient current free space, a different volume/host, a stale source manifest,
+modified qualification evidence, or reserved output paths.
 
 ## 4. Follow status one action at a time
 

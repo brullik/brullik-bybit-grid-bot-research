@@ -2,6 +2,7 @@
 
 - Status: proposed; Gate 1 benchmark-gated
 - Date: 2026-08-12
+- Superseded in part by: ADR-0019 (fixed CPU/RAM/total-volume admission only)
 
 ## Context
 
@@ -38,6 +39,11 @@ every measurement leg, and the final artifact. Input verification occurs before 
 directory can be replaced. On Windows, the storage model is resolved from the physical device
 number backing the measured drive rather than assumed from `PhysicalDrive0`; on Linux it is
 resolved from the longest matching mount and its `/sys/class/block` device.
+
+ADR-0019 supersedes only the fixed 16-core/64-GiB/2-TiB thresholds for future append-only evidence.
+The v2 contract retains its historical semantics. New admission must instead bind same-host
+100-million-row evidence, the 70% memory gate, suitable local storage, and evidence-derived free
+space. Reboot, identity, cache, correctness, performance, immutability, and version checks remain.
 
 ADR-0013 extracts this reference-host admission into one shared policy used by both this protocol
 and the reference feature benchmark. The layout-specific measured-work-volume requirement remains

@@ -2,6 +2,7 @@
 
 - Status: proposed; Gate 1 benchmark-gated
 - Date: 2026-08-12
+- Superseded in part by: ADR-0019 (fixed CPU/RAM/total-volume admission only)
 
 ## Context
 
@@ -31,6 +32,10 @@ benchmarks. Admission requires a receipt-verified `grid.workstation-snapshot/v1`
   platform, RAM, storage kind/model, and measured-volume size;
 - matching Python and psutil versions between the snapshot and the current process; and
 - a timezone-aware observation timestamp that is not in the future.
+
+ADR-0019 preserves these v1/v2 artifact semantics but replaces those fixed hardware thresholds
+for future append-only contracts with same-host full-scale evidence, the existing 70% memory gate,
+local SSD/NVMe identity, and a current evidence-derived free-space calculation.
 
 Layout preparation additionally requires its work directory to resolve to the measured volume.
 Feature execution re-runs the complete admission after the timed workload and rejects publication
