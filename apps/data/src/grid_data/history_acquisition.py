@@ -701,8 +701,9 @@ def execute_history_job(
 
     if plan.existing_complete:
         return verify_completed_history_job(plan.paths.job_root)
+    start_snapshot = snapshot_provider()
     start_now = now_ms()
-    _assert_execute_snapshot(plan, snapshot_provider(), now_ms=start_now)
+    _assert_execute_snapshot(plan, start_snapshot, now_ms=start_now)
     plan.paths.pages_root.mkdir(parents=True, exist_ok=True)
     try:
         plan.paths.run_lock.mkdir()
@@ -734,8 +735,9 @@ def execute_history_job(
             futures = {executor.submit(acquire, task): task for task in plan.pending_tasks}
             for future in as_completed(futures):
                 future.result()
+        finish_snapshot = snapshot_provider()
         finish_now = now_ms()
-        _assert_execute_snapshot(plan, snapshot_provider(), now_ms=finish_now)
+        _assert_execute_snapshot(plan, finish_snapshot, now_ms=finish_now)
         page_inventory: list[dict[str, object]] = []
         total_rows = 0
         empty_pages = 0
