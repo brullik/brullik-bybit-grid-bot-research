@@ -60,6 +60,9 @@ All notable project-governance and architecture changes are recorded here.
 - Bounded public 1m REST throughput evidence with global pacing, documented IP-limit headroom,
   exact preflight, full-page continuity checks, zero hidden retries, append-only negative and
   confirmation runs, and no persisted market values.
+- Immutable external reference-campaign plans with qualifying-host/source admission, exact
+  eight-step argv handoff, read-only receipt-aware progress status, explicit reboot boundaries,
+  and permanent owner/PM control of the Gate 1 decision.
 
 ### Safety
 

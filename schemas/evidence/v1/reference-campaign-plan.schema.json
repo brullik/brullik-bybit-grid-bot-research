@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/reference-campaign-plan.schema.json",
+  "title": "Gate 1 external reference campaign plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "campaign_root",
+    "content_sha256",
+    "created_at_utc",
+    "evidence_schema",
+    "gate_1",
+    "limitations",
+    "reference_host",
+    "repository_source",
+    "sources",
+    "status",
+    "steps"
+  ],
+  "properties": {
+    "campaign_root": {"type": "string", "minLength": 2},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "evidence_schema": {"const": "grid.reference-campaign-plan/v1"},
+    "gate_1": {
+      "const": {
+        "automatic_acceptance": false,
+        "owner_decision_required": true,
+        "status": "pending-owner-decision"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "reference_host": {"$ref": "#/$defs/referenceHost"},
+    "repository_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "source_manifest"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "source_manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "path", "source_file_count"],
+          "properties": {
+            "artifact": {"const": "MANIFEST.sha256"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "path": {"type": "string", "minLength": 1},
+            "source_file_count": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "real_market", "workstation"],
+      "properties": {
+        "decision": {"$ref": "#/$defs/source"},
+        "real_market": {"$ref": "#/$defs/source"},
+        "workstation": {"$ref": "#/$defs/source"}
+      }
+    },
+    "status": {"const": "ready-to-run"},
+    "steps": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/step"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "path", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "path": {"type": "string", "minLength": 1},
+        "schema": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "depends_on",
+        "display_command",
+        "expected_artifact",
+        "id",
+        "requires_reboot_before"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "depends_on": {
+          "type": "array",
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "display_command": {"type": "string", "minLength": 1},
+        "expected_artifact": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "requires_reboot_before": {"type": "boolean"}
+      }
+    },
+    "referenceHost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "hardware",
+        "observed_at_utc",
+        "status"
+      ],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.workstation-snapshot/v1"},
+        "hardware": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cpu_count_logical",
+            "cpu_count_physical",
+            "cpu_model",
+            "machine",
+            "platform",
+            "ram_bytes",
+            "storage_kind",
+            "storage_model",
+            "volume_root",
+            "volume_total_bytes"
+          ],
+          "properties": {
+            "cpu_count_logical": {"type": "integer", "minimum": 1},
+            "cpu_count_physical": {"type": "integer", "minimum": 16},
+            "cpu_model": {"type": "string", "minLength": 1},
+            "machine": {"type": "string", "minLength": 1},
+            "platform": {"type": "string", "minLength": 1},
+            "ram_bytes": {"type": "integer", "minimum": 68719476736},
+            "storage_kind": {"const": "nvme"},
+            "storage_model": {"type": "string", "minLength": 1},
+            "volume_root": {"type": "string", "minLength": 1},
+            "volume_total_bytes": {"type": "integer", "minimum": 2199023255552}
+          }
+        },
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "status": {"const": "meets-documented-full-research-profile"}
+      }
+    }
+  }
+}
