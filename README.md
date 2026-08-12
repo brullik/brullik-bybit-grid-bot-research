@@ -31,7 +31,7 @@ The project is designed as three independently startable applications plus a sma
 
 | Application | Purpose | Bybit trade credentials | Historical corpus required |
 |---|---|---:|---:|
-| `grid-data` | Bulk download, REST gap fill, normalization, quality audit, compaction | No | Writes it |
+| `grid-data` | 1m REST acquisition, normalization, quality audit, compaction | No | Writes it |
 | `grid-research` | Features, candidates, outcomes, parameter search, backtests, robustness | No | Yes, read-only |
 | `grid-live` | Current market data, signals, risk, approval, native grid execution, reconciliation | Yes | No |
 | `grid-release` | Build, verify, promote, revoke immutable strategy bundles | No | Reads research outputs only |
@@ -42,7 +42,7 @@ The live application consumes one promoted **strategy release bundle** and a sma
 
 ```mermaid
 flowchart LR
-    A[Bybit bulk history / public REST] --> B[grid-data]
+    A[Bybit 1m public REST / compatible 1m bulk] --> B[grid-data]
     B --> C[(Immutable Parquet market store)]
     C --> D[grid-research]
     D --> E[(Feature & candidate stores)]
@@ -62,7 +62,7 @@ flowchart LR
 
 The architecture prioritizes throughput and predictable resource use:
 
-- bulk historical archives first; REST is used for recent data and deterministic gap repair;
+- public V5 REST for trade-price 1m, mark-price 1m, and funding; tick archives are not downloaded;
 - Parquet/ZSTD columnar storage, sorted by instrument and time;
 - monthly time partitions plus a small stable symbol-hash bucket count instead of one tiny partition per symbol;
 - DuckDB for set-oriented SQL and catalog/audit queries;

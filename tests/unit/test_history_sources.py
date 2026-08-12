@@ -13,6 +13,7 @@ from grid_contracts.canonical import canonical_sha256
 from grid_data.history_sources import (
     THEORETICAL_INSTRUMENT_MINUTES,
     build_history_source_assessment,
+    build_one_minute_history_source_assessment,
 )
 
 
@@ -215,3 +216,90 @@ def test_history_source_assessment_rejects_non_utc_inventory_time() -> None:
             inventory_artifact="inventory.json",
             inventory_artifact_sha256="a" * 64,
         )
+
+
+def test_one_minute_assessment_excludes_ticks_and_counts_all_rest_pages() -> None:
+    end = datetime(2026, 1, 11, tzinfo=UTC)
+    end_ms = int(end.timestamp() * 1_000)
+    minute = 60_000
+    inventory = {
+        "evidence_schema": "grid.bybit-public-inventory/v1",
+        "fetched_at_utc": end.isoformat().replace("+00:00", "Z"),
+        "inventory_status": "partial",
+        "records": [
+            {
+                "contract_type": "LinearPerpetual",
+                "delivery_time_ms": 0,
+                "funding_interval_minutes": 60,
+                "launch_time_ms": end_ms - 2_000 * minute,
+                "quote_coin": "USDT",
+                "settle_coin": "USDT",
+                "status": "Trading",
+                "symbol": "AAAUSDT",
+            },
+            {
+                "contract_type": "LinearPerpetual",
+                "delivery_time_ms": end_ms - minute,
+                "funding_interval_minutes": 480,
+                "launch_time_ms": end_ms - 1_001 * minute,
+                "quote_coin": "USDT",
+                "settle_coin": "USDT",
+                "status": "Closed",
+                "symbol": "BBBUSDT",
+            },
+        ],
+    }
+    payload = build_one_minute_history_source_assessment(
+        (
+            product("trade", business_types=("contract", "option", "spot")),
+            product("mark_kline", business_types=("option",), name="Mark Price Kline"),
+        ),
+        inventory,
+        command="grid-data history-source-assessment-1m",
+        inventory_artifact="inventory.json",
+        inventory_artifact_sha256="a" * 64,
+    )
+
+    assessment = payload["assessment"]
+    assert assessment["granularity_policy"] == "one-minute-only"
+    assert assessment["contract_trade_bulk_advertised"] is True
+    assert assessment["contract_trade_bulk_compatible_with_policy"] is False
+    assert assessment["tick_data_downloaded"] is False
+    assert assessment["tick_data_retained"] is False
+    assert assessment["required_rest_datasets"] == [
+        "linear-contract-trade-price-1m",
+        "linear-contract-mark-price-1m",
+        "funding",
+    ]
+    estimate = payload["inventory_backfill_estimate"]
+    assert (
+        estimate["trade_price_1m"]
+        == estimate["mark_price_1m"]
+        == {
+            "estimated_requests": 3,
+            "estimated_rows": 3_000,
+        }
+    )
+    assert estimate["combined_requests"] == {
+        "current_funding_intervals": 8,
+        "conservative_60m_funding_interval": 8,
+    }
+    assert estimate["request_only_seconds"] == {
+        "current_funding_intervals": {
+            "at_default_ip_limit": 1,
+            "at_planning_10_per_second": 1,
+        },
+        "conservative_60m_funding_interval": {
+            "at_default_ip_limit": 1,
+            "at_planning_10_per_second": 1,
+        },
+    }
+    theoretical = payload["theoretical_rest_envelope"]
+    assert theoretical["trade_price_1m"]["estimated_requests"] == 3_682_000
+    assert theoretical["mark_price_1m"]["estimated_requests"] == 3_682_000
+    assert theoretical["combined_requests"] == 7_671_300
+    assert theoretical["minimum_request_only_seconds_at_default_ip_limit"] == 63_928
+    assert theoretical["planning_request_only_seconds_at_10_per_second"] == 767_130
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)

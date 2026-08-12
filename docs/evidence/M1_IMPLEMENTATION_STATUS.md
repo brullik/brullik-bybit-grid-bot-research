@@ -32,6 +32,9 @@
 - Allowlisted, unauthenticated inspection of the official Historical Market Data product catalog,
   with fail-closed response validation and per-symbol REST capacity estimates linked to the
   verified current inventory.
+- Owner-approved one-minute-only source contract and append-only v2 assessment covering
+  trade-price 1m, mark-price 1m, and funding REST capacity while proving that no tick or market
+  rows were downloaded or retained by the assessment.
 - Staged ADR-0010 shortlist benchmark protocol with reboot-separated engine/query legs,
   post-timing content verification, immutable monthly repair, fragmented-input compaction, and
   cross-engine exact logical parity. Unverified local timing is forced to `local-smoke-only`.
@@ -78,10 +81,10 @@
 - The official [Historical Market Data page](https://www.bybit.com/en/derivative-activity/history-data)
   and its public
   [product catalog](https://api2.bybit.com/quote/public/support/download/list-products) advertised
-  five products when observed on 2026-08-12. Public trades include contracts; mark-price klines
-  are advertised for options only; no funding product is advertised. Linear-contract mark-price
-  1m and funding therefore remain REST datasets unless a later catalog version adds an explicit
-  compatible bulk product.
+  five products when observed on 2026-08-12. Public tick trades include contracts; mark-price
+  klines are advertised for options only; no funding product is advertised. ADR-0016 classifies
+  the tick product as incompatible with V1. Trade-price 1m, mark-price 1m, and funding therefore
+  use public V5 REST unless a later catalog version adds an explicit compatible one-minute product.
 
 ## Measured public evidence
 
@@ -102,23 +105,31 @@
   not replace dated historical metadata snapshots.
 - The observed root advertised `kline_for_metatrader4`, `premium_index`, `spot`, `spot_index`, and
   `trading`; no product named for mark price or funding was advertised. This is an observed index
-  limitation, not proof that no unlisted bulk path exists, so mark/funding history remains a REST
-  coverage and capacity concern.
+  limitation, not proof that no unlisted bulk path exists. ADR-0016 nevertheless excludes the
+  tick-trade product, so all three accepted historical datasets remain REST coverage concerns.
 - The fixed BTCUSDT public sample for 2026-07-01 through 2026-07-07 contained 10,080 trade candles,
   10,080 mark candles, and 21 funding events at the metadata-derived 480-minute interval. The
   report found no duplicate timestamps, missing candles, or missing internal funding intervals.
 - Each evidence artifact has a verified SHA-256 receipt. The public sample additionally validates
   against `grid.bybit-public-sample/v1`; raw market rows were not committed.
-- The 700-instrument, ten-year planning envelope contains 3,681,644,400 instrument-minutes. At
-  documented per-page limits, linear mark-price 1m needs 3,682,000 requests and conservative
-  60-minute funding needs 307,300 requests, for 3,989,300 combined requests. Request-only time is
-  398,930 seconds at the 10 requests/second planning rate or at least 33,245 seconds at the
-  documented default IP limit of 120 requests/second; both exclude operational overhead.
+- The immutable v1 source assessment covered only mark-price and funding REST gaps. It recorded
+  3,989,300 requests for that narrower envelope. It remains reproducible historical evidence but
+  is superseded for current source planning by the owner-approved v2 assessment below.
 - Applying current lifecycle fields to the verified partial inventory gives 884,733,307
   mark-price rows and 885,222 per-symbol requests across 1,006 USDT linear perpetual records. The
   current observed funding intervals imply 2,772,401 events and 14,394 requests; using the
   observed 60-minute minimum conservatively gives 14,746,066 events and 74,232 requests. These
   current fields are not dated historical metadata and do not replace the planning envelope.
+- The owner-approved v2 assessment binds the later 1,010-record inventory and adds trade-price 1m
+  to the source envelope. It estimates 885,053,361 rows and 885,570 per-symbol requests for each
+  of trade-price and mark-price. With current funding intervals the total is 1,785,544 requests;
+  the conservative 60-minute funding case is 1,845,401. Request-only bounds are 14,880/178,555
+  seconds at 120/10 requests per second for the current case, and 15,379/184,541 seconds for the
+  conservative case.
+- For the formal 700-instrument, ten-year envelope, v2 records 7,671,300 total REST requests:
+  3,682,000 each for trade-price and mark-price plus 307,300 for conservative funding. The
+  request-only bounds are 63,928 seconds at 120 requests/second and 767,130 seconds at the
+  10 requests/second planning rate. No market row was downloaded to produce this evidence.
 - The immutable owner storage-review refresh later on 2026-08-12 observed 1,010 USDT linear
   perpetual records, including 702 `Trading`, and 885,053,361 per-dataset lifecycle minutes. An
   equal-coverage trade+mark comparison is 1,770,106,722 rows, or `24.039621018%` of the formal
@@ -199,15 +210,17 @@
   184,318,805,827 and 187,181,850,475 bytes for the two shortlisted layouts. This is a conservative
   like-width comparison because mark rows omit volume and turnover and still require their own
   physical estimate. The independent 24/40/64-byte planning envelopes remain
-  176.72/294.53/471.25 GB. Neither estimate includes raw archives, derived stores, experiments,
-  compaction headroom, backup, or filesystem overhead; the 2 TiB recommendation remains unchanged.
+  176.72/294.53/471.25 GB. Tick archives are excluded by ADR-0016. Neither estimate includes
+  bounded REST staging, derived stores, experiments, compaction headroom, backup, or filesystem
+  overhead; the 2 TiB recommendation remains provisional pending P-005 evidence.
 - On the owner storage-review volume, 193,679,237,120 bytes were free. The larger real-width
   current-universe projection requires 44,997,807,469 bytes (41.907 GiB) for the first canonical
   build, 89,995,614,938 bytes (83.815 GiB) for active plus building during a full rebuild,
   51,395,075 bytes (about 49 MiB) for one day, and 1,593,247,317 bytes (1.484 GiB) for a maximum
   31-day partition. All measured canonical scenarios fit; the independent 64-byte
-  active-plus-building scenario requires 226,573,660,416 bytes and does not fit. Raw tick archives
-  and staging remain unmeasured, so this does not authorize the full download.
+  active-plus-building scenario requires 226,573,660,416 bytes and does not fit. Tick archives are
+  no longer part of the source plan; REST staging remains unmeasured, and Gate 1 still does not
+  authorize the full download.
 - The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
   rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
   file metadata before timing, content hashes afterward, expected row counts, and cross-engine

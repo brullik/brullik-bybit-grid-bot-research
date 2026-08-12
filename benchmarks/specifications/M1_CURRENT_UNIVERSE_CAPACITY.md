@@ -65,7 +65,7 @@ envelope. On the measured volume with 193,679,237,120 free bytes:
 - The real-market calibration contains eight current-liquid symbols over seven days.
 - Applying the trade row width to mark rows is conservative because mark rows omit volume and
   turnover.
-- Raw tick-trade archives, partial HTTP files, retry staging, filesystem overhead, derived stores,
-  experiments, and backup are excluded.
-- A full download is unsafe to authorize until the downloader measures raw source bytes and passes
-  its own free-space preflight.
+- ADR-0016 excludes raw tick-trade archives from V1. Partial HTTP files, retry staging, filesystem
+  overhead, derived stores, experiments, and backup remain outside this artifact.
+- A full one-minute download is unsafe to authorize until the downloader bounds REST staging,
+  passes its own free-space preflight, and the preceding acceptance gate is closed.

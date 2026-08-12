@@ -31,7 +31,7 @@ Purpose: replace assumptions with measured evidence before full implementation.
 Deliverables:
 
 - public Bybit instruments/pagination study;
-- official bulk-history coverage inventory;
+- official history-product inventory and one-minute compatibility classification;
 - representative 1m trade/mark/funding sample;
 - row-width/compression/file-layout benchmark;
 - DuckDB/Polars scan and feature benchmark;
@@ -51,7 +51,7 @@ Gate 1:
 Deliverables:
 
 - instrument universe snapshots;
-- bulk and REST ingestion paths;
+- one-minute REST ingestion paths and optional verified one-minute bulk paths;
 - canonical trade-price 1m, mark-price 1m, and funding datasets;
 - idempotent manifests, receipts, gap/duplicate/conflict audits;
 - incremental update and repair;

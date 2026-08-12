@@ -21,7 +21,16 @@ Actual row count will be lower for instruments listed later than the ten-year ho
 
 ## API-page implication
 
-At 1,000 candles per REST page, the theoretical trade-price corpus alone represents about **3.68 million pages**. Mark-price doubles that. Therefore a REST-only initial backfill is not the preferred architecture; bulk historical downloads should be used first, with REST reserved for coverage unavailable in bulk, recent updates, and gap repair.
+At 1,000 candles per REST page, each theoretical candle dataset requires 3,682,000 per-symbol
+requests. Trade-price plus mark-price therefore requires 7,364,000 requests. Conservative
+60-minute funding adds 307,300 requests, for 7,671,300 total.
+
+ADR-0016 accepts this REST-intensive initial bootstrap because V1 does not download or retain
+tick-trade archives. The request-only lower bound is 63,928 seconds at the documented default IP
+limit of 120 requests/second, or 767,130 seconds at the 10 requests/second planning rate. Both
+exclude latency, throttling headroom, retry, validation, and publication. The downloader must use
+bounded concurrency and receipt-based resume; a later verified one-minute bulk product may replace
+matching REST ranges.
 
 ## Storage model
 
@@ -33,7 +42,9 @@ Storage depends on schema, encoding, compression, cardinality, and value distrib
 | 40 | 147.3 GB |
 | 64 | 235.6 GB |
 
-Trade + mark at 40 bytes/row is roughly 294.5 GB before raw archives, feature stores, outcomes, experiments, compaction headroom, backups, and filesystem overhead.
+Trade + mark at 40 bytes/row is roughly 294.5 GB before REST staging, feature stores, outcomes,
+experiments, compaction headroom, backups, and filesystem overhead. Tick-archive storage is not
+part of the V1 plan.
 
 ### Planning recommendation
 
@@ -55,9 +66,10 @@ real-market row width projected about 41.907 GiB for the first canonical build, 
 full active-plus-building replacement, about 49 MiB for one day of current `Trading` instruments,
 and 1.484 GiB for a maximum 31-day partition rewrite.
 
-These values do not size raw tick-trade archives or download staging. Normal operation must append
-new closed intervals and repair only detected gaps; immutable replacement rewrites only affected
-monthly partitions. See
+Tick-trade archive headroom is no longer required by ADR-0016. These values still do not size
+bounded REST-page staging, derived data, experiments, compaction, or backup. Normal operation must
+append new closed intervals and repair only detected gaps; immutable replacement rewrites only
+affected monthly partitions. See
 [M1 current-universe capacity](../benchmarks/specifications/M1_CURRENT_UNIVERSE_CAPACITY.md).
 
 ## Reference execution profiles

@@ -4,8 +4,12 @@ These questions do not block the documentation baseline. They block specific imp
 
 ## Bybit and data coverage
 
-1. Which official historical archive products provide trade-price 1m, mark-price 1m, and funding coverage for each relevant linear instrument and date?
-2. How far back can REST recover data not present in archives, and are there instrument-specific discontinuities?
+Owner decision D-019 and ADR-0016 resolve the V1 source policy: tick-trade archive bodies are not
+downloaded or retained; trade-price 1m, mark-price 1m, and funding use public V5 REST until a
+compatible one-minute bulk product is verified.
+
+1. How far back can each required REST endpoint recover data, and are there instrument-specific discontinuities?
+2. Does any advertised official bulk product provide verified one-minute semantics compatible with the canonical contracts?
 3. How are renamed, migrated, pre-listing, dated futures, and delisted contracts represented across archive/API history?
 4. Which source is authoritative when archive and REST values conflict?
 5. What are the exact regional/account requirements for native Futures Grid endpoints on the owner account?
@@ -19,7 +23,7 @@ These questions do not block the documentation baseline. They block specific imp
 10. Which month/bucket/file layout gives the best mix of all-universe time scans and single-symbol ten-year scans?
 11. What hardware budget and disk capacity are available for the full research workstation?
 12. Is a 250 GB historical-data target still a hard constraint once mark-price, derived stores, compaction headroom, and backup are included?
-13. Should raw archives be retained permanently, content-addressed remotely, or deleted after verified canonical import?
+13. What bounded REST-page staging and receipt retention is sufficient for reproducible canonical import?
 14. Is local NVMe the source of truth or a cache over object storage?
 15. At what measured point, if any, is a Rust/native kernel justified?
 

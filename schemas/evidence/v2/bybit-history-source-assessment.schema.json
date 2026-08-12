@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/bybit-history-source-assessment.schema.json",
+  "title": "Bybit one-minute-only source policy and REST capacity assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assessment",
+    "catalog",
+    "command",
+    "content_sha256",
+    "evidence_schema",
+    "fetched_at_utc",
+    "inventory_backfill_estimate",
+    "inventory_source",
+    "limitations",
+    "owner_decision",
+    "source_policy",
+    "sources",
+    "status",
+    "theoretical_rest_envelope"
+  ],
+  "properties": {
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "any_funding_bulk_advertised",
+        "contract_funding_bulk_advertised",
+        "contract_mark_price_bulk_advertised",
+        "contract_trade_bulk_advertised",
+        "contract_trade_bulk_compatible_with_policy",
+        "funding_product_ids",
+        "granularity_policy",
+        "option_mark_price_bulk_advertised",
+        "required_rest_datasets",
+        "semantics",
+        "tick_data_downloaded",
+        "tick_data_retained"
+      ],
+      "properties": {
+        "any_funding_bulk_advertised": {"type": "boolean"},
+        "contract_funding_bulk_advertised": {"type": "boolean"},
+        "contract_mark_price_bulk_advertised": {"type": "boolean"},
+        "contract_trade_bulk_advertised": {"type": "boolean"},
+        "contract_trade_bulk_compatible_with_policy": {"const": false},
+        "funding_product_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+        },
+        "granularity_policy": {"const": "one-minute-only"},
+        "option_mark_price_bulk_advertised": {"type": "boolean"},
+        "required_rest_datasets": {
+          "const": [
+            "linear-contract-trade-price-1m",
+            "linear-contract-mark-price-1m",
+            "funding"
+          ]
+        },
+        "semantics": {"type": "string", "minLength": 1},
+        "tick_data_downloaded": {"const": false},
+        "tick_data_retained": {"const": false}
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_count", "products"],
+      "properties": {
+        "product_count": {"type": "integer", "minimum": 1},
+        "products": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/product"}
+        }
+      }
+    },
+    "command": {"type": "string", "minLength": 1},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.bybit-history-source-assessment/v2"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "inventory_backfill_estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "combined_requests",
+        "conservative_observed_minimum_funding_interval",
+        "current_interval_funding",
+        "horizon_end_ms",
+        "horizon_start_ms",
+        "instruments_with_observed_duration",
+        "mark_price_1m",
+        "observed_funding_interval_counts",
+        "request_only_seconds",
+        "status_counts",
+        "trade_price_1m",
+        "usdt_linear_perpetual_records"
+      ],
+      "properties": {
+        "combined_requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conservative_60m_funding_interval",
+            "current_funding_intervals"
+          ],
+          "properties": {
+            "conservative_60m_funding_interval": {"type": "integer", "minimum": 0},
+            "current_funding_intervals": {"type": "integer", "minimum": 0}
+          }
+        },
+        "conservative_observed_minimum_funding_interval": {
+          "$ref": "#/$defs/fundingEstimate"
+        },
+        "current_interval_funding": {"$ref": "#/$defs/requestEstimate"},
+        "horizon_end_ms": {"type": "integer", "minimum": 1},
+        "horizon_start_ms": {"type": "integer", "minimum": 0},
+        "instruments_with_observed_duration": {"type": "integer", "minimum": 0},
+        "mark_price_1m": {"$ref": "#/$defs/rowRequestEstimate"},
+        "observed_funding_interval_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"pattern": "^[1-9][0-9]*$"},
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "request_only_seconds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conservative_60m_funding_interval",
+            "current_funding_intervals"
+          ],
+          "properties": {
+            "conservative_60m_funding_interval": {"$ref": "#/$defs/requestSeconds"},
+            "current_funding_intervals": {"$ref": "#/$defs/requestSeconds"}
+          }
+        },
+        "status_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "trade_price_1m": {"$ref": "#/$defs/rowRequestEstimate"},
+        "usdt_linear_perpetual_records": {"type": "integer", "minimum": 1}
+      }
+    },
+    "inventory_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "fetched_at_utc",
+        "inventory_status"
+      ],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"},
+        "inventory_status": {"enum": ["complete", "partial"]}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 7,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "owner_decision": {
+      "const": {
+        "adr": "ADR-0016",
+        "decision_id": "D-019",
+        "recorded_date": "2026-08-12"
+      }
+    },
+    "source_policy": {
+      "const": {
+        "funding": {
+          "endpoint": "/v5/market/funding/history",
+          "page_limit": 200,
+          "source_type": "public-rest"
+        },
+        "mark_price_1m": {
+          "endpoint": "/v5/market/mark-price-kline",
+          "interval": "1",
+          "page_limit": 1000,
+          "source_type": "public-rest"
+        },
+        "trade_price_1m": {
+          "endpoint": "/v5/market/kline",
+          "interval": "1",
+          "page_limit": 1000,
+          "source_type": "public-rest"
+        }
+      }
+    },
+    "sources": {
+      "const": {
+        "catalog_endpoint": "https://api2.bybit.com/quote/public/support/download/list-products",
+        "funding_history_documentation": "https://bybit-exchange.github.io/docs/v5/market/history-fund-rate",
+        "historical_data_page": "https://www.bybit.com/en/derivative-activity/history-data",
+        "mark_price_documentation": "https://bybit-exchange.github.io/docs/v5/market/mark-kline",
+        "rate_limit_documentation": "https://bybit-exchange.github.io/docs/v5/rate-limit",
+        "trade_price_documentation": "https://bybit-exchange.github.io/docs/v5/market/kline"
+      }
+    },
+    "status": {"const": "owner-approved-one-minute-rest-capacity-bounded"},
+    "theoretical_rest_envelope": {
+      "const": {
+        "combined_requests": 7671300,
+        "funding": {
+          "estimated_events": 61361300,
+          "estimated_requests": 307300,
+          "interval_minutes": 60,
+          "page_limit": 200
+        },
+        "instrument_count": 700,
+        "instrument_minutes_per_candle_dataset": 3681644400,
+        "mark_price_1m": {
+          "estimated_requests": 3682000,
+          "page_limit": 1000,
+          "rows": 3681644400
+        },
+        "minimum_request_only_seconds_at_default_ip_limit": 63928,
+        "planning_request_only_seconds_at_10_per_second": 767130,
+        "trade_price_1m": {
+          "estimated_requests": 3682000,
+          "page_limit": 1000,
+          "rows": 3681644400
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "business_types",
+        "category",
+        "description",
+        "intervals",
+        "name",
+        "period_count",
+        "product_id"
+      ],
+      "properties": {
+        "business_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["contract", "option", "spot"]}
+        },
+        "category": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "intervals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "name": {"type": "string", "minLength": 1},
+        "period_count": {"type": "integer", "minimum": 0},
+        "product_id": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+      }
+    },
+    "requestEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimated_events", "estimated_requests"],
+      "properties": {
+        "estimated_events": {"type": "integer", "minimum": 0},
+        "estimated_requests": {"type": "integer", "minimum": 0}
+      }
+    },
+    "fundingEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimated_events", "estimated_requests", "interval_minutes"],
+      "properties": {
+        "estimated_events": {"type": "integer", "minimum": 0},
+        "estimated_requests": {"type": "integer", "minimum": 0},
+        "interval_minutes": {"const": 60}
+      }
+    },
+    "rowRequestEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimated_requests", "estimated_rows"],
+      "properties": {
+        "estimated_requests": {"type": "integer", "minimum": 0},
+        "estimated_rows": {"type": "integer", "minimum": 0}
+      }
+    },
+    "requestSeconds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_default_ip_limit", "at_planning_10_per_second"],
+      "properties": {
+        "at_default_ip_limit": {"type": "integer", "minimum": 0},
+        "at_planning_10_per_second": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

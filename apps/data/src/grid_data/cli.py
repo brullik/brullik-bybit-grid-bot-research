@@ -23,7 +23,10 @@ from grid_data.archive_inventory import (
     load_verified_public_inventory,
 )
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
-from grid_data.history_sources import build_history_source_assessment
+from grid_data.history_sources import (
+    build_history_source_assessment,
+    build_one_minute_history_source_assessment,
+)
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 
@@ -68,6 +71,15 @@ def parser() -> argparse.ArgumentParser:
     history_sources.add_argument("--output", type=Path, required=True)
     history_sources.add_argument("--force", action="store_true")
     history_sources.set_defaults(handler=_history_source_assessment)
+
+    one_minute_history_sources = commands.add_parser(
+        "history-source-assessment-1m",
+        help="record the 1m-only source policy and REST bootstrap envelope",
+    )
+    one_minute_history_sources.add_argument("--instrument-inventory", type=Path, required=True)
+    one_minute_history_sources.add_argument("--output", type=Path, required=True)
+    one_minute_history_sources.add_argument("--force", action="store_true")
+    one_minute_history_sources.set_defaults(handler=_one_minute_history_source_assessment)
 
     sample = commands.add_parser(
         "public-sample", help="summarize bounded trade/mark/funding public samples"
@@ -179,6 +191,32 @@ def _history_source_assessment(args: argparse.Namespace) -> int:
     inventory = load_verified_public_inventory(inventory_path)
     products = BybitHistoricalDataCatalog().products()
     payload = build_history_source_assessment(
+        products,
+        inventory,
+        command=shlex.join(sys.argv),
+        inventory_artifact=inventory_path.name,
+        inventory_artifact_sha256=sha256_file(inventory_path),
+    )
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "assessment": payload["assessment"],
+                "receipt": str(receipt),
+                "theoretical_rest_envelope": payload["theoretical_rest_envelope"],
+            }
+        )
+    )
+    return 0
+
+
+def _one_minute_history_source_assessment(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    inventory_path = args.instrument_inventory.resolve()
+    inventory = load_verified_public_inventory(inventory_path)
+    products = BybitHistoricalDataCatalog().products()
+    payload = build_one_minute_history_source_assessment(
         products,
         inventory,
         command=shlex.join(sys.argv),

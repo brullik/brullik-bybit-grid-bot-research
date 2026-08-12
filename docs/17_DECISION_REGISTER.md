@@ -22,6 +22,7 @@
 | D-016 | Implementation PRs cannot modify their own PM-owned acceptance criteria | accepted | Prevent scope/acceptance drift |
 | D-017 | Optimize architecture with measurement before native extensions | accepted | Avoid premature Rust/C++ while retaining stable extension boundaries |
 | D-018 | Repository starts documentation-only | accepted | Freeze target architecture before implementation |
+| D-019 | V1 downloads and retains one-minute candles and funding, never tick-trade archive bodies | accepted | Owner decision; ADR-0016 and append-only source assessment v2 |
 
 ## Decisions requiring benchmark or owner evidence
 
@@ -32,12 +33,15 @@
 | P-003 | target Parquet file size | 128, 256, 512 MB | cold/warm scan and repair/compaction cost |
 | P-004 | compression | ZSTD levels; optional Snappy comparison | size/throughput benchmark |
 | P-005 | reference research hardware | 32/64/128 GB RAM; core count; NVMe size | end-to-end benchmark and budget |
-| P-006 | source coverage | official bulk archives versus REST gaps | authoritative inventory by symbol/time/source |
 | P-007 | intrabar fill ambiguity policy | conservative bounds, lower timeframe unavailable, event model | simulator review and sensitivity evidence |
 | P-008 | exact V1 exit policy | SL-only baseline versus time/condition exit | capital-lock and OOS evidence |
 | P-009 | live deployment | dedicated subaccount/host versus temporary main account | owner risk acceptance and API feasibility |
 | P-010 | maximum concurrent bots by stage | 1, 3, 10, other | capital/risk/live evidence |
 | P-011 | licensing | explicit open-source license or no grant | owner decision before external contributions |
+
+P-006 is resolved by D-019 and ADR-0016: V1 uses verified one-minute sources and excludes
+tick-trade archive bodies. Actual per-symbol REST coverage and gaps remain evidence requirements,
+not an unresolved source-policy choice.
 
 ## Change rule
 

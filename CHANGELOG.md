@@ -51,6 +51,9 @@ All notable project-governance and architecture changes are recorded here.
 - Receipt-linked current-universe capacity evidence that separates the one-time canonical
   bootstrap, active-plus-building rebuild, daily incremental append, and bounded monthly repair;
   retains the formal planning envelope; and leaves raw archive headroom explicitly unmeasured.
+- Owner-approved ADR-0016 one-minute-only source boundary, append-only v2 source evidence, and a
+  REST capacity envelope covering trade-price 1m, mark-price 1m, and funding without downloading
+  or retaining tick-trade archive bodies.
 
 ### Safety
 

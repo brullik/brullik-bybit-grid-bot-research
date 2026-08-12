@@ -19,6 +19,7 @@
 - Spot grid, DCA, martingale, copy trading, or non-neutral grid modes.
 - A custom grid built directly from ordinary orders.
 - Tick-level or full-depth order-book backtesting.
+- Download, retention, or local aggregation of tick-level public-trade archives.
 - Machine learning before a deterministic rules baseline is proven.
 - Trailing up/down.
 - Automatic strategy retraining or self-modification in live.
