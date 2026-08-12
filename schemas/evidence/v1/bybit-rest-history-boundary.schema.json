@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-rest-history-boundary.schema.json",
+  "title": "Bounded Bybit V5 one-minute and funding history boundary evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "content_sha256",
+    "evidence_schema",
+    "fetched_at_utc",
+    "inventory_source",
+    "limitations",
+    "request_audit",
+    "selection",
+    "source_policy",
+    "sources",
+    "status",
+    "storage_policy",
+    "summary",
+    "symbols"
+  ],
+  "properties": {
+    "command": {"type": "string", "minLength": 1},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.bybit-rest-history-boundary/v1"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "inventory_source": {"$ref": "#/$defs/inventorySource"},
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "request_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_request_count",
+        "annual_checkpoint_page_limit",
+        "checkpoint_period_days",
+        "checkpoint_window_days",
+        "launch_window_funding_page_limit",
+        "launch_window_kline_page_limit",
+        "launch_window_minutes",
+        "max_requests",
+        "planned_request_upper_bound",
+        "terminal_checkpoint_enabled",
+        "transport_max_attempts",
+        "worker_count"
+      ],
+      "properties": {
+        "actual_request_count": {"type": "integer", "minimum": 1, "maximum": 5000},
+        "annual_checkpoint_page_limit": {"const": 1},
+        "checkpoint_period_days": {"const": 365},
+        "checkpoint_window_days": {"const": 7},
+        "launch_window_funding_page_limit": {"const": 200},
+        "launch_window_kline_page_limit": {"const": 1000},
+        "launch_window_minutes": {"const": 1000},
+        "max_requests": {"type": "integer", "minimum": 1, "maximum": 5000},
+        "planned_request_upper_bound": {"type": "integer", "minimum": 1, "maximum": 5000},
+        "terminal_checkpoint_enabled": {"const": true},
+        "transport_max_attempts": {"const": 1},
+        "worker_count": {"type": "integer", "minimum": 1, "maximum": 16}
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "eligible_status_counts",
+        "requested_sample_size",
+        "selected_sample_size",
+        "selected_status_counts",
+        "symbols"
+      ],
+      "properties": {
+        "algorithm": {"const": "equal-status-launch-time-stratified-v1"},
+        "eligible_status_counts": {"$ref": "#/$defs/statusCounts"},
+        "requested_sample_size": {"type": "integer", "minimum": 2, "maximum": 20},
+        "selected_sample_size": {"type": "integer", "minimum": 2, "maximum": 20},
+        "selected_status_counts": {"$ref": "#/$defs/statusCounts"},
+        "symbols": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/symbol"}
+        }
+      }
+    },
+    "source_policy": {
+      "const": {
+        "funding": "/v5/market/funding/history",
+        "mark_price_1m": "/v5/market/mark-price-kline",
+        "trade_price_1m": "/v5/market/kline"
+      }
+    },
+    "sources": {
+      "const": {
+        "funding_documentation": "https://bybit-exchange.github.io/docs/v5/market/history-fund-rate",
+        "mark_price_documentation": "https://bybit-exchange.github.io/docs/v5/market/mark-kline",
+        "trade_price_documentation": "https://bybit-exchange.github.io/docs/v5/market/kline"
+      }
+    },
+    "status": {"enum": ["bounded-sample-complete", "bounded-sample-partial"]},
+    "storage_policy": {
+      "const": {
+        "market_rows_persisted": false,
+        "market_values_persisted": false,
+        "response_content_hashes_persisted": true,
+        "tick_rows_requested": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_summaries", "error_count", "selected_symbol_count"],
+      "properties": {
+        "dataset_summaries": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["funding", "mark_price_1m", "trade_price_1m"],
+          "properties": {
+            "funding": {"$ref": "#/$defs/datasetSummary"},
+            "mark_price_1m": {"$ref": "#/$defs/datasetSummary"},
+            "trade_price_1m": {"$ref": "#/$defs/datasetSummary"}
+          }
+        },
+        "error_count": {"type": "integer", "minimum": 0, "maximum": 60},
+        "selected_symbol_count": {"type": "integer", "minimum": 2, "maximum": 20}
+      }
+    },
+    "symbols": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/symbolResult"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+    "inventorySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "artifact_sha256",
+        "evidence_schema",
+        "fetched_at_utc",
+        "inventory_status"
+      ],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"},
+        "inventory_status": {"enum": ["complete", "partial"]}
+      }
+    },
+    "statusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Closed", "Trading"],
+      "properties": {
+        "Closed": {"type": "integer", "minimum": 0},
+        "Trading": {"type": "integer", "minimum": 0}
+      }
+    },
+    "availabilityCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "error", "unavailable"],
+      "properties": {
+        "available": {"type": "integer", "minimum": 0},
+        "error": {"type": "integer", "minimum": 0},
+        "unavailable": {"type": "integer", "minimum": 0}
+      }
+    },
+    "observationSemanticsCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error",
+        "exact-within-launch-window",
+        "none-observed-in-probed-windows",
+        "sampled-checkpoint-not-exact-boundary"
+      ],
+      "properties": {
+        "error": {"type": "integer", "minimum": 0},
+        "exact-within-launch-window": {"type": "integer", "minimum": 0},
+        "none-observed-in-probed-windows": {"type": "integer", "minimum": 0},
+        "sampled-checkpoint-not-exact-boundary": {"type": "integer", "minimum": 0}
+      }
+    },
+    "datasetSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "earliest_observed_time_ms",
+        "largest_delay_after_probe_start_minutes",
+        "observation_semantics_counts",
+        "status_counts",
+        "total_checkpoint_empty_count",
+        "total_checkpoint_nonempty_count"
+      ],
+      "properties": {
+        "earliest_observed_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "largest_delay_after_probe_start_minutes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "observation_semantics_counts": {"$ref": "#/$defs/observationSemanticsCounts"},
+        "status_counts": {"$ref": "#/$defs/availabilityCounts"},
+        "total_checkpoint_empty_count": {"type": "integer", "minimum": 0},
+        "total_checkpoint_nonempty_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "end_ms",
+        "kind",
+        "nonempty",
+        "observed_time_ms",
+        "response_content_sha256",
+        "start_ms"
+      ],
+      "properties": {
+        "end_ms": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["annual", "terminal"]},
+        "nonempty": {"type": "boolean"},
+        "observed_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "response_content_sha256": {"$ref": "#/$defs/sha256"},
+        "start_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "datasetResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_empty_count",
+        "checkpoint_nonempty_count",
+        "checkpoints",
+        "delay_after_probe_start_minutes",
+        "earliest_observed_time_ms",
+        "error",
+        "launch_window_nonempty",
+        "launch_window_response_content_sha256",
+        "observation_semantics",
+        "request_count",
+        "status"
+      ],
+      "properties": {
+        "checkpoint_empty_count": {"type": "integer", "minimum": 0},
+        "checkpoint_nonempty_count": {"type": "integer", "minimum": 0},
+        "checkpoints": {"type": "array", "items": {"$ref": "#/$defs/checkpoint"}},
+        "delay_after_probe_start_minutes": {"type": ["integer", "null"], "minimum": 0},
+        "earliest_observed_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "error": {"type": ["string", "null"], "minLength": 1},
+        "launch_window_nonempty": {"type": "boolean"},
+        "launch_window_response_content_sha256": {
+          "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "observation_semantics": {
+          "enum": [
+            "error",
+            "exact-within-launch-window",
+            "none-observed-in-probed-windows",
+            "sampled-checkpoint-not-exact-boundary"
+          ]
+        },
+        "request_count": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["available", "error", "unavailable"]}
+      }
+    },
+    "symbolResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasets",
+        "delivery_time_ms",
+        "funding_interval_minutes",
+        "launch_time_ms",
+        "probe_end_ms",
+        "probe_start_ms",
+        "status",
+        "symbol"
+      ],
+      "properties": {
+        "datasets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["funding", "mark_price_1m", "trade_price_1m"],
+          "properties": {
+            "funding": {"$ref": "#/$defs/datasetResult"},
+            "mark_price_1m": {"$ref": "#/$defs/datasetResult"},
+            "trade_price_1m": {"$ref": "#/$defs/datasetResult"}
+          }
+        },
+        "delivery_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "funding_interval_minutes": {"type": "integer", "minimum": 1},
+        "launch_time_ms": {"type": "integer", "minimum": 0},
+        "probe_end_ms": {"type": "integer", "minimum": 0},
+        "probe_start_ms": {"type": "integer", "minimum": 0},
+        "status": {"enum": ["Closed", "Trading"]},
+        "symbol": {"$ref": "#/$defs/symbol"}
+      }
+    }
+  }
+}

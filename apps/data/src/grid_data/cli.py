@@ -29,6 +29,7 @@ from grid_data.history_sources import (
 )
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
+from grid_data.rest_history_boundary import build_rest_history_boundary
 
 
 def parser() -> argparse.ArgumentParser:
@@ -80,6 +81,19 @@ def parser() -> argparse.ArgumentParser:
     one_minute_history_sources.add_argument("--output", type=Path, required=True)
     one_minute_history_sources.add_argument("--force", action="store_true")
     one_minute_history_sources.set_defaults(handler=_one_minute_history_source_assessment)
+
+    rest_history = commands.add_parser(
+        "rest-history-boundary",
+        help="probe bounded earliest 1m/funding availability without retaining market values",
+    )
+    rest_history.add_argument("--instrument-inventory", type=Path, required=True)
+    rest_history.add_argument("--sample-size", type=int, default=8)
+    rest_history.add_argument("--workers", type=int, default=8)
+    rest_history.add_argument("--max-requests", type=int, default=1000)
+    rest_history.add_argument("--base-url", default="https://api.bybit.com")
+    rest_history.add_argument("--output", type=Path, required=True)
+    rest_history.add_argument("--force", action="store_true")
+    rest_history.set_defaults(handler=_rest_history_boundary)
 
     sample = commands.add_parser(
         "public-sample", help="summarize bounded trade/mark/funding public samples"
@@ -231,6 +245,35 @@ def _one_minute_history_source_assessment(args: argparse.Namespace) -> int:
                 "assessment": payload["assessment"],
                 "receipt": str(receipt),
                 "theoretical_rest_envelope": payload["theoretical_rest_envelope"],
+            }
+        )
+    )
+    return 0
+
+
+def _rest_history_boundary(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output, force=args.force)
+    inventory_path = args.instrument_inventory.resolve()
+    inventory = load_verified_public_inventory(inventory_path)
+    payload = build_rest_history_boundary(
+        lambda: BybitPublicClient(UrllibJsonTransport(base_url=args.base_url, max_attempts=1)),
+        inventory,
+        command=shlex.join(sys.argv),
+        inventory_artifact=inventory_path.name,
+        inventory_artifact_sha256=sha256_file(inventory_path),
+        sample_size=args.sample_size,
+        workers=args.workers,
+        max_requests=args.max_requests,
+    )
+    artifact, receipt = publish_evidence(output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "receipt": str(receipt),
+                "request_audit": payload["request_audit"],
+                "status": payload["status"],
+                "summary": payload["summary"],
             }
         )
     )

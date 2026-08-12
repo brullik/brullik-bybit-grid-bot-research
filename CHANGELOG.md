@@ -54,6 +54,9 @@ All notable project-governance and architecture changes are recorded here.
 - Owner-approved ADR-0016 one-minute-only source boundary, append-only v2 source evidence, and a
   REST capacity envelope covering trade-price 1m, mark-price 1m, and funding without downloading
   or retaining tick-trade archive bodies.
+- Bounded public REST history-boundary evidence with deterministic Trading/Closed selection,
+  launch/annual/terminal observations, strict request accounting, exact-versus-sampled semantics,
+  and hashes/timestamps only instead of retained market values.
 
 ### Safety
 

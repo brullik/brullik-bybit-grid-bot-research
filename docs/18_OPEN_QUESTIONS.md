@@ -8,7 +8,9 @@ Owner decision D-019 and ADR-0016 resolve the V1 source policy: tick-trade archi
 downloaded or retained; trade-price 1m, mark-price 1m, and funding use public V5 REST until a
 compatible one-minute bulk product is verified.
 
-1. How far back can each required REST endpoint recover data, and are there instrument-specific discontinuities?
+1. How far back can each required REST endpoint recover data, and are there instrument-specific
+   discontinuities? The M1 bounded eight-symbol probe proves multi-year responses and exposes
+   sampled lifecycle mismatches, but full-universe exact boundaries remain Phase 2 evidence.
 2. Does any advertised official bulk product provide verified one-minute semantics compatible with the canonical contracts?
 3. How are renamed, migrated, pre-listing, dated futures, and delisted contracts represented across archive/API history?
 4. Which source is authoritative when archive and REST values conflict?

@@ -15,6 +15,11 @@ Tick-level public-trade archive bodies are not a V1 source and are neither downl
 
 Source provenance is retained per file/range. A value from one source cannot silently overwrite a conflicting value from another source.
 
+Current instrument `launchTime` is a probe bound, not proof of source availability. Before a
+canonical range is committed, the downloader records the actual earliest/latest response and an
+explicit reason for every lifecycle/source mismatch. Empty ranges are evidence, never fabricated
+candles.
+
 ## Data layers
 
 ```mermaid
