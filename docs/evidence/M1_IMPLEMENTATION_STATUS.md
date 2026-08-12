@@ -48,14 +48,16 @@
   current-liquid exact-price-stratified sample, requires complete closed 1m candles, writes both
   exact shortlist layouts outside Git, and publishes only schema-validated aggregates and hashes.
 - V3 capacity calibration that binds the real-market artifact and retains the independent
-  24/40/64-byte planning envelopes and provisional 2 TiB recommendation.
-- Fail-closed reference-host admission that requires a receipt-verified full-profile workstation
-  snapshot, matches current CPU/RAM/platform and storage identity, binds the measured work volume,
-  and freezes Python/DuckDB/Polars/PyArrow/psutil versions across all reboot-separated legs.
-- Shared reference-host admission for the 100-million-row feature benchmark. New reference runs
-  use `grid.feature-benchmark/v2`, verify the same ≥16-core/64 GiB/2 TiB NVMe host before and after
-  the workload, freeze Polars/psutil/Python versions, and publish a candidate only when the memory
-  gate passes. Linux snapshots measure the actual longest matching mount.
+  24/40/64-byte planning envelopes and its legacy provisional 2 TiB recommendation. ADR-0019 does
+  not rewrite that immutable evidence and supersedes the device size as a future admission gate.
+- Legacy fail-closed reference-host admission that requires a receipt-verified fixed-profile
+  workstation snapshot, matches current CPU/RAM/platform and storage identity, binds the measured
+  work volume, and freezes Python/DuckDB/Polars/PyArrow/psutil versions across reboot-separated
+  legs. ADR-0019 leaves those v1/v2 receipts immutable and requires an append-only successor.
+- Shared legacy reference-host admission for the 100-million-row feature benchmark.
+  `grid.feature-benchmark/v2` verifies the same fixed-profile host before and after the workload,
+  freezes Polars/psutil/Python versions, and publishes a candidate only when the memory gate
+  passes. Linux snapshots measure the actual longest matching mount.
 - Append-only `grid.gate1-review-pack/v1` aggregation that accepts only receipt/schema-verified
   host-bound layout and feature v2 artifacts, re-verifies their workstation/ADR-0010/real-market
   sources, rejects cross-host/version/scale evidence, calculates documented provisional query,
@@ -73,6 +75,10 @@
   constraints, explicit editable monorepo-package checks, Python 3.12/venv enforcement, clean
   canonical-main/source-manifest verification, `pip check`, required-import checks, and
   secret-name-only rejection of Bybit credential variables before a campaign plan can exist.
+- Owner-accepted ADR-0019 evidence-based host policy. It removes fixed CPU/RAM/total-volume
+  blockers for future append-only contracts while retaining same-host 100-million-row trials,
+  the 70% memory gate, current free-space admission, stable local SSD/NVMe identity, and every
+  existing performance/correctness/reboot gate. Implementation remains pending in a separate PR.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -214,8 +220,9 @@
   turnover with ZSTD level 3: four buckets at 32 MiB and eight buckets at 16 MiB. Their observed
   sizes were 6.445478115 and 6.509652550 bytes/row. Projecting those measurements to 7.363 billion
   trade+mark rows gives 47,459,916,819 and 47,932,451,711 bytes, respectively. These synthetic
-  projections do not reduce the independent planning envelopes or the provisional 2 TiB storage
-  recommendation.
+  projections do not reduce the independent planning envelopes. Their provisional 2 TiB storage
+  recommendation is retained as historical evidence but superseded as an admission threshold by
+  ADR-0019.
 - On the identical 80,640 real candles, the four-bucket/32 MiB and eight-bucket/16 MiB layouts
   occupied 2,018,591 and 2,049,946 bytes, or `25.032130456` and `25.420957341` bytes/row. Exact
   schemas reopened successfully and DuckDB/Polars produced one common logical hash. Real values
@@ -233,10 +240,11 @@
   `reference-scale-candidate` status means reference row scale only and is not accepted reference
   hardware evidence.
 - The measured workstation is an AMD Ryzen 5 5600H (6 physical/12 logical cores), 16.48 GB RAM,
-  and a 511.44 GB NVMe system volume with about 199 GB free at capture time. It is below both the
-  documented local-feasibility/storage envelope and the full research-workstation profile.
-- The current provisional recommendation remains 16-32 physical/high-performance cores, 64-128
-  GiB RAM, and at least 2 TiB NVMe plus separately sized backup storage for the full Gate 1 run.
+  and a 511.44 GB NVMe system volume. The owner storage-review snapshot observed
+  193,679,237,120 bytes (180.378 GiB) free.
+- ADR-0019 supersedes the provisional 16-32-core/64-128-GiB/2-TiB values as admission thresholds.
+  They may still be convenient for concurrency, derived stores, and future growth, but are not
+  required when measured same-host scale, memory, free-space, and performance evidence pass.
 - Linear projection at the 100-million-row synthetic candidate rate is 1,147.407324279 s for
   3.681B trade rows and 2,294.814648559 s for 7.363B trade+mark rows. It excludes I/O publication, audits,
   compaction, concurrency, and real-market skew and is not a runtime commitment.
@@ -246,7 +254,8 @@
   physical estimate. The independent 24/40/64-byte planning envelopes remain
   176.72/294.53/471.25 GB. Tick archives are excluded by ADR-0016. Neither estimate includes
   bounded REST staging, derived stores, experiments, compaction headroom, backup, or filesystem
-  overhead; the 2 TiB recommendation remains provisional pending P-005 evidence.
+  overhead. ADR-0019 requires those applicable working sets to be added to a fresh free-space
+  preflight rather than assuming a 2 TiB device.
 - On the owner storage-review volume, 193,679,237,120 bytes were free. The larger real-width
   current-universe projection requires 44,997,807,469 bytes (41.907 GiB) for the first canonical
   build, 89,995,614,938 bytes (83.815 GiB) for active plus building during a full rebuild,
@@ -255,6 +264,11 @@
   active-plus-building scenario requires 226,573,660,416 bytes and does not fit. Tick archives are
   no longer part of the source plan; REST staging remains unmeasured, and Gate 1 still does not
   authorize the full download.
+- The current ADR-0019 Gate 1 calculation adds 89,995,614,938 bytes for active plus building,
+  1,642,763,483 bytes of measured retained shortlist scratch, and an 8 GiB operating reserve.
+  The resulting 100,228,313,013-byte (93.345 GiB) requirement fits the 180.378 GiB observation.
+  It must be recalculated from fresh lifecycle/free-space evidence and does not yet include the
+  future Phase 2 downloader's independently bounded REST-page staging.
 - The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
   rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
   file metadata before timing, content hashes afterward, expected row counts, and cross-engine
@@ -295,18 +309,18 @@
 
 ## Evidence still required to close Gate 1
 
-- Run the staged ADR-0010 shortlist protocol on declared reference hardware with four distinct
-  reboot-separated measurement legs using the now receipt-verified real-market-skew binding, then
-  decide P-001 through P-005. The protocol now rejects the checked-in below-profile workstation
-  snapshot before mutation; a qualifying ≥16-core/64 GiB/2 TiB NVMe host remains external evidence.
-  The local maintenance/cold-read smoke result satisfies none of those reference claims.
-- Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
-  replace the provisional runtime/storage/hardware projection with accepted evidence. The feature
-  CLI now rejects the checked-in below-profile workstation snapshot before computation or output
-  replacement and requires a v2 host-bound result.
-- Build the v1 Gate 1 review pack from the completed external layout/feature reference artifacts;
-  immutable v1-v3 provisional projections intentionally retain their original local semantics.
-- Use `benchmarks.reference_campaign` and `ops/runbooks/M1_REFERENCE_CAMPAIGN.md` on the qualifying
-  host to bind the exact four reboot-separated legs, feature run, and review-pack build. The
-  current checked-in below-profile workstation fails this preflight before campaign-root creation.
+- Implement ADR-0019 with append-only workstation, layout/feature, review-pack, and campaign-plan
+  contracts. The implementation must bind the laptop's receipt-verified same-host 100-million-row
+  qualification evidence, fresh lifecycle/free-space evidence, the 70% memory gate, and the clean
+  pinned environment without changing legacy receipt semantics.
+- Run the staged ADR-0010 shortlist protocol on the newly admitted host with four distinct
+  reboot-separated measurement legs using the receipt-verified real-market-skew binding, then
+  decide P-001 through P-005. The local maintenance/cold-read smoke result remains non-reference.
+- Repeat the host-bound 100-million-row feature benchmark under the pinned reference environment
+  and replace the provisional runtime/storage/hardware projection with accepted evidence.
+- Build the append-only successor Gate 1 review pack from the completed layout/feature reference
+  artifacts; immutable legacy projections and review contracts retain their original semantics.
+- Update `benchmarks.reference_campaign` and `ops/runbooks/M1_REFERENCE_CAMPAIGN.md` to the
+  append-only ADR-0019 admission, then bind the four reboot-separated legs, feature run, and
+  review-pack build on the freshly admitted owner laptop.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

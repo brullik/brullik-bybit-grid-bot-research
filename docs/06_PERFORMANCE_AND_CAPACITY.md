@@ -63,9 +63,11 @@ part of the V1 plan.
 
 ### Planning recommendation
 
-- Minimum development: 1 TB NVMe with disciplined cleanup.
-- Comfortable full research workstation: 2 TB or more NVMe for canonical data, derived datasets, experiments, and safe compaction headroom.
-- Backup/object storage sized separately.
+- Size the working volume from current verified lifecycle coverage, immutable active-plus-building
+  replacement, measured benchmark scratch, bounded staging, and an explicit operating reserve.
+- Treat 1-2 TB NVMe and additional RAM/CPU as convenience and future-growth options, not fixed
+  Gate 1 admission thresholds.
+- Size backup/object storage separately; backup capacity is not counted as working free space.
 
 These are planning envelopes, not guaranteed final sizes. A representative compression benchmark must be completed before hardware purchase is treated as final.
 
@@ -81,6 +83,12 @@ real-market row width projected about 41.907 GiB for the first canonical build, 
 full active-plus-building replacement, about 49 MiB for one day of current `Trading` instruments,
 and 1.484 GiB for a maximum 31-day partition rewrite.
 
+For the owner-approved ADR-0019 reference-host policy, the current free-space requirement is the
+83.815 GiB active-plus-building rebuild plus 1,642,763,483 bytes of measured retained shortlist
+scratch plus an 8 GiB operating reserve: 100,228,313,013 bytes (93.345 GiB). The same snapshot
+observed 193,679,237,120 bytes (180.378 GiB) free. This is a point-in-time admission calculation,
+not a permanent disk-size threshold; fresh lifecycle and free-space evidence must be used.
+
 Tick-trade archive headroom is no longer required by ADR-0016. These values still do not size
 bounded REST-page staging, derived data, experiments, compaction, or backup. Normal operation must
 append new closed intervals and repair only detected gaps; immutable replacement rewrites only
@@ -91,17 +99,25 @@ affected monthly partitions. See
 
 ### Profile A — local feasibility
 
-- 8+ CPU cores;
-- 32 GB RAM;
-- NVMe SSD;
-- 10–50 instruments for representative pipeline validation.
+- any supported 64-bit host that passes the environment doctor;
+- bounded fixtures or explicitly non-reference profiles;
+- local SSD/NVMe preferred;
+- no claim about full-scale admission from nominal hardware alone.
 
 ### Profile B — full-scale research workstation
 
-- 16–32 physical/high-performance CPU cores;
-- 64–128 GB RAM;
-- fast local NVMe, preferably separate working and backup volumes;
-- sufficient cooling and sustained I/O capability.
+- same-host, receipt-verified 99,999,900-row/700-instrument layout and feature trials;
+- qualifying feature peak RSS no greater than 70% of observed RAM;
+- current free bytes sufficient for verified active-plus-building storage, retained campaign
+  scratch, bounded staging, and operating reserve;
+- stable local SSD/NVMe identity and an idle host for timed measurements;
+- all cold/warm scan, write, correctness, restart, repair, and compaction gates satisfied.
+
+CPU count, installed RAM, and total disk capacity are recorded for reproducibility and influence
+duration. They are not hard admission thresholds after ADR-0019. The currently evidenced owner
+laptop (6 physical/12 logical cores and 16.48 GB RAM) has already completed the qualifying-scale
+trial workloads; a fresh append-only admission implementation is still required before the
+reference campaign starts.
 
 ### Profile C — live host
 

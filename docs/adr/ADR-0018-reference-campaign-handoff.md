@@ -2,6 +2,7 @@
 
 - Status: proposed; Gate 1 owner-review-gated
 - Date: 2026-08-12
+- Superseded in part by: ADR-0019 (fixed external-workstation requirement only)
 
 ## Context
 
@@ -11,9 +12,15 @@ run, finalization, and an independent review pack. Each underlying command alrea
 but manually reconstructing paths, fixed scales, dependencies, and reboot order creates avoidable
 operator error and weakens handoff auditability.
 
-The current workstation cannot run the reference campaign: its receipt-verified snapshot reports
+The current workstation cannot run the legacy v1 reference campaign: its receipt-verified snapshot reports
 6 physical cores, 16.48 GB RAM, and a 511 GB NVMe volume, below the required 16 cores, 64 GiB, and
 2 TiB NVMe profile. Orchestration must not disguise that external dependency or approve Gate 1.
+
+ADR-0019 replaces this fixed external-workstation conclusion for future append-only contracts.
+The owner laptop has since demonstrated the 100-million-row layout and feature workloads and has
+enough observed free space for the current-universe immutable rebuild plus retained campaign
+scratch and reserve. The existing v1 plan remains fixed-profile; its successor must implement the
+evidence-based admission before the laptop can publish a campaign plan.
 
 ## Decision
 

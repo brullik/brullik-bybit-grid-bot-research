@@ -55,6 +55,11 @@ Windows, the snapshot resolves the physical device backing that drive; it does n
 the benchmark volume is `PhysicalDrive0`. On Linux, the snapshot resolves the longest mounted path
 containing its output instead of assuming the root filesystem.
 
+These thresholds describe the immutable legacy v1/v2 evidence. ADR-0019 requires an append-only
+successor based on same-host 100-million-row trials, the 70% memory gate, suitable local SSD/NVMe,
+and fresh evidence-derived free space. All identity, cache, correctness, reboot, and software
+freezing requirements remain unchanged.
+
 Prepare the retained 100-million-row shortlist once:
 
 ```powershell

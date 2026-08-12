@@ -45,6 +45,8 @@ Gate 1:
 - canonical schema decision recorded;
 - partition/bucket/file-size choice supported by benchmark;
 - full-scale runtime/storage estimate updated;
+- reference-host admission uses same-host full-scale evidence, the 70% memory gate, fresh
+  evidence-derived free space, and measured performance rather than fixed CPU/RAM/disk totals;
 - no unresolved blocker to a 700-instrument capacity design.
 
 ## Phase 2 — Canonical market-data MVP
