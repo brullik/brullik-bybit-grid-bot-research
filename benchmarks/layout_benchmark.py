@@ -282,7 +282,7 @@ def validate_configuration(profile: str, rows: int, instruments: int, row_group_
     row_count = rows - rows % instruments
     if row_count < instruments:
         raise ValueError("rows must cover at least one row per instrument")
-    if profile == "full" and (row_count < FULL_MINIMUM_ROWS or instruments != FULL_INSTRUMENTS):
+    if profile == "full" and (rows < FULL_MINIMUM_ROWS or instruments != FULL_INSTRUMENTS):
         raise ValueError(
             "full profile requires at least 100,000,000 rows and exactly 700 instruments; "
             "use --profile scaled for a smaller full-matrix run"

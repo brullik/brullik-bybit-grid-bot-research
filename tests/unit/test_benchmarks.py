@@ -8,7 +8,13 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from benchmarks.capacity_projection import projected_bytes
-from benchmarks.feature_benchmark import build_market_frame, feature_plan
+from benchmarks.feature_benchmark import (
+    build_market_frame,
+    feature_plan,
+)
+from benchmarks.feature_benchmark import (
+    validate_configuration as validate_feature_configuration,
+)
 from benchmarks.layout_benchmark import (
     Layout,
     build_frame,
@@ -56,6 +62,14 @@ def test_full_layout_profile_cannot_claim_a_small_run() -> None:
     with pytest.raises(ValueError, match="full profile requires"):
         validate_configuration("full", 200_000, 50, 10_000)
     assert validate_configuration("scaled", 200_001, 50, 10_000) == 200_000
+    assert validate_configuration("full", 100_000_000, 700, 100_000) == 99_999_900
+
+
+def test_reference_feature_profile_accepts_its_documented_command_scale() -> None:
+    assert (
+        validate_feature_configuration("reference", 100_000_000, 700, 2_880, 1_440, 70)
+        == 99_999_900
+    )
 
 
 def test_representative_status_requires_every_file_target() -> None:

@@ -26,8 +26,13 @@ Reference candidate (minimum scale):
 python benchmarks/feature_benchmark.py `
   --profile reference --rows 100000000 --instruments 700 `
   --core-minutes 2880 --window-minutes 1440 `
-  --output benchmarks/results/m1-feature-reference.json --force
+  --output benchmarks/results/m1-feature-reference-candidate.json --force
 ```
+
+Because 100,000,000 is not divisible by 700, the recorded core row count is 99,999,900. The
+profile threshold applies to the requested scale; the exact normalized count is always retained in
+the artifact. A completed run is `reference-scale-candidate`, not proof that the host is accepted
+reference hardware.
 
 Workstation snapshot:
 
@@ -50,7 +55,8 @@ python benchmarks/capacity_projection.py `
   cannot change past features.
 - Every core row is counted exactly once; halo rows are read-only and excluded from output counts.
 - Peak RSS is sampled every 10 ms and compared with the configured 70% RAM limit.
-- `smoke-only` and `scaled-only` are feasibility evidence, not a full-scale Gate 1 pass.
+- `smoke-only`, `scaled-only`, and `reference-scale-candidate` are feasibility evidence, not a
+  full-scale Gate 1 pass or a P-005 hardware decision.
 - Synthetic results do not justify production compression, skew, or hardware-purchase claims.
 - The capacity projection verifies all three source receipts and retains their artifact hashes.
   It reports both the measured synthetic extrapolation and the documented 24/40/64-byte planning

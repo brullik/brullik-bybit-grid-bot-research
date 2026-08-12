@@ -93,7 +93,7 @@ def validate_configuration(
     if row_count < instruments:
         raise ValueError("rows must cover at least one row per instrument")
     if profile == "reference" and (
-        row_count < REFERENCE_MINIMUM_ROWS
+        rows < REFERENCE_MINIMUM_ROWS
         or instruments != REFERENCE_INSTRUMENTS
         or window_minutes != DEFAULT_WINDOW_MINUTES
     ):
@@ -370,7 +370,7 @@ def main() -> int:
             "python": platform.python_version(),
         },
         "status": {
-            "reference": "representative-run",
+            "reference": "reference-scale-candidate",
             "scaled": "scaled-only",
             "smoke": "smoke-only",
         }[args.profile],

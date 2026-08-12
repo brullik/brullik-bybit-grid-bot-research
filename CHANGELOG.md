@@ -26,6 +26,9 @@ All notable project-governance and architecture changes are recorded here.
 - Bounded official-archive coverage matrix for every current USDT LinearPerpetual symbol, direct
   probes for index exceptions, top-level product summaries, current-metadata mismatch guards, and
   schema-verified evidence without raw archive downloads.
+- A 100-million-row, 700-instrument reference-scale feature candidate proving 50-shard halo
+  execution with bounded peak RSS, plus corrected non-divisible row-count validation in both
+  benchmark harnesses.
 - CI checks for lint, formatting, strict typing, tests, schema/evidence validation, manifest
   integrity, and slim live installation.
 

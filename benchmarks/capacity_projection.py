@@ -88,7 +88,9 @@ def arguments() -> argparse.Namespace:
         "--layout", type=Path, default=Path("benchmarks/results/m1-layout-smoke.json")
     )
     parser.add_argument(
-        "--feature", type=Path, default=Path("benchmarks/results/m1-feature-scaled.json")
+        "--feature",
+        type=Path,
+        default=Path("benchmarks/results/m1-feature-reference-candidate.json"),
     )
     parser.add_argument(
         "--workstation",
@@ -106,8 +108,11 @@ def main() -> int:
     layout = load_verified_evidence(args.layout)
     feature = load_verified_evidence(args.feature)
     workstation = load_verified_evidence(args.workstation)
-    if layout.get("status") != "smoke-only" or feature.get("status") != "scaled-only":
-        raise ValueError("this projection requires explicitly smoke/scaled source evidence")
+    if layout.get("status") != "smoke-only" or feature.get("status") not in {
+        "scaled-only",
+        "reference-scale-candidate",
+    }:
+        raise ValueError("this projection requires explicitly bounded source evidence")
 
     payload = {
         "capacity": {
@@ -120,7 +125,7 @@ def main() -> int:
         "layout_synthetic_linear_projections": layout_projection(layout),
         "limitations": [
             "Layout input is a small, highly regular synthetic smoke dataset.",
-            "Feature runtime is a linear projection from a 9,999,500-row synthetic scaled run.",
+            "Feature runtime is a linear projection from the referenced bounded synthetic run.",
             "Projections exclude ingestion, Parquet feature publication, audits, compaction, "
             "concurrency, backup, filesystem overhead, and real-market skew.",
             "The result cannot decide P-001 through P-005 or close Gate 1.",

@@ -78,13 +78,18 @@
 - Peak feature-build RSS was 1,472,802,816 bytes, or 8.938957608% of the observed 16,476,225,536
   bytes RAM. This passes the configured 70% limit for this scaled run only; it is not a full-scale
   feature-memory result.
+- The 100-million-row reference-scale candidate processed 99,999,900 core rows across 700
+  instruments and 50 shards in 31.165589400 s (3,208,663.847698684 core rows/s). Peak RSS was
+  1,511,342,080 bytes, or 9.172865938% of observed RAM; the largest input shard remained bounded at
+  3,024,000 rows. Its status is `reference-scale-candidate` because this host is not accepted
+  reference hardware.
 - The measured workstation is an AMD Ryzen 5 5600H (6 physical/12 logical cores), 16.48 GB RAM,
   and a 511.44 GB NVMe system volume with about 199 GB free at capture time. It is below both the
   documented local-feasibility/storage envelope and the full research-workstation profile.
 - The current provisional recommendation remains 16-32 physical/high-performance cores, 64-128
   GiB RAM, and at least 2 TiB NVMe plus separately sized backup storage for the full Gate 1 run.
-- Linear projection at the observed synthetic feature rate is 1,078.937159349 s for 3.681B trade
-  rows and 2,157.874318697 s for 7.363B trade+mark rows. It excludes I/O publication, audits,
+- Linear projection at the 100-million-row synthetic candidate rate is 1,147.407324279 s for
+  3.681B trade rows and 2,294.814648559 s for 7.363B trade+mark rows. It excludes I/O publication, audits,
   compaction, concurrency, and real-market skew and is not a runtime commitment.
 - The small synthetic layout projects 49.16-185.36 GB for trade+mark, while the independent
   documented 24/40/64-byte planning envelopes remain 176.72/294.53/471.25 GB. Neither includes
@@ -107,7 +112,7 @@
   history and whether funding-event bulk data exists, then size the remaining REST backfill;
   neither dataset is advertised by name in the observed archive root/developer summary.
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
-- Repeat the feature-throughput/memory benchmark at representative scale on that hardware and
+- Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
   replace the provisional runtime/storage/hardware projection with accepted evidence.
 - Perform an owner-controlled, authenticated validate-only probe for native Futures Grid. No
   private credentials may be added to the repository, logs, or research artifacts.

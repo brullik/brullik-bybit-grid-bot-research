@@ -44,6 +44,7 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
     cases = (
         ("m1-layout-smoke.json", "layout-benchmark.schema.json"),
         ("m1-feature-scaled.json", "feature-benchmark.schema.json"),
+        ("m1-feature-reference-candidate.json", "feature-benchmark.schema.json"),
         ("m1-workstation-snapshot.json", "workstation-snapshot.schema.json"),
         ("m1-capacity-projection.json", "capacity-projection.schema.json"),
     )
