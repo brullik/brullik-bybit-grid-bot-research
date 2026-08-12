@@ -70,6 +70,10 @@ All notable project-governance and architecture changes are recorded here.
   evidence-based same-host scale, memory, current free-space, storage-identity, and measured
   performance admission. Existing fixed-profile evidence remains immutable; append-only
   implementation is deliberately separated from this governance change.
+- Append-only measured-host qualification with receipt/schema verification of same-laptop 100M
+  layout and feature evidence, transitive current-universe/workstation binding, live free-space
+  and NVMe identity preflight, auditable insufficient-space results, and a checked-in qualified
+  owner-laptop artifact that leaves Gate 1 pending.
 
 ### Safety
 

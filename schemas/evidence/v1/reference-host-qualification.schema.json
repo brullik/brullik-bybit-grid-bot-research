@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/reference-host-qualification.schema.json",
+  "title": "ADR-0019 measured reference-host qualification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command", "evidence_schema", "gate_1", "hardware", "limitations", "policy", "qualified_at_utc", "qualification", "sources", "status"],
+  "properties": {
+    "command": {"type": "string", "minLength": 1},
+    "evidence_schema": {"const": "grid.reference-host-qualification/v1"},
+    "gate_1": {
+      "const": {
+        "automatic_acceptance": false,
+        "owner_decision_required": true,
+        "status": "pending-owner-decision"
+      }
+    },
+    "hardware": {"$ref": "#/$defs/hardware"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "policy": {
+      "const": {
+        "allowed_storage_kinds": ["nvme", "ssd"],
+        "free_space_formula": "canonical-active-plus-building + retained-reference-layout-scratch + operating-reserve",
+        "maximum_feature_memory_percent": 70,
+        "minimum_instruments": 700,
+        "minimum_rows": 99999900,
+        "operating_reserve_bytes": 8589934592
+      }
+    },
+    "qualified_at_utc": {"type": "string", "format": "date-time"},
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_scratch_required_bytes", "canonical_rebuild_required_bytes", "feature_peak_rss_bytes", "feature_peak_rss_percent_of_ram", "free_space_headroom_bytes", "free_space_shortfall_bytes", "maximum_layout_peak_rss_bytes", "observed_free_bytes", "qualified", "required_free_bytes", "same_host_full_scale_evidence"],
+      "properties": {
+        "campaign_scratch_required_bytes": {"type": "integer", "minimum": 1},
+        "canonical_rebuild_required_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_percent_of_ram": {"$ref": "#/$defs/metric"},
+        "free_space_headroom_bytes": {"type": "integer", "minimum": 0},
+        "free_space_shortfall_bytes": {"type": "integer", "minimum": 0},
+        "maximum_layout_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "observed_free_bytes": {"type": "integer", "minimum": 0},
+        "qualified": {"type": "boolean"},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "same_host_full_scale_evidence": {"const": true}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity", "feature", "layout", "workstation"],
+      "properties": {
+        "capacity": {"$ref": "#/$defs/source"},
+        "feature": {"$ref": "#/$defs/source"},
+        "layout": {"$ref": "#/$defs/source"},
+        "workstation": {"$ref": "#/$defs/source"}
+      }
+    },
+    "status": {"enum": ["qualified-measured-reference-host", "rejected-insufficient-current-free-space"]}
+  },
+  "$defs": {
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "metric": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "schema": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

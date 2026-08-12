@@ -18,10 +18,28 @@ There is no longer a fixed 16-core/64-GiB/2-TiB admission rule. On checked-in ev
 laptop is a hardware candidate: the present calculation requires 100,228,313,013 bytes
 (93.345 GiB) free and the receipt-bound snapshot observed 193,679,237,120 bytes (180.378 GiB).
 
-**Implementation boundary:** the commands below still publish legacy v1 fixed-profile evidence
-until the append-only ADR-0019 contracts land. Do not start the campaign from this governance-only
-revision. The follow-up implementation must update this runbook and pass fresh identity,
-free-space, environment, and source preflight before any campaign directory is created.
+The append-only host qualification now verifies those hardware/storage conditions, but the
+commands below still publish legacy fixed-profile campaign evidence. Do not start the campaign
+until its successor plan/layout/feature/review contracts consume the qualification. That follow-up
+must also pass the pinned environment before any campaign directory is created.
+
+## 0. Verify the measured host candidate
+
+Run without Bybit credentials on the measured volume:
+
+```powershell
+python -m benchmarks.measured_host_qualification `
+  --output C:\grid-reference\host-qualification-20260812T161730Z.json
+```
+
+Use a new filename for every fresh observation; do not overwrite an earlier receipt. The current
+public artifact reports `qualified-measured-reference-host`, 100,228,313,013 required
+bytes, 192,452,521,984 current free bytes, and 92,224,208,971 bytes of headroom. This qualifies
+hardware/storage only. It neither passes the environment doctor nor opens Gate 1/Phase 2.
+
+Qualification accepts capacity evidence no older than 24 hours. After the checked-in observation
+expires, first regenerate the lifecycle/workstation/current-universe evidence chain and pass its
+new `--capacity` and `--workstation` paths. Reusing the old free-space calculation fails closed.
 
 ## 1. Build one exact clean environment
 

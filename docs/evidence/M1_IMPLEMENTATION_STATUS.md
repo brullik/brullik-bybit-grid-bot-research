@@ -78,7 +78,12 @@
 - Owner-accepted ADR-0019 evidence-based host policy. It removes fixed CPU/RAM/total-volume
   blockers for future append-only contracts while retaining same-host 100-million-row trials,
   the 70% memory gate, current free-space admission, stable local SSD/NVMe identity, and every
-  existing performance/correctness/reboot gate. Implementation remains pending in a separate PR.
+  existing performance/correctness/reboot gate.
+- Append-only `grid.reference-host-qualification/v1` implementation that verifies the legacy
+  100-million-row layout/feature receipts and schemas, proves their same-laptop hardware, binds
+  the current-universe capacity to its exact workstation snapshot, rechecks current CPU/RAM/NVMe
+  identity and free bytes, and publishes either qualified or auditable insufficient-space status
+  without accepting Gate 1.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -269,6 +274,10 @@
   The resulting 100,228,313,013-byte (93.345 GiB) requirement fits the 180.378 GiB observation.
   It must be recalculated from fresh lifecycle/free-space evidence and does not yet include the
   future Phase 2 downloader's independently bounded REST-page staging.
+- The live ADR-0019 qualification reran the disk/identity preflight and observed
+  192,452,521,984 free bytes. It published `qualified-measured-reference-host` with
+  92,224,208,971 bytes of headroom. Its source receipts and public qualification receipt verify;
+  the artifact explicitly leaves the Python 3.12 environment and cold-cache campaign pending.
 - The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
   rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
   file metadata before timing, content hashes afterward, expected row counts, and cross-engine
@@ -309,10 +318,9 @@
 
 ## Evidence still required to close Gate 1
 
-- Implement ADR-0019 with append-only workstation, layout/feature, review-pack, and campaign-plan
-  contracts. The implementation must bind the laptop's receipt-verified same-host 100-million-row
-  qualification evidence, fresh lifecycle/free-space evidence, the 70% memory gate, and the clean
-  pinned environment without changing legacy receipt semantics.
+- Extend the qualified ADR-0019 host artifact into append-only layout/feature, review-pack, and
+  campaign-plan contracts. They must consume the receipt-verified qualification, recheck current
+  free space and identity, and bind the clean pinned environment without changing legacy receipts.
 - Run the staged ADR-0010 shortlist protocol on the newly admitted host with four distinct
   reboot-separated measurement legs using the receipt-verified real-market-skew binding, then
   decide P-001 through P-005. The local maintenance/cold-read smoke result remains non-reference.

@@ -85,6 +85,10 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
             "m1-owner-storage-review-capacity-20260812.json",
             "v1/current-universe-capacity.schema.json",
         ),
+        (
+            "m1-owner-measured-host-qualification-20260812.json",
+            "v1/reference-host-qualification.schema.json",
+        ),
     )
     for artifact_name, versioned_schema_name in cases:
         artifact = ROOT / "benchmarks" / "results" / artifact_name
