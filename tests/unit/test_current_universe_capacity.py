@@ -10,6 +10,7 @@ from grid_contracts.canonical import canonical_sha256
 from grid_data.evidence import publish_evidence, verify_evidence
 
 from benchmarks.current_universe_capacity import publish_current_universe_projection
+from benchmarks.workstation_snapshot import volume_root_for_path
 
 ROOT = Path(__file__).resolve().parents[2]
 HISTORY = ROOT / "benchmarks" / "results" / "m1-bybit-history-source-assessment.json"
@@ -28,13 +29,24 @@ def scenario(payload: dict[str, Any], identifier: str) -> dict[str, Any]:
     return next(item for item in payload["disk_headroom"]["scenarios"] if item["id"] == identifier)
 
 
+def workstation_for_output(output: Path) -> Path:
+    """Publish deterministic hardware evidence bound to the test output volume."""
+
+    payload = load_json(WORKSTATION)
+    payload["hardware"]["volume_root"] = str(volume_root_for_path(output))
+    path = output.parent / "workstation.json"
+    publish_evidence(path, payload)
+    return path
+
+
 def test_projection_separates_one_time_bootstrap_from_bounded_updates(tmp_path: Path) -> None:
     output = tmp_path / "current-universe.json"
+    workstation = workstation_for_output(output)
 
     payload = publish_current_universe_projection(
         history_path=HISTORY,
         capacity_path=CAPACITY,
-        workstation_path=WORKSTATION,
+        workstation_path=workstation,
         output=output,
         command="current universe test",
         generated_at=GENERATED_AT,
@@ -69,11 +81,12 @@ def test_projection_separates_one_time_bootstrap_from_bounded_updates(tmp_path: 
 
 
 def test_projection_binds_exact_layout_metrics_and_fresh_sources(tmp_path: Path) -> None:
+    output = tmp_path / "current-universe.json"
     payload = publish_current_universe_projection(
         history_path=HISTORY,
         capacity_path=CAPACITY,
-        workstation_path=WORKSTATION,
-        output=tmp_path / "current-universe.json",
+        workstation_path=workstation_for_output(output),
+        output=output,
         command="current universe binding test",
         generated_at=GENERATED_AT,
     )
@@ -87,12 +100,13 @@ def test_projection_binds_exact_layout_metrics_and_fresh_sources(tmp_path: Path)
 
 
 def test_projection_rejects_stale_operational_sources(tmp_path: Path) -> None:
+    output = tmp_path / "current-universe.json"
     with pytest.raises(ValueError, match="history fetched_at_utc is stale"):
         publish_current_universe_projection(
             history_path=HISTORY,
             capacity_path=CAPACITY,
-            workstation_path=WORKSTATION,
-            output=tmp_path / "current-universe.json",
+            workstation_path=workstation_for_output(output),
+            output=output,
             command="stale current universe test",
             generated_at=datetime(2026, 8, 14, 12, 0, tzinfo=UTC),
         )
@@ -102,13 +116,14 @@ def test_projection_rejects_tampered_source_receipt(tmp_path: Path) -> None:
     history_path = tmp_path / "history.json"
     publish_evidence(history_path, load_json(HISTORY))
     history_path.write_text("{}\n", encoding="utf-8")
+    output = tmp_path / "current-universe.json"
 
     with pytest.raises(ValueError, match="receipt does not verify"):
         publish_current_universe_projection(
             history_path=history_path,
             capacity_path=CAPACITY,
-            workstation_path=WORKSTATION,
-            output=tmp_path / "current-universe.json",
+            workstation_path=workstation_for_output(output),
+            output=output,
             command="tampered receipt test",
             generated_at=GENERATED_AT,
         )
@@ -123,12 +138,13 @@ def test_projection_rejects_schema_valid_bad_embedded_hash_before_replacement(
     publish_evidence(history_path, modified)
     output = tmp_path / "current-universe.json"
     publish_evidence(output, {"preserved": True})
+    workstation = workstation_for_output(output)
 
     with pytest.raises(ValueError, match="content hash does not verify"):
         publish_current_universe_projection(
             history_path=history_path,
             capacity_path=CAPACITY,
-            workstation_path=WORKSTATION,
+            workstation_path=workstation,
             output=output,
             force=True,
             command="bad embedded hash test",
@@ -144,13 +160,14 @@ def test_projection_rejects_schema_valid_cross_layout_capacity(tmp_path: Path) -
     modified = load_json(CAPACITY)
     modified["real_market_layout_projections"][0]["layout"]["target_file_mb"] = 16
     publish_evidence(capacity_path, modified)
+    output = tmp_path / "current-universe.json"
 
     with pytest.raises(ValueError, match="same two synthetic/real layouts"):
         publish_current_universe_projection(
             history_path=HISTORY,
             capacity_path=capacity_path,
-            workstation_path=WORKSTATION,
-            output=tmp_path / "current-universe.json",
+            workstation_path=workstation_for_output(output),
+            output=output,
             command="cross-layout capacity test",
             generated_at=GENERATED_AT,
         )
@@ -163,13 +180,14 @@ def test_projection_rejects_schema_valid_internal_capacity_math(tmp_path: Path) 
         "projected_trade_and_mark_bytes_at_trade_row_width"
     ] += 100
     publish_evidence(capacity_path, modified)
+    output = tmp_path / "current-universe.json"
 
     with pytest.raises(ValueError, match="do not match their rows"):
         publish_current_universe_projection(
             history_path=HISTORY,
             capacity_path=capacity_path,
-            workstation_path=WORKSTATION,
-            output=tmp_path / "current-universe.json",
+            workstation_path=workstation_for_output(output),
+            output=output,
             command="capacity math mismatch test",
             generated_at=GENERATED_AT,
         )
@@ -180,6 +198,7 @@ def test_projection_rejects_cross_volume_snapshot_before_replacement(
 ) -> None:
     output = tmp_path / "current-universe.json"
     publish_evidence(output, {"preserved": True})
+    workstation = workstation_for_output(output)
     monkeypatch.setattr(
         "benchmarks.current_universe_capacity.volume_root_for_path",
         lambda _path: Path("Z:\\"),
@@ -189,7 +208,7 @@ def test_projection_rejects_cross_volume_snapshot_before_replacement(
         publish_current_universe_projection(
             history_path=HISTORY,
             capacity_path=CAPACITY,
-            workstation_path=WORKSTATION,
+            workstation_path=workstation,
             output=output,
             force=True,
             command="cross-volume test",
