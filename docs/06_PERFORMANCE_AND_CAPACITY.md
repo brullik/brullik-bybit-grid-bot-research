@@ -127,8 +127,11 @@ duration. They are not hard admission thresholds after ADR-0019. The currently e
 laptop (6 physical/12 logical cores and 16.48 GB RAM) has already completed the qualifying-scale
 trial workloads. Under the pinned Python 3.12.10 environment, its admitted feature v3 rerun
 processed 99,999,900 rows in 29.047963300 seconds at 3,442,578.709124216 core rows/s and used
-1,515,790,336 bytes peak RSS (9.199863966% of RAM). The append-only campaign admission is now
-implemented; reboot-separated layout measurements and explicit Gate 1 review remain required.
+1,515,790,336 bytes peak RSS (9.199863966% of RAM). The later immutable qualified campaign also
+completed its four reboot-separated layout legs and feature rerun. Both paired layouts passed all
+provisional performance gates; the feature rerun processed 99,999,900 rows in 30.468537400 seconds
+with 1,509,040,128 bytes peak RSS (9.158894582% of RAM). The review pack is ready with no blockers,
+but P-001 through P-005 and Gate 1 remain pending explicit owner/PM decision.
 
 ### Profile C — live host
 

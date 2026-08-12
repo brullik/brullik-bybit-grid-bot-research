@@ -95,7 +95,9 @@
 - A passing Python 3.12.10 reference-environment doctor on the owner laptop and a standalone
   qualified feature v3 run over 99,999,900 rows: 29.047963300 seconds,
   3,442,578.709124216 core rows/s, 1,515,790,336 bytes peak RSS, and 9.199863966% of observed RAM.
-  The campaign feature leg and four reboot-separated layout measurements remain outstanding.
+  The later immutable campaign also completed the feature leg, all four reboot-separated layout
+  measurements, finalization, and Gate 1 review-pack build. Its public evidence summary is
+  [M1 qualified reference campaign](M1_QUALIFIED_REFERENCE_CAMPAIGN_20260812.md).
 - Read-only inventory of the owner's older 1m archive: 29,098,027 trade/mark rows across 123
   symbols in 541,389,842 bytes. Its separate legacy run report measured 29,120,414 rows in 372.558
   seconds with zero failures. The observation informs capacity and throughput expectations but is
@@ -335,9 +337,6 @@
 
 ## Evidence still required to close Gate 1
 
-- Run the staged ADR-0010 shortlist protocol on the newly admitted host with four distinct
-  reboot-separated measurement legs using the receipt-verified real-market-skew binding, then
-  decide P-001 through P-005. The local maintenance/cold-read smoke result remains non-reference.
-- Follow the immutable campaign-plan v2 sequence to finalize layout v3, rerun the feature v3 leg
-  under the pinned plan environment, and build Gate 1 review-pack v2 from those exact artifacts.
-- Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.
+- Record the owner/PM decisions for P-001 through P-005 and Gate 1. The receipt-verified review
+  pack is `ready-for-owner-review`, both layout candidates pass, and its blocker list is empty;
+  implementation still cannot self-approve the gate.
