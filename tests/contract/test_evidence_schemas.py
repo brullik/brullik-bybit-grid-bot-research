@@ -77,6 +77,14 @@ def test_public_benchmark_evidence_matches_schemas_and_receipts() -> None:
             "m1-real-market-capacity-projection.json",
             "v3/capacity-projection.schema.json",
         ),
+        (
+            "m1-owner-storage-review-workstation-20260812.json",
+            "v1/workstation-snapshot.schema.json",
+        ),
+        (
+            "m1-owner-storage-review-capacity-20260812.json",
+            "v1/current-universe-capacity.schema.json",
+        ),
     )
     for artifact_name, versioned_schema_name in cases:
         artifact = ROOT / "benchmarks" / "results" / artifact_name
@@ -150,6 +158,51 @@ def test_real_market_capacity_projection_is_bound_to_skew_and_decision_evidence(
         item["projected_trade_and_mark_bytes_at_trade_row_width"] > item["projected_trade_bytes"]
         for item in real_layouts
     )
+
+
+def test_owner_storage_review_evidence_chain_is_complete_and_bound() -> None:
+    results = ROOT / "benchmarks" / "results"
+    inventory = results / "m1-owner-storage-review-inventory-20260812.json"
+    history = results / "m1-owner-storage-review-history-20260812.json"
+    workstation = results / "m1-owner-storage-review-workstation-20260812.json"
+    capacity_basis = results / "m1-real-market-capacity-projection.json"
+    projection = results / "m1-owner-storage-review-capacity-20260812.json"
+
+    inventory_payload = load_json(inventory)
+    inventory_hash = inventory_payload.pop("content_sha256")
+    assert inventory_hash == canonical_sha256(inventory_payload)
+    assert inventory_payload["evidence_schema"] == "grid.bybit-public-inventory/v1"
+    assert inventory_payload["inventory_status"] == "partial"
+    assert verify_evidence(inventory)
+
+    history_payload = load_json(history)
+    Draft202012Validator(
+        load_json(
+            ROOT / "schemas" / "evidence" / "v1" / "bybit-history-source-assessment.schema.json"
+        ),
+        format_checker=FormatChecker(),
+    ).validate(history_payload)
+    history_content = dict(history_payload)
+    history_hash = history_content.pop("content_sha256")
+    assert history_hash == canonical_sha256(history_content)
+    assert history_payload["inventory_source"]["artifact_sha256"] == sha256_file(inventory)
+    assert verify_evidence(history)
+
+    projection_payload = load_json(projection)
+    assert projection_payload["sources"]["history"]["artifact_sha256"] == sha256_file(history)
+    assert projection_payload["sources"]["workstation"]["artifact_sha256"] == sha256_file(
+        workstation
+    )
+    assert projection_payload["sources"]["capacity"]["artifact_sha256"] == sha256_file(
+        capacity_basis
+    )
+    assert projection_payload["disk_headroom"]["measured_canonical_scenarios_fit"] is True
+    assert projection_payload["disk_headroom"]["planning_64_byte_rebuild_scenario_fits"] is False
+    assert (
+        projection_payload["disk_headroom"]["raw_source_archives"]["safe_full_bootstrap_conclusion"]
+        is False
+    )
+    assert verify_evidence(projection)
 
 
 class FakeValidateTransport:

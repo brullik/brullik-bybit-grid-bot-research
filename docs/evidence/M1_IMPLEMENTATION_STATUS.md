@@ -52,6 +52,11 @@
   sources, rejects cross-host/version/scale evidence, calculates documented provisional query,
   write, memory, and capacity checks, preserves negative results, and always leaves P-001—P-005
   plus Gate 1 pending for owner/PM review.
+- Append-only `grid.current-universe-capacity/v1` aggregation that receipt/schema/hash-verifies a
+  fresh lifecycle assessment, v3 storage calibration, and same-volume workstation snapshot;
+  separates first bootstrap, full rebuild, daily append, and bounded monthly repair; rejects
+  stale/cross-layout/internally inconsistent evidence before output replacement; and leaves raw
+  source-archive headroom explicitly unmeasured.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -114,6 +119,10 @@
   current observed funding intervals imply 2,772,401 events and 14,394 requests; using the
   observed 60-minute minimum conservatively gives 14,746,066 events and 74,232 requests. These
   current fields are not dated historical metadata and do not replace the planning envelope.
+- The immutable owner storage-review refresh later on 2026-08-12 observed 1,010 USDT linear
+  perpetual records, including 702 `Trading`, and 885,053,361 per-dataset lifecycle minutes. An
+  equal-coverage trade+mark comparison is 1,770,106,722 rows, or `24.039621018%` of the formal
+  7,363,288,800-row design envelope. This is a current-metadata estimate, not downloaded history.
 - The bounded 2026-07-01 through 2026-07-07 real-market sample contains 80,640 complete closed
   trade-price 1m candles across eight current-liquid contracts selected at exact price ranks from
   an 80-contract pool. The close-price range is `0.003998` through `64703.2`, a dynamic range of
@@ -192,6 +201,13 @@
   physical estimate. The independent 24/40/64-byte planning envelopes remain
   176.72/294.53/471.25 GB. Neither estimate includes raw archives, derived stores, experiments,
   compaction headroom, backup, or filesystem overhead; the 2 TiB recommendation remains unchanged.
+- On the owner storage-review volume, 193,679,237,120 bytes were free. The larger real-width
+  current-universe projection requires 44,997,807,469 bytes (41.907 GiB) for the first canonical
+  build, 89,995,614,938 bytes (83.815 GiB) for active plus building during a full rebuild,
+  51,395,075 bytes (about 49 MiB) for one day, and 1,593,247,317 bytes (1.484 GiB) for a maximum
+  31-day partition. All measured canonical scenarios fit; the independent 64-byte
+  active-plus-building scenario requires 226,573,660,416 bytes and does not fit. Raw tick archives
+  and staging remain unmeasured, so this does not authorize the full download.
 - The staged reference-layout protocol smoke retained both exact shortlisted layouts over 200,000
   rows and 50 instruments. All four DuckDB/Polars by single-symbol/universe-month legs verified
   file metadata before timing, content hashes afterward, expected row counts, and cross-engine

@@ -49,6 +49,12 @@ and current funding-interval fields to 1,006 observed USDT linear perpetual reco
 per-symbol request counts for both current intervals and the conservative observed 60-minute
 minimum.
 
+The append-only
+[current-universe capacity report](M1_CURRENT_UNIVERSE_CAPACITY.md) can combine a fresh assessment
+with the v3 real-market calibration and a fresh workstation snapshot. It separates one-time
+canonical bootstrap/rebuild headroom from bounded daily/monthly incremental updates without
+claiming that lifecycle minutes are downloaded coverage.
+
 ## Interpretation limits
 
 - The frontend catalog endpoint is official and public but is not a versioned V5 API contract.

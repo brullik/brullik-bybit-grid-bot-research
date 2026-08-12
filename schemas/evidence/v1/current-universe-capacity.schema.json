@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/current-universe-capacity.schema.json",
+  "title": "Current Bybit universe lifecycle and disk-headroom projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "disk_headroom",
+    "evidence_schema",
+    "generated_at_utc",
+    "incremental_projection",
+    "layout_projections",
+    "limitations",
+    "parameters",
+    "sources",
+    "source_freshness",
+    "status",
+    "universe"
+  ],
+  "properties": {
+    "command": {"type": "string", "minLength": 1},
+    "disk_headroom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measured_canonical_scenarios_fit",
+        "planning_64_byte_rebuild_scenario_fits",
+        "raw_source_archives",
+        "scenarios",
+        "volume"
+      ],
+      "properties": {
+        "measured_canonical_scenarios_fit": {"type": "boolean"},
+        "planning_64_byte_rebuild_scenario_fits": {"type": "boolean"},
+        "raw_source_archives": {
+          "const": {
+            "measured": false,
+            "safe_full_bootstrap_conclusion": false,
+            "status": "unknown-headroom-requires-downloader-preflight"
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/scenario"},
+          "allOf": [
+            {"contains": {"properties": {"id": {"const": "bootstrap-canonical-building"}}}},
+            {"contains": {"properties": {"id": {"const": "full-rebuild-active-plus-building"}}}},
+            {"contains": {"properties": {"id": {"const": "incremental-one-day"}}}},
+            {"contains": {"properties": {"id": {"const": "incremental-maximum-31-day-partition"}}}},
+            {"contains": {"properties": {"id": {"const": "planning-64-byte-active-plus-building"}}}}
+          ]
+        },
+        "volume": {"$ref": "#/$defs/volume"}
+      }
+    },
+    "evidence_schema": {"const": "grid.current-universe-capacity/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "incremental_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_trading_instruments",
+        "maximum_partition_days",
+        "maximum_partition_trade_and_mark_rows",
+        "one_day_trade_and_mark_rows"
+      ],
+      "properties": {
+        "active_trading_instruments": {"type": "integer", "minimum": 1},
+        "maximum_partition_days": {"const": 31},
+        "maximum_partition_trade_and_mark_rows": {"type": "integer", "minimum": 1},
+        "one_day_trade_and_mark_rows": {"type": "integer", "minimum": 1}
+      }
+    },
+    "layout_projections": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/layoutProjection"},
+      "allOf": [
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 4}}}}}},
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 8}}}}}}
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_partition_days", "max_source_age_hours", "minutes_per_day"],
+      "properties": {
+        "maximum_partition_days": {"const": 31},
+        "max_source_age_hours": {"type": "integer", "minimum": 1, "maximum": 168},
+        "minutes_per_day": {"const": 1440}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity", "history", "workstation"],
+      "properties": {
+        "capacity": {"$ref": "#/$defs/source"},
+        "history": {"allOf": [{"$ref": "#/$defs/source"}, {"required": ["observed_at_utc"]}]},
+        "workstation": {"allOf": [{"$ref": "#/$defs/source"}, {"required": ["observed_at_utc"]}]}
+      }
+    },
+    "source_freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["history", "workstation"],
+      "properties": {
+        "history": {"$ref": "#/$defs/freshness"},
+        "workstation": {"$ref": "#/$defs/freshness"}
+      }
+    },
+    "status": {"const": "provisional-current-universe-capacity"},
+    "universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_interval_funding_events",
+        "current_interval_funding_requests",
+        "formal_trade_and_mark_capacity_rows",
+        "horizon_end_ms",
+        "horizon_start_ms",
+        "instruments_with_observed_duration",
+        "lifecycle_per_dataset_rows",
+        "lifecycle_trade_and_mark_rows_at_equal_coverage",
+        "share_of_formal_trade_and_mark_capacity_percent",
+        "status_counts",
+        "usdt_linear_perpetual_records"
+      ],
+      "properties": {
+        "current_interval_funding_events": {"type": "integer", "minimum": 0},
+        "current_interval_funding_requests": {"type": "integer", "minimum": 0},
+        "formal_trade_and_mark_capacity_rows": {"const": 7363288800},
+        "horizon_end_ms": {"type": "integer", "minimum": 1},
+        "horizon_start_ms": {"type": "integer", "minimum": 0},
+        "instruments_with_observed_duration": {"type": "integer", "minimum": 1},
+        "lifecycle_per_dataset_rows": {"type": "integer", "minimum": 1},
+        "lifecycle_trade_and_mark_rows_at_equal_coverage": {"type": "integer", "minimum": 1},
+        "share_of_formal_trade_and_mark_capacity_percent": {"$ref": "#/$defs/decimal"},
+        "status_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "usdt_linear_perpetual_records": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {
+    "bootstrapProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_trade_and_mark_bytes_real_width",
+        "current_trade_and_mark_bytes_synthetic",
+        "current_trade_bytes_real_width",
+        "current_trade_bytes_synthetic"
+      ],
+      "properties": {
+        "current_trade_and_mark_bytes_real_width": {"type": "integer", "minimum": 1},
+        "current_trade_and_mark_bytes_synthetic": {"type": "integer", "minimum": 1},
+        "current_trade_bytes_real_width": {"type": "integer", "minimum": 1},
+        "current_trade_bytes_synthetic": {"type": "integer", "minimum": 1}
+      }
+    },
+    "decimal": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["age_hours", "observed_at_utc"],
+      "properties": {
+        "age_hours": {"$ref": "#/$defs/decimal"},
+        "observed_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "incrementalLayoutProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_31_day_partition_bytes_real_width",
+        "maximum_31_day_partition_bytes_synthetic",
+        "one_day_bytes_real_width",
+        "one_day_bytes_synthetic"
+      ],
+      "properties": {
+        "maximum_31_day_partition_bytes_real_width": {"type": "integer", "minimum": 1},
+        "maximum_31_day_partition_bytes_synthetic": {"type": "integer", "minimum": 1},
+        "one_day_bytes_real_width": {"type": "integer", "minimum": 1},
+        "one_day_bytes_synthetic": {"type": "integer", "minimum": 1}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket_count",
+        "compression",
+        "compression_level",
+        "numeric_representation",
+        "target_file_mb"
+      ],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"const": "zstd"},
+        "compression_level": {"const": 3},
+        "numeric_representation": {"const": "hybrid_int64_decimal"},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "layoutProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bootstrap",
+        "incremental",
+        "layout",
+        "observed_real_bytes_per_row",
+        "synthetic_bytes_per_row"
+      ],
+      "properties": {
+        "bootstrap": {"$ref": "#/$defs/bootstrapProjection"},
+        "incremental": {"$ref": "#/$defs/incrementalLayoutProjection"},
+        "layout": {"$ref": "#/$defs/layout"},
+        "observed_real_bytes_per_row": {"$ref": "#/$defs/decimal"},
+        "synthetic_bytes_per_row": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fits_observed_free",
+        "id",
+        "remaining_bytes",
+        "required_bytes",
+        "required_percent_of_observed_free",
+        "shortfall_bytes"
+      ],
+      "properties": {
+        "fits_observed_free": {"type": "boolean"},
+        "id": {
+          "enum": [
+            "bootstrap-canonical-building",
+            "full-rebuild-active-plus-building",
+            "incremental-one-day",
+            "incremental-maximum-31-day-partition",
+            "planning-64-byte-active-plus-building"
+          ]
+        },
+        "remaining_bytes": {"type": "integer", "minimum": 0},
+        "required_bytes": {"type": "integer", "minimum": 1},
+        "required_percent_of_observed_free": {"$ref": "#/$defs/decimal"},
+        "shortfall_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "schema": {"type": "string", "pattern": "^grid\\.[a-z0-9-]+/v[1-9][0-9]*$"},
+        "status": {"type": "string", "minLength": 1}
+      }
+    },
+    "volume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "storage_kind",
+        "storage_model",
+        "volume_free_bytes",
+        "volume_root",
+        "volume_total_bytes"
+      ],
+      "properties": {
+        "storage_kind": {"enum": ["nvme", "ssd", "usb", "unknown"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

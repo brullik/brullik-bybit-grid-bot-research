@@ -48,6 +48,9 @@ All notable project-governance and architecture changes are recorded here.
 - Receipt-linked Gate 1 owner-review aggregation with transitive source verification, same-host/
   scale/runtime binding, provisional scan/write/memory/capacity checks, explicit P-001—P-005
   candidates, preserved negative evidence, and no automatic gate or Phase 2 approval.
+- Receipt-linked current-universe capacity evidence that separates the one-time canonical
+  bootstrap, active-plus-building rebuild, daily incremental append, and bounded monthly repair;
+  retains the formal planning envelope; and leaves raw archive headroom explicitly unmeasured.
 
 ### Safety
 
