@@ -45,7 +45,7 @@ Symbol strings are attributes, not the only durable identity.
 Primary key:
 
 ```text
-(category, instrument_id, open_time_ns)
+(category, instrument_id, open_time_ms)
 ```
 
 Required fields:
@@ -76,7 +76,7 @@ Same time/instrument key pattern, distinct dataset/source contract. Fields inclu
 Primary key:
 
 ```text
-(category, instrument_id, funding_time_ns)
+(category, instrument_id, funding_time_ms)
 ```
 
 Fields:
@@ -236,7 +236,8 @@ Defined by the structured envelope in [Observability, Audit, and Recovery](13_OB
 
 ## Numeric policy
 
-- Canonical timestamps use integer epoch nanoseconds or another single recorded integer unit.
+- Canonical market timestamps use signed integer Unix milliseconds; candle open times are exact
+  multiples of 60,000. A new unit requires a new semantic/physical contract version.
 - Prices/quantities/rates use Decimal/scaled integer at exact boundaries.
 - Binary floats may be used only in explicitly documented analytics where round-off cannot change execution semantics.
 - No implicit coercion from strings, booleans, floats, or nulls to exact contract fields.

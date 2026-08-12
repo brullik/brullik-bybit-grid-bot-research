@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-last immutable candle-partition publication with a no-mutation/fresh-recheck host
+  preflight, content-addressed Parquet files, canonical manifests/audits, idempotent verification,
+  stale-output detection, and Windows-safe closed-handle directory publication.
 - Independently installable `grid-market-store` package with the accepted exact-hybrid Arrow
   schema, deterministic eight-bucket mapping, UTC month partition paths, strict no-rounding
   conversion, and cross-platform physical-contract tests.
