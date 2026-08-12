@@ -7,6 +7,8 @@
 - Cursor-safe inventory for Bybit V5 `GET /v5/market/instruments-info`.
 - Reverse-chronological pagination guards for trade and mark 1m klines.
 - Funding page contract with the documented 200-row maximum.
+- Bounded public trade/mark/funding sampling with current instrument metadata, exact-decimal
+  normalization, gap accounting, and raw-row exclusion from Git.
 - Atomic public evidence publication with a SHA-256 completion receipt written last.
 - Versioned JSON Schemas and exact-decimal domain contracts.
 - Reproducible Parquet layout benchmark for Polars and DuckDB.
@@ -25,11 +27,27 @@
 - The official [rate-limit table](https://bybit-exchange.github.io/docs/v5/rate-limit) lists the
   private `POST /v5/fgridbot/validate` endpoint at 10 requests/second.
 
+## Measured public evidence
+
+- The 2026-08-12 inventory observed 1,748 linear instrument/status records, including 1,006 USDT
+  linear perpetual records. It is explicitly `partial` because Bybit rejected the documented
+  `Settling` filter with `retCode=10001`; the rejection is retained in the artifact.
+- The official archive index exposed 1,889 trading symbol directories. BTCUSDT daily trade files
+  covered 2020-03-25 through 2026-08-11 and ETHUSDT covered 2020-10-21 through 2026-08-11, with no
+  missing calendar dates inside either observed span.
+- The fixed BTCUSDT public sample for 2026-07-01 through 2026-07-07 contained 10,080 trade candles,
+  10,080 mark candles, and 21 funding events at the metadata-derived 480-minute interval. The
+  report found no duplicate timestamps, missing candles, or missing internal funding intervals.
+- Each evidence artifact has a verified SHA-256 receipt. The public sample additionally validates
+  against `grid.bybit-public-sample/v1`; raw market rows were not committed.
+
 ## Evidence still required to close Gate 1
 
-- Run and review the current public universe/coverage inventory.
-- Inventory official bulk archive coverage per dataset, symbol, and month.
+- Extend official bulk archive coverage beyond the BTCUSDT/ETHUSDT daily-trade sample and document
+  dataset/symbol/month gaps, especially mark-price and funding availability.
 - Run the full layout matrix on declared reference hardware and decide P-001 through P-005.
+- Run the missing feature-throughput/memory benchmark and produce an updated storage/hardware
+  recommendation for the 700-instrument capacity envelope.
 - Perform an owner-controlled, authenticated validate-only probe for native Futures Grid. No
   private credentials may be added to the repository, logs, or research artifacts.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

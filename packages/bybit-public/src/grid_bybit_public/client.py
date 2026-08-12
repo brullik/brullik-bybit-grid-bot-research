@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from grid_bybit_public.transport import JsonTransport
 
@@ -73,6 +73,28 @@ class BybitPublicClient:
             for page in self.iter_instrument_pages(category=category, status=status)
             for item in page
         )
+
+    def instrument(
+        self,
+        *,
+        symbol: str,
+        category: Literal["linear", "inverse"] = "linear",
+    ) -> Mapping[str, Any]:
+        if not symbol or symbol != symbol.upper() or not symbol.isalnum():
+            raise ValueError("symbol must be non-empty uppercase alphanumeric text")
+        result = self._request(
+            "/v5/market/instruments-info",
+            {"category": category, "symbol": symbol},
+        )
+        raw_items = result.get("list")
+        if not isinstance(raw_items, list) or any(not isinstance(item, dict) for item in raw_items):
+            raise BybitPublicError("instrument result.list must contain objects")
+        matching = tuple(item for item in raw_items if item.get("symbol") == symbol)
+        if len(matching) != 1:
+            raise BybitPublicError(
+                f"expected exactly one instrument for {symbol}, got {len(matching)}"
+            )
+        return cast(Mapping[str, Any], matching[0])
 
     def kline_page(
         self,
@@ -175,6 +197,45 @@ class BybitPublicClient:
             raise BybitPublicError("funding result.list must contain objects")
         return tuple(items)
 
+    def iter_funding_backward(
+        self,
+        *,
+        symbol: str,
+        start_ms: int,
+        end_ms: int,
+        category: Literal["linear", "inverse"] = "linear",
+        limit: int = 200,
+        max_pages: int = 1_000_000,
+    ) -> Iterator[Mapping[str, Any]]:
+        """Yield newest-to-oldest funding events without overlapping inclusive pages."""
+
+        next_end = end_ms
+        last_timestamp: int | None = None
+        for _page_number in range(max_pages):
+            items = self.funding_page(
+                symbol=symbol,
+                start_ms=start_ms,
+                end_ms=next_end,
+                category=category,
+                limit=limit,
+            )
+            if not items:
+                return
+            timestamps = [_funding_timestamp(item) for item in items]
+            if timestamps != sorted(timestamps, reverse=True) or len(timestamps) != len(
+                set(timestamps)
+            ):
+                raise BybitPublicError("funding page is not unique reverse chronological data")
+            if last_timestamp is not None and timestamps[0] >= last_timestamp:
+                raise BybitPublicError("funding pagination did not move backward")
+            yield from items
+            oldest = timestamps[-1]
+            if oldest <= start_ms:
+                return
+            last_timestamp = oldest
+            next_end = oldest - 1
+        raise BybitPublicError(f"funding pagination exceeded max_pages={max_pages}")
+
 
 def _string_rows(value: Any, *, name: str) -> tuple[tuple[str, ...], ...]:
     if not isinstance(value, list):
@@ -185,3 +246,16 @@ def _string_rows(value: Any, *, name: str) -> tuple[tuple[str, ...], ...]:
             raise BybitPublicError(f"{name} rows must be arrays of strings")
         rows.append(tuple(row))
     return tuple(rows)
+
+
+def _funding_timestamp(item: Mapping[str, Any]) -> int:
+    raw = item.get("fundingRateTimestamp")
+    if not isinstance(raw, str):
+        raise BybitPublicError("fundingRateTimestamp must be text")
+    try:
+        timestamp = int(raw)
+    except ValueError as error:
+        raise BybitPublicError("fundingRateTimestamp must be integer text") from error
+    if timestamp < 0:
+        raise BybitPublicError("fundingRateTimestamp must be non-negative")
+    return timestamp

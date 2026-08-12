@@ -3,7 +3,8 @@
 Documentation-first architecture for a high-throughput Bybit Futures Grid Bot research-to-live platform.
 
 > **Repository state:** M1 feasibility implementation is in progress. Public-data tooling,
-> versioned contracts, isolated application packages, and benchmark harnesses are present;
+> versioned contracts, isolated application packages, bounded public evidence, and benchmark
+> harnesses are present;
 > trading execution remains intentionally absent and all live entries are blocked.
 
 [Русская версия](README.ru.md)
@@ -106,7 +107,7 @@ These are controlled assumptions, not promises of profitability. They can change
 | [Security, risk, safety](docs/12_SECURITY_RISK_AND_SAFETY.md) | Credentials, fail-closed behavior, emergency controls |
 | [Observability and recovery](docs/13_OBSERVABILITY_AUDIT_AND_RECOVERY.md) | Logs, metrics, receipts, backup and restart |
 | [Roadmap and gates](docs/14_ROADMAP_AND_GATES.md) | Delivery sequence through live readiness |
-| [Repository layout](docs/15_REPOSITORY_LAYOUT.md) | Planned monorepo structure; no code yet |
+| [Repository layout](docs/15_REPOSITORY_LAYOUT.md) | Planned monorepo boundaries and dependency rules |
 | [Data contracts](docs/16_DATA_CONTRACTS.md) | Versioned datasets and runtime state schemas |
 | [Decision register](docs/17_DECISION_REGISTER.md) | Accepted decisions and pending ADRs |
 | [Open questions](docs/18_OPEN_QUESTIONS.md) | Items that require evidence before implementation |

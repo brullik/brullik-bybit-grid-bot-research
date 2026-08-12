@@ -45,6 +45,34 @@ def test_instrument_cursor_cycle_fails_closed() -> None:
         tuple(BybitPublicClient(transport).iter_instrument_pages())
 
 
+def test_exact_instrument_lookup_requires_one_matching_symbol() -> None:
+    transport = QueueTransport(
+        [response({"list": [{"symbol": "BTCUSDT"}], "nextPageCursor": "ignored"})]
+    )
+    result = BybitPublicClient(transport).instrument(symbol="BTCUSDT")
+    assert result["symbol"] == "BTCUSDT"
+    assert transport.calls == [
+        ("/v5/market/instruments-info", {"category": "linear", "symbol": "BTCUSDT"})
+    ]
+
+
+def test_exact_instrument_lookup_rejects_ambiguous_result() -> None:
+    transport = QueueTransport(
+        [
+            response(
+                {
+                    "list": [
+                        {"symbol": "BTCUSDT"},
+                        {"symbol": "BTCUSDT"},
+                    ]
+                }
+            )
+        ]
+    )
+    with pytest.raises(BybitPublicError, match="exactly one"):
+        BybitPublicClient(transport).instrument(symbol="BTCUSDT")
+
+
 def test_kline_pagination_moves_inclusive_end_backward_without_duplicates() -> None:
     transport = QueueTransport(
         [
@@ -78,5 +106,75 @@ def test_kline_page_rejects_non_reverse_order() -> None:
         tuple(
             BybitPublicClient(transport).iter_klines_backward(
                 kind="mark", symbol="BTCUSDT", start_ms=60_000, end_ms=120_000
+            )
+        )
+
+
+def test_funding_pagination_moves_inclusive_end_backward_without_duplicates() -> None:
+    transport = QueueTransport(
+        [
+            response(
+                {
+                    "list": [
+                        {
+                            "symbol": "BTCUSDT",
+                            "fundingRate": "0.0001",
+                            "fundingRateTimestamp": "180000",
+                        },
+                        {
+                            "symbol": "BTCUSDT",
+                            "fundingRate": "0.0002",
+                            "fundingRateTimestamp": "120000",
+                        },
+                    ]
+                }
+            ),
+            response(
+                {
+                    "list": [
+                        {
+                            "symbol": "BTCUSDT",
+                            "fundingRate": "0.0003",
+                            "fundingRateTimestamp": "60000",
+                        }
+                    ]
+                }
+            ),
+        ]
+    )
+    rows = tuple(
+        BybitPublicClient(transport).iter_funding_backward(
+            symbol="BTCUSDT", start_ms=60_000, end_ms=180_000, limit=2
+        )
+    )
+    assert [row["fundingRateTimestamp"] for row in rows] == ["180000", "120000", "60000"]
+    assert transport.calls[1][1]["endTime"] == 119_999
+
+
+def test_funding_page_rejects_non_reverse_order() -> None:
+    transport = QueueTransport(
+        [
+            response(
+                {
+                    "list": [
+                        {
+                            "symbol": "BTCUSDT",
+                            "fundingRate": "0.0001",
+                            "fundingRateTimestamp": "60000",
+                        },
+                        {
+                            "symbol": "BTCUSDT",
+                            "fundingRate": "0.0002",
+                            "fundingRateTimestamp": "120000",
+                        },
+                    ]
+                }
+            )
+        ]
+    )
+    with pytest.raises(BybitPublicError, match="reverse chronological"):
+        tuple(
+            BybitPublicClient(transport).iter_funding_backward(
+                symbol="BTCUSDT", start_ms=60_000, end_ms=120_000
             )
         )

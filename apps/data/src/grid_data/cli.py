@@ -12,6 +12,7 @@ from grid_data import __version__
 from grid_data.archive_inventory import build_archive_inventory
 from grid_data.evidence import publish_evidence, verify_evidence
 from grid_data.inventory import build_public_inventory
+from grid_data.public_sample import build_public_sample
 
 
 def parser() -> argparse.ArgumentParser:
@@ -35,6 +36,17 @@ def parser() -> argparse.ArgumentParser:
     archive.add_argument("--output", type=Path, required=True)
     archive.add_argument("--force", action="store_true")
     archive.set_defaults(handler=_archive_inventory)
+
+    sample = commands.add_parser(
+        "public-sample", help="summarize bounded trade/mark/funding public samples"
+    )
+    sample.add_argument("--symbol", required=True)
+    sample.add_argument("--start-ms", required=True, type=int)
+    sample.add_argument("--end-ms", required=True, type=int)
+    sample.add_argument("--base-url", default="https://api.bybit.com")
+    sample.add_argument("--output", type=Path, required=True)
+    sample.add_argument("--force", action="store_true")
+    sample.set_defaults(handler=_public_sample)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -75,6 +87,28 @@ def _archive_inventory(args: argparse.Namespace) -> int:
                 "coverage": payload["coverage"],
                 "products": payload["products"],
                 "receipt": str(receipt),
+            }
+        )
+    )
+    return 0
+
+
+def _public_sample(args: argparse.Namespace) -> int:
+    client = BybitPublicClient(UrllibJsonTransport(base_url=args.base_url))
+    payload = build_public_sample(
+        client,
+        symbol=args.symbol.upper(),
+        start_ms=args.start_ms,
+        end_ms=args.end_ms,
+    )
+    artifact, receipt = publish_evidence(args.output, payload, force=args.force)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "datasets": payload["datasets"],
+                "receipt": str(receipt),
+                "sample_status": payload["sample_status"],
             }
         )
     )
