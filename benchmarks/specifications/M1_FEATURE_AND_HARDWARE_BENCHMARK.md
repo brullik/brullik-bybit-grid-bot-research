@@ -23,16 +23,26 @@ python benchmarks/feature_benchmark.py `
 Reference candidate (minimum scale):
 
 ```powershell
+python benchmarks/workstation_snapshot.py `
+  --output D:\grid-reference\reference-host.json --force
+
 python benchmarks/feature_benchmark.py `
   --profile reference --rows 100000000 --instruments 700 `
   --core-minutes 2880 --window-minutes 1440 `
-  --output benchmarks/results/m1-feature-reference-candidate.json --force
+  --reference-host-evidence D:\grid-reference\reference-host.json `
+  --output D:\grid-reference\m1-feature-reference.json --force
 ```
 
 Because 100,000,000 is not divisible by 700, the recorded core row count is 99,999,900. The
 profile threshold applies to the requested scale; the exact normalized count is always retained in
-the artifact. A completed run is `reference-scale-candidate`, not proof that the host is accepted
-reference hardware.
+the artifact. The reference command requires a receipt-verified snapshot from the current host
+that reports at least 16 physical cores, 64 GiB RAM, and a measured NVMe volume of at least 2 TiB.
+It verifies the host before and after the workload and freezes Polars, psutil, and Python versions.
+A memory-passing v2 run is `reference-host-feature-candidate`; owner/PM acceptance is still required.
+
+The checked-in `m1-feature-reference-candidate.json` is an immutable v1 artifact produced before
+reference-host admission existed. It remains useful 100-million-row local scale evidence, but its
+`reference-scale-candidate` status is not reference-hardware evidence and cannot close Gate 1.
 
 Workstation snapshot:
 
@@ -48,6 +58,11 @@ python benchmarks/capacity_projection.py `
   --output benchmarks/results/m1-capacity-projection.json --force
 ```
 
+That command reproduces the immutable legacy v1 provisional projection from the checked-in local
+feature evidence. It does not consume or downgrade a host-bound v2 feature artifact. A later
+append-only Gate 1 aggregation contract must bind the accepted reference layout and feature
+results before the provisional runtime/hardware projection can be replaced.
+
 ## Correctness and resource interpretation
 
 - A shard reads no row after its core end and reads exactly 1,440 prior minutes when available.
@@ -55,8 +70,10 @@ python benchmarks/capacity_projection.py `
   cannot change past features.
 - Every core row is counted exactly once; halo rows are read-only and excluded from output counts.
 - Peak RSS is sampled every 10 ms and compared with the configured 70% RAM limit.
-- `smoke-only`, `scaled-only`, and `reference-scale-candidate` are feasibility evidence, not a
-  full-scale Gate 1 pass or a P-005 hardware decision.
+- `smoke-only`, `scaled-only`, legacy `reference-scale-candidate`, and v2
+  `reference-host-feature-candidate` are evidence inputs, not a Gate 1 or P-005 owner decision.
+- A v2 run that exceeds its configured memory limit is preserved as
+  `reference-feature-rejected-memory` and exits non-successfully.
 - Synthetic results do not justify production compression, skew, or hardware-purchase claims.
 - The capacity projection verifies all three source receipts and retains their artifact hashes.
   It reports both the measured synthetic extrapolation and the documented 24/40/64-byte planning

@@ -39,6 +39,10 @@ directory can be replaced. On Windows, the storage model is resolved from the ph
 number backing the measured drive rather than assumed from `PhysicalDrive0`; on Linux it is
 resolved from the longest matching mount and its `/sys/class/block` device.
 
+ADR-0013 extracts this reference-host admission into one shared policy used by both this protocol
+and the reference feature benchmark. The layout-specific measured-work-volume requirement remains
+unchanged.
+
 Local development may use an explicit `unverified-smoke` cache mode. Its result is always
 `local-smoke-only`; it cannot be relabelled as reference evidence.
 

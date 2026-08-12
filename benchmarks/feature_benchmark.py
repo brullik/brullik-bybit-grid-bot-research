@@ -17,6 +17,8 @@ import polars as pl
 import psutil  # type: ignore[import-untyped]
 from grid_data.evidence import preflight_evidence, publish_evidence
 
+from benchmarks.reference_host import admit_reference_host
+
 BASE_TIME_MS = 1_767_225_600_000  # 2026-01-01T00:00:00Z
 DEFAULT_WINDOW_MINUTES = 1_440
 REFERENCE_MINIMUM_ROWS = 100_000_000
@@ -33,6 +35,8 @@ FEATURE_COLUMNS = (
     "upper_touch",
     "mid_crossing",
 )
+FEATURE_SCHEMA_V1 = "grid.feature-benchmark/v1"
+FEATURE_SCHEMA_V2 = "grid.feature-benchmark/v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,10 +100,12 @@ def validate_configuration(
         rows < REFERENCE_MINIMUM_ROWS
         or instruments != REFERENCE_INSTRUMENTS
         or window_minutes != DEFAULT_WINDOW_MINUTES
+        or memory_limit_percent > 70
     ):
         raise ValueError(
             "reference profile requires at least 100,000,000 rows, exactly 700 instruments, "
-            "and a 1,440-minute window; use --profile scaled for a smaller run"
+            "a 1,440-minute window, and a memory limit no greater than 70%; use --profile scaled "
+            "for a smaller run"
         )
     return row_count
 
@@ -219,6 +225,25 @@ def decimal_metric(value: float) -> str:
     return f"{value:.9f}"
 
 
+def _hardware() -> dict[str, Any]:
+    memory = psutil.virtual_memory()
+    return {
+        "cpu_count_logical": psutil.cpu_count(logical=True),
+        "cpu_count_physical": psutil.cpu_count(logical=False),
+        "machine": platform.machine(),
+        "platform": platform.platform(),
+        "ram_bytes": memory.total,
+    }
+
+
+def _software() -> dict[str, str]:
+    return {
+        "polars": pl.__version__,
+        "psutil": version("psutil"),
+        "python": platform.python_version(),
+    }
+
+
 def benchmark_shards(
     row_count: int,
     instrument_count: int,
@@ -299,9 +324,118 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--core-minutes", type=int, default=2_880)
     parser.add_argument("--window-minutes", type=int, default=DEFAULT_WINDOW_MINUTES)
     parser.add_argument("--memory-limit-percent", type=int, default=70)
+    parser.add_argument("--reference-host-evidence", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
+
+
+def run_feature_benchmark(
+    *,
+    profile: str,
+    requested_rows: int,
+    instruments: int,
+    core_minutes: int,
+    window_minutes: int,
+    memory_limit_percent: int,
+    output: Path,
+    reference_host_evidence: Path | None,
+    force: bool = False,
+    command: str | None = None,
+) -> dict[str, Any]:
+    """Run and atomically publish one feature benchmark after all reference preflights."""
+
+    row_count = validate_configuration(
+        profile,
+        requested_rows,
+        instruments,
+        core_minutes,
+        window_minutes,
+        memory_limit_percent,
+    )
+    reference_host: dict[str, Any] | None = None
+    if profile == "reference":
+        if reference_host_evidence is None:
+            raise ValueError("reference profile requires --reference-host-evidence")
+        reference_host = admit_reference_host(reference_host_evidence)
+    elif reference_host_evidence is not None:
+        raise ValueError("--reference-host-evidence is allowed only with --profile reference")
+
+    software = _software()
+    output, _receipt = preflight_evidence(output, force=force)
+    result = benchmark_shards(
+        row_count,
+        instruments,
+        core_minutes,
+        window_minutes,
+    )
+    memory = psutil.virtual_memory()
+    peak_ratio = int(result["peak_rss_bytes"]) / memory.total
+    memory_limit_ratio = memory_limit_percent / 100
+    memory_passed = peak_ratio <= memory_limit_ratio
+    if reference_host is not None:
+        if reference_host_evidence is None:
+            raise RuntimeError("reference host evidence path was lost during the feature run")
+        final_reference_host = admit_reference_host(reference_host_evidence)
+        if final_reference_host != reference_host:
+            raise RuntimeError("reference workstation evidence changed during the feature run")
+        if _software() != software:
+            raise RuntimeError("feature benchmark software changed during the reference run")
+
+    is_reference = profile == "reference"
+    limitations = [
+        "Synthetic input is not evidence of production market-data compression or skew.",
+        "The benchmark materializes and aggregates features but does not publish a "
+        "feature dataset.",
+        "A scaled or smoke run does not close the full-scale feature-memory gate.",
+    ]
+    if is_reference:
+        limitations.append(
+            "A qualifying host and passing memory limit produce a review candidate, not owner/PM "
+            "approval of P-005 or Gate 1."
+        )
+    payload = {
+        "benchmark_schema": FEATURE_SCHEMA_V2 if is_reference else FEATURE_SCHEMA_V1,
+        "command": shlex.join(sys.argv) if command is None else command,
+        "correctness": {
+            "core_rows_written_once": True,
+            "future_rows_read": 0,
+            "halo_minutes": window_minutes,
+            "semantics": "rolling window uses only the current and prior closed rows",
+        },
+        "hardware": _hardware(),
+        "input": {
+            "core_minutes_per_shard": core_minutes,
+            "feature_columns": list(FEATURE_COLUMNS),
+            "instrument_count": instruments,
+            "row_count": row_count,
+            "synthetic_generator": "deterministic-range-v1",
+            "window_minutes": window_minutes,
+        },
+        "limitations": limitations,
+        "memory_gate": {
+            "configured_limit_percent": memory_limit_percent,
+            "passed": memory_passed,
+            "peak_rss_percent_of_ram": decimal_metric(peak_ratio * 100),
+        },
+        "profile": profile,
+        "result": result,
+        "software": software,
+        "status": (
+            "reference-host-feature-candidate"
+            if is_reference and memory_passed
+            else "reference-feature-rejected-memory"
+            if is_reference
+            else {
+                "scaled": "scaled-only",
+                "smoke": "smoke-only",
+            }[profile]
+        ),
+    }
+    if reference_host is not None:
+        payload["reference_host_evidence"] = reference_host
+    publish_evidence(output, payload, force=force)
+    return payload
 
 
 def main() -> int:
@@ -309,74 +443,18 @@ def main() -> int:
     scale = default_scale(args.profile)
     instruments = scale.instruments if args.instruments is None else args.instruments
     requested_rows = scale.rows if args.rows is None else args.rows
-    row_count = validate_configuration(
-        args.profile,
-        requested_rows,
-        instruments,
-        args.core_minutes,
-        args.window_minutes,
-        args.memory_limit_percent,
+    payload = run_feature_benchmark(
+        profile=args.profile,
+        requested_rows=requested_rows,
+        instruments=instruments,
+        core_minutes=args.core_minutes,
+        window_minutes=args.window_minutes,
+        memory_limit_percent=args.memory_limit_percent,
+        output=args.output,
+        reference_host_evidence=args.reference_host_evidence,
+        force=args.force,
     )
-    output, _receipt = preflight_evidence(args.output, force=args.force)
-    result = benchmark_shards(
-        row_count,
-        instruments,
-        args.core_minutes,
-        args.window_minutes,
-    )
-    memory = psutil.virtual_memory()
-    peak_ratio = result["peak_rss_bytes"] / memory.total
-    memory_limit_ratio = args.memory_limit_percent / 100
-    payload = {
-        "benchmark_schema": "grid.feature-benchmark/v1",
-        "command": shlex.join(sys.argv),
-        "correctness": {
-            "core_rows_written_once": True,
-            "future_rows_read": 0,
-            "halo_minutes": args.window_minutes,
-            "semantics": "rolling window uses only the current and prior closed rows",
-        },
-        "hardware": {
-            "cpu_count_logical": psutil.cpu_count(logical=True),
-            "cpu_count_physical": psutil.cpu_count(logical=False),
-            "machine": platform.machine(),
-            "platform": platform.platform(),
-            "ram_bytes": memory.total,
-        },
-        "input": {
-            "core_minutes_per_shard": args.core_minutes,
-            "feature_columns": list(FEATURE_COLUMNS),
-            "instrument_count": instruments,
-            "row_count": row_count,
-            "synthetic_generator": "deterministic-range-v1",
-            "window_minutes": args.window_minutes,
-        },
-        "limitations": [
-            "Synthetic input is not evidence of production market-data compression or skew.",
-            "The benchmark materializes and aggregates features but does not publish a "
-            "feature dataset.",
-            "A scaled or smoke run does not close the full-scale feature-memory gate.",
-        ],
-        "memory_gate": {
-            "configured_limit_percent": args.memory_limit_percent,
-            "passed": peak_ratio <= memory_limit_ratio,
-            "peak_rss_percent_of_ram": decimal_metric(peak_ratio * 100),
-        },
-        "profile": args.profile,
-        "result": result,
-        "software": {
-            "polars": pl.__version__,
-            "psutil": version("psutil"),
-            "python": platform.python_version(),
-        },
-        "status": {
-            "reference": "reference-scale-candidate",
-            "scaled": "scaled-only",
-            "smoke": "smoke-only",
-        }[args.profile],
-    }
-    publish_evidence(output, payload, force=args.force)
-    return 0
+    return 0 if payload["memory_gate"]["passed"] else 2
 
 
 if __name__ == "__main__":

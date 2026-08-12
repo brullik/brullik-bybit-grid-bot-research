@@ -42,6 +42,9 @@ All notable project-governance and architecture changes are recorded here.
 - Volume-aware Windows storage identity using the measured drive's physical device number instead
   of assuming every benchmark volume is backed by `PhysicalDrive0`.
 - Volume-aware Linux block-device/model detection for reference evidence on NVMe research hosts.
+- Shared fail-closed reference-host admission for layout and feature benchmarks, append-only v2
+  feature evidence, pre/post-run host and software binding, auditable memory-gate rejection, and
+  actual mounted-volume discovery for Linux workstation snapshots.
 
 ### Safety
 

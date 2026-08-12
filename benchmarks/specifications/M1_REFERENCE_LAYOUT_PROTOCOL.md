@@ -52,7 +52,8 @@ The snapshot must report `meets-documented-full-research-profile`: at least 16 o
 cores, 64 GiB RAM, and a 2 TiB NVMe volume. A below-profile, malformed, different-host, or
 different-volume snapshot is rejected before the work directory is created or replaced. On
 Windows, the snapshot resolves the physical device backing that drive; it does not assume that
-the benchmark volume is `PhysicalDrive0`.
+the benchmark volume is `PhysicalDrive0`. On Linux, the snapshot resolves the longest mounted path
+containing its output instead of assuming the root filesystem.
 
 Prepare the retained 100-million-row shortlist once:
 

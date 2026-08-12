@@ -43,6 +43,10 @@
 - Fail-closed reference-host admission that requires a receipt-verified full-profile workstation
   snapshot, matches current CPU/RAM/platform and storage identity, binds the measured work volume,
   and freezes Python/DuckDB/Polars/PyArrow/psutil versions across all reboot-separated legs.
+- Shared reference-host admission for the 100-million-row feature benchmark. New reference runs
+  use `grid.feature-benchmark/v2`, verify the same ≥16-core/64 GiB/2 TiB NVMe host before and after
+  the workload, freeze Polars/psutil/Python versions, and publish a candidate only when the memory
+  gate passes. Linux snapshots measure the actual longest matching mount.
 - Automated import-boundary checks that keep research/data engines out of `grid-live`.
 
 ## Authoritative API findings
@@ -166,8 +170,9 @@
 - The 100-million-row reference-scale candidate processed 99,999,900 core rows across 700
   instruments and 50 shards in 31.165589400 s (3,208,663.847698684 core rows/s). Peak RSS was
   1,511,342,080 bytes, or 9.172865938% of observed RAM; the largest input shard remained bounded at
-  3,024,000 rows. Its status is `reference-scale-candidate` because this host is not accepted
-  reference hardware.
+  3,024,000 rows. This immutable v1 artifact predates host admission; its
+  `reference-scale-candidate` status means reference row scale only and is not accepted reference
+  hardware evidence.
 - The measured workstation is an AMD Ryzen 5 5600H (6 physical/12 logical cores), 16.48 GB RAM,
   and a 511.44 GB NVMe system volume with about 199 GB free at capture time. It is below both the
   documented local-feasibility/storage envelope and the full research-workstation profile.
@@ -228,5 +233,10 @@
   snapshot before mutation; a qualifying ≥16-core/64 GiB/2 TiB NVMe host remains external evidence.
   The local maintenance/cold-read smoke result satisfies none of those reference claims.
 - Repeat the 100-million-row feature and full layout benchmarks on declared reference hardware and
-  replace the provisional runtime/storage/hardware projection with accepted evidence.
+  replace the provisional runtime/storage/hardware projection with accepted evidence. The feature
+  CLI now rejects the checked-in below-profile workstation snapshot before computation or output
+  replacement and requires a v2 host-bound result.
+- Add an append-only Gate 1 aggregation contract that consumes the host-bound feature v2 and
+  reference-layout v2 artifacts; the immutable v1-v3 provisional projections intentionally do not
+  reinterpret the stronger evidence contract.
 - Record the owner/PM Gate 1 decision. This implementation does not self-approve its gate.

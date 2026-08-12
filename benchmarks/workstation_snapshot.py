@@ -155,6 +155,24 @@ def linux_storage_identity(volume_root: str | Path) -> tuple[str, str]:
     return storage_kind, model
 
 
+def volume_root_for_path(path: str | Path) -> Path:
+    """Resolve the actual mounted volume containing a path on supported platforms."""
+
+    resolved = Path(path).resolve()
+    if sys.platform.startswith("linux"):
+        candidates: list[tuple[int, Path]] = []
+        for partition in psutil.disk_partitions(all=True):
+            mountpoint = Path(partition.mountpoint).resolve()
+            try:
+                resolved.relative_to(mountpoint)
+            except ValueError:
+                continue
+            candidates.append((len(mountpoint.parts), mountpoint))
+        if candidates:
+            return max(candidates)[1]
+    return Path(resolved.anchor).resolve()
+
+
 def storage_identity(volume_root: str | Path | None = None) -> tuple[str, str]:
     if sys.platform.startswith("linux") and volume_root is not None:
         return linux_storage_identity(volume_root)
@@ -236,8 +254,8 @@ def profile_assessment(
 
 def build_snapshot(output: Path) -> dict[str, Any]:
     memory = psutil.virtual_memory()
-    volume_root = output.anchor or Path.cwd().anchor
-    disk = psutil.disk_usage(volume_root)
+    volume_root = volume_root_for_path(output)
+    disk = psutil.disk_usage(str(volume_root))
     physical_cores = psutil.cpu_count(logical=False)
     storage_kind, storage_model = storage_identity(volume_root)
     assessment = profile_assessment(
@@ -259,7 +277,7 @@ def build_snapshot(output: Path) -> dict[str, Any]:
             "storage_kind": storage_kind,
             "storage_model": storage_model,
             "volume_free_bytes": disk.free,
-            "volume_root": volume_root,
+            "volume_root": str(volume_root),
             "volume_total_bytes": disk.total,
         },
         "observed_at_utc": datetime.now(UTC).isoformat(),

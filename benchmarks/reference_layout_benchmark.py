@@ -34,7 +34,7 @@ from benchmarks.layout_benchmark import (
     _verify_exact_numeric_schema,
     write_layout,
 )
-from benchmarks.workstation_snapshot import GIB, TIB, cpu_model, storage_identity
+from benchmarks.reference_host import admit_reference_host
 
 PREPARATION_SCHEMA = "grid.reference-layout-preparation/v1"
 PREPARATION_SCHEMA_V2 = "grid.reference-layout-preparation/v2"
@@ -46,7 +46,6 @@ FINAL_SCHEMA = "grid.reference-layout-benchmark/v1"
 FINAL_SCHEMA_V2 = "grid.reference-layout-benchmark/v2"
 DECISION_SCHEMA = "grid.layout-benchmark/v3"
 REAL_MARKET_SCHEMA = "grid.real-market-layout-skew/v1"
-WORKSTATION_SCHEMA = "grid.workstation-snapshot/v1"
 SOURCE_SEMANTICS = "deterministic-exact-synthetic-v1"
 Engine = Literal["duckdb", "polars"]
 QueryShape = Literal["single-symbol", "universe-month"]
@@ -294,107 +293,7 @@ def _real_market_input(
 
 
 def _reference_host_input(path: Path, work_dir: Path) -> dict[str, Any]:
-    path = path.resolve()
-    payload = _load_verified(path, "evidence_schema", WORKSTATION_SCHEMA)
-    assessment = payload.get("assessment")
-    hardware = payload.get("hardware")
-    full_profile = (
-        assessment.get("documented_full_research_profile")
-        if isinstance(assessment, Mapping)
-        else None
-    )
-    if (
-        payload.get("status") != "meets-documented-full-research-profile"
-        or not isinstance(full_profile, Mapping)
-        or full_profile.get("meets") is not True
-        or not isinstance(hardware, Mapping)
-    ):
-        raise ValueError("reference host evidence does not meet the documented full profile")
-
-    logical_cores = hardware.get("cpu_count_logical")
-    physical_cores = hardware.get("cpu_count_physical")
-    ram_bytes = hardware.get("ram_bytes")
-    volume_total_bytes = hardware.get("volume_total_bytes")
-    volume_root = hardware.get("volume_root")
-    required_text_fields = (
-        "cpu_model",
-        "machine",
-        "platform",
-        "storage_model",
-    )
-    if (
-        isinstance(logical_cores, bool)
-        or not isinstance(logical_cores, int)
-        or logical_cores < 1
-        or isinstance(physical_cores, bool)
-        or not isinstance(physical_cores, int)
-        or physical_cores < 16
-        or isinstance(ram_bytes, bool)
-        or not isinstance(ram_bytes, int)
-        or ram_bytes < 64 * GIB
-        or hardware.get("storage_kind") != "nvme"
-        or isinstance(volume_total_bytes, bool)
-        or not isinstance(volume_total_bytes, int)
-        or volume_total_bytes < 2 * TIB
-        or not isinstance(volume_root, str)
-        or not volume_root
-        or any(
-            not isinstance(hardware.get(field), str) or not hardware.get(field)
-            for field in required_text_fields
-        )
-    ):
-        raise ValueError("reference host evidence has invalid full-profile hardware values")
-
-    work_volume = Path(work_dir.resolve().anchor).resolve()
-    evidence_volume = Path(volume_root).resolve()
-    if work_volume != evidence_volume:
-        raise ValueError("reference work directory is not on the measured workstation volume")
-
-    current = _hardware()
-    identity_fields = (
-        "cpu_count_logical",
-        "cpu_count_physical",
-        "machine",
-        "platform",
-        "ram_bytes",
-    )
-    if any(hardware.get(field) != current.get(field) for field in identity_fields):
-        raise ValueError("reference workstation evidence does not match the current host")
-    current_storage_kind, current_storage_model = storage_identity(work_volume)
-    if (
-        hardware.get("cpu_model") != cpu_model()
-        or hardware.get("storage_kind") != current_storage_kind
-        or hardware.get("storage_model") != current_storage_model
-        or psutil.disk_usage(str(work_volume)).total != volume_total_bytes
-    ):
-        raise ValueError("reference workstation identity or measured volume changed")
-
-    observed_at_utc = payload.get("observed_at_utc")
-    try:
-        observed_at = datetime.fromisoformat(str(observed_at_utc).replace("Z", "+00:00"))
-    except ValueError as error:
-        raise ValueError("reference workstation evidence timestamp is invalid") from error
-    if observed_at.tzinfo is None or observed_at > datetime.now(UTC):
-        raise ValueError("reference workstation evidence timestamp is naive or in the future")
-    return {
-        "artifact": path.name,
-        "artifact_sha256": sha256_file(path),
-        "evidence_schema": WORKSTATION_SCHEMA,
-        "hardware": {
-            "cpu_count_logical": logical_cores,
-            "cpu_count_physical": physical_cores,
-            "cpu_model": hardware["cpu_model"],
-            "machine": hardware["machine"],
-            "platform": hardware["platform"],
-            "ram_bytes": ram_bytes,
-            "storage_kind": hardware["storage_kind"],
-            "storage_model": hardware["storage_model"],
-            "volume_root": volume_root,
-            "volume_total_bytes": volume_total_bytes,
-        },
-        "observed_at_utc": observed_at_utc,
-        "status": payload["status"],
-    }
+    return admit_reference_host(path, required_volume_path=work_dir)
 
 
 def _parquet_manifest(root: Path) -> dict[str, Any]:

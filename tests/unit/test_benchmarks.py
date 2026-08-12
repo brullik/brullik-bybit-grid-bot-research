@@ -10,8 +10,11 @@ import polars as pl
 import pytest
 from grid_contracts.canonical import sha256_file
 from grid_data.evidence import publish_evidence, verify_evidence
+from jsonschema import Draft202012Validator, FormatChecker
 from polars.testing import assert_frame_equal
 
+import benchmarks.feature_benchmark as feature_benchmark
+import benchmarks.reference_host as reference_host
 import benchmarks.reference_layout_benchmark as reference_benchmark
 from benchmarks.capacity_projection import projected_bytes
 from benchmarks.exact_capacity_projection import (
@@ -55,7 +58,66 @@ from benchmarks.reference_layout_benchmark import (
     measure_leg,
     prepare_reference_workdir,
 )
-from benchmarks.workstation_snapshot import storage_identity
+from benchmarks.workstation_snapshot import storage_identity, volume_root_for_path
+
+
+def reference_host_summary() -> dict[str, object]:
+    return {
+        "artifact": "reference-host.json",
+        "artifact_sha256": "a" * 64,
+        "evidence_schema": "grid.workstation-snapshot/v1",
+        "hardware": {
+            "cpu_count_logical": 32,
+            "cpu_count_physical": 16,
+            "cpu_model": "Reference CPU",
+            "machine": "AMD64",
+            "platform": "Reference OS",
+            "ram_bytes": 64 * 1024**3,
+            "storage_kind": "nvme",
+            "storage_model": "Reference NVMe",
+            "volume_root": "D:\\",
+            "volume_total_bytes": 2 * 1024**4,
+        },
+        "observed_at_utc": "2026-01-01T00:00:00Z",
+        "status": "meets-documented-full-research-profile",
+    }
+
+
+def feature_result(*, peak_rss_bytes: int = 1024) -> dict[str, object]:
+    aggregate_sums = {
+        name: "1.000000000"
+        for name in (
+            "range_position",
+            "range_width",
+            "rolling_atr",
+            "rolling_high",
+            "rolling_low",
+            "rolling_mid",
+            "rolling_volume_mean",
+        )
+    }
+    return {
+        "aggregate_sums": aggregate_sums,
+        "elapsed_seconds": "1.000000000",
+        "input_rows_including_halos": 99_999_900,
+        "maximum_shard_input_rows": 3_024_000,
+        "output_rows": 99_999_900,
+        "peak_rss_bytes": peak_rss_bytes,
+        "rss_baseline_bytes": 512,
+        "rss_peak_delta_bytes": max(0, peak_rss_bytes - 512),
+        "shards": [
+            {
+                "core_end_minute_exclusive": 142_857,
+                "core_start_minute": 0,
+                "elapsed_seconds": "1.000000000",
+                "halo_start_minute": 0,
+                "input_rows": 99_999_900,
+                "output_rows": 99_999_900,
+            }
+        ],
+        "throughput_core_rows_per_second": "99999900.000000000",
+        "warmup_null_rows": 1_007_300,
+    }
 
 
 def test_feature_halo_matches_unsharded_history() -> None:
@@ -160,6 +222,222 @@ def test_reference_feature_profile_accepts_its_documented_command_scale() -> Non
         validate_feature_configuration("reference", 100_000_000, 700, 2_880, 1_440, 70)
         == 99_999_900
     )
+    with pytest.raises(ValueError, match="memory limit no greater than 70"):
+        validate_feature_configuration("reference", 100_000_000, 700, 2_880, 1_440, 100)
+
+
+def test_reference_feature_requires_matching_full_profile_before_work(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "feature-reference.json"
+    publish_evidence(output, {"preserved": True})
+    benchmark_called = False
+
+    def unexpected_benchmark(*_args: object) -> dict[str, object]:
+        nonlocal benchmark_called
+        benchmark_called = True
+        return feature_result()
+
+    monkeypatch.setattr(feature_benchmark, "benchmark_shards", unexpected_benchmark)
+
+    with pytest.raises(ValueError, match="does not meet"):
+        feature_benchmark.run_feature_benchmark(
+            profile="reference",
+            requested_rows=100_000_000,
+            instruments=700,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=output,
+            reference_host_evidence=Path("benchmarks/results/m1-workstation-snapshot.json"),
+            force=True,
+            command="feature reference test",
+        )
+
+    assert benchmark_called is False
+    assert json.loads(output.read_text(encoding="utf-8")) == {"preserved": True}
+    assert verify_evidence(output)
+
+
+def test_feature_host_evidence_is_reference_only(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires --reference-host-evidence"):
+        feature_benchmark.run_feature_benchmark(
+            profile="reference",
+            requested_rows=100_000_000,
+            instruments=700,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=tmp_path / "missing-host.json",
+            reference_host_evidence=None,
+            command="feature reference test",
+        )
+    with pytest.raises(ValueError, match="allowed only"):
+        feature_benchmark.run_feature_benchmark(
+            profile="smoke",
+            requested_rows=200_000,
+            instruments=50,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=tmp_path / "misleading-smoke.json",
+            reference_host_evidence=Path("reference-host.json"),
+            command="feature smoke test",
+        )
+
+
+def test_feature_smoke_run_retains_v1_contract(tmp_path: Path) -> None:
+    payload = feature_benchmark.run_feature_benchmark(
+        profile="smoke",
+        requested_rows=2_000,
+        instruments=10,
+        core_minutes=50,
+        window_minutes=10,
+        memory_limit_percent=70,
+        output=tmp_path / "feature-smoke.json",
+        reference_host_evidence=None,
+        command="feature smoke test",
+    )
+
+    schema = json.loads(
+        Path("schemas/evidence/v1/feature-benchmark.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    assert payload["benchmark_schema"] == "grid.feature-benchmark/v1"
+    assert payload["status"] == "smoke-only"
+
+
+def test_reference_feature_binds_host_and_emits_v2_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admitted = reference_host_summary()
+    admission_calls = 0
+
+    def admit(_path: Path) -> dict[str, object]:
+        nonlocal admission_calls
+        admission_calls += 1
+        return admitted
+
+    monkeypatch.setattr(feature_benchmark, "admit_reference_host", admit)
+    monkeypatch.setattr(feature_benchmark, "benchmark_shards", lambda *_args: feature_result())
+    monkeypatch.setattr(
+        feature_benchmark,
+        "_hardware",
+        lambda: {
+            "cpu_count_logical": 32,
+            "cpu_count_physical": 16,
+            "machine": "AMD64",
+            "platform": "Reference OS",
+            "ram_bytes": 64 * 1024**3,
+        },
+    )
+    monkeypatch.setattr(
+        feature_benchmark.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(total=64 * 1024**3),
+    )
+    output = tmp_path / "feature-reference.json"
+
+    payload = feature_benchmark.run_feature_benchmark(
+        profile="reference",
+        requested_rows=100_000_000,
+        instruments=700,
+        core_minutes=2_880,
+        window_minutes=1_440,
+        memory_limit_percent=70,
+        output=output,
+        reference_host_evidence=Path("reference-host.json"),
+        command="feature reference test",
+    )
+
+    schema = json.loads(
+        Path("schemas/evidence/v2/feature-benchmark.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    assert admission_calls == 2
+    assert payload["benchmark_schema"] == "grid.feature-benchmark/v2"
+    assert payload["status"] == "reference-host-feature-candidate"
+    assert payload["reference_host_evidence"] == admitted
+    assert verify_evidence(output)
+
+
+def test_reference_feature_publishes_failed_memory_gate_as_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admitted = reference_host_summary()
+    monkeypatch.setattr(feature_benchmark, "admit_reference_host", lambda _path: admitted)
+    monkeypatch.setattr(
+        feature_benchmark,
+        "benchmark_shards",
+        lambda *_args: feature_result(peak_rss_bytes=50 * 1024**3),
+    )
+    monkeypatch.setattr(
+        feature_benchmark,
+        "_hardware",
+        lambda: {
+            "cpu_count_logical": 32,
+            "cpu_count_physical": 16,
+            "machine": "AMD64",
+            "platform": "Reference OS",
+            "ram_bytes": 64 * 1024**3,
+        },
+    )
+    monkeypatch.setattr(
+        feature_benchmark.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(total=64 * 1024**3),
+    )
+
+    payload = feature_benchmark.run_feature_benchmark(
+        profile="reference",
+        requested_rows=100_000_000,
+        instruments=700,
+        core_minutes=2_880,
+        window_minutes=1_440,
+        memory_limit_percent=70,
+        output=tmp_path / "feature-reference.json",
+        reference_host_evidence=Path("reference-host.json"),
+        command="feature reference test",
+    )
+
+    assert payload["memory_gate"]["passed"] is False
+    assert payload["status"] == "reference-feature-rejected-memory"
+
+
+def test_reference_feature_rejects_runtime_change_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admitted = reference_host_summary()
+    software = iter(
+        (
+            {"polars": "1", "psutil": "1", "python": "1"},
+            {"polars": "2", "psutil": "1", "python": "1"},
+        )
+    )
+    monkeypatch.setattr(feature_benchmark, "admit_reference_host", lambda _path: admitted)
+    monkeypatch.setattr(feature_benchmark, "benchmark_shards", lambda *_args: feature_result())
+    monkeypatch.setattr(feature_benchmark, "_software", lambda: next(software))
+    monkeypatch.setattr(
+        feature_benchmark.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(total=64 * 1024**3),
+    )
+    output = tmp_path / "feature-reference.json"
+
+    with pytest.raises(RuntimeError, match="software changed"):
+        feature_benchmark.run_feature_benchmark(
+            profile="reference",
+            requested_rows=100_000_000,
+            instruments=700,
+            core_minutes=2_880,
+            window_minutes=1_440,
+            memory_limit_percent=70,
+            output=output,
+            reference_host_evidence=Path("reference-host.json"),
+            command="feature reference test",
+        )
+
+    assert not output.exists()
 
 
 def test_representative_status_requires_every_file_target() -> None:
@@ -615,12 +893,16 @@ def test_reference_host_admission_binds_current_host_and_work_volume(
             "evidence_schema": "grid.workstation-snapshot/v1",
             "hardware": full_hardware,
             "observed_at_utc": "2026-01-01T00:00:00Z",
+            "software": {
+                "psutil": reference_host.version("psutil"),
+                "python": reference_host.platform.python_version(),
+            },
             "status": "meets-documented-full-research-profile",
         },
     )
     monkeypatch.setattr(
-        reference_benchmark,
-        "_hardware",
+        reference_host,
+        "current_hardware",
         lambda: {
             key: full_hardware[key]
             for key in (
@@ -632,14 +914,14 @@ def test_reference_host_admission_binds_current_host_and_work_volume(
             )
         },
     )
-    monkeypatch.setattr(reference_benchmark, "cpu_model", lambda: "Reference CPU")
+    monkeypatch.setattr(reference_host, "cpu_model", lambda: "Reference CPU")
     monkeypatch.setattr(
-        reference_benchmark,
+        reference_host,
         "storage_identity",
         lambda _volume: ("nvme", "Reference NVMe"),
     )
     monkeypatch.setattr(
-        reference_benchmark.psutil,
+        reference_host.psutil,
         "disk_usage",
         lambda _path: SimpleNamespace(total=2 * 1024**4),
     )
@@ -959,3 +1241,20 @@ def test_workstation_snapshot_resolves_linux_nvme_mount(
     )
 
     assert storage_identity(tmp_path / "benchmark") == ("nvme", "Reference Linux NVMe")
+
+
+def test_workstation_snapshot_uses_longest_matching_mount(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    nested_mount = tmp_path / "research-volume"
+    output = nested_mount / "evidence" / "snapshot.json"
+    monkeypatch.setattr("benchmarks.workstation_snapshot.sys.platform", "linux")
+    monkeypatch.setattr(
+        "benchmarks.workstation_snapshot.psutil.disk_partitions",
+        lambda **_kwargs: [
+            SimpleNamespace(mountpoint=str(tmp_path), device="/dev/root"),
+            SimpleNamespace(mountpoint=str(nested_mount), device="/dev/nvme2n1p1"),
+        ],
+    )
+
+    assert volume_root_for_path(output) == nested_mount.resolve()
