@@ -1,0 +1,40 @@
+name: Python implementation checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install external tooling and local packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[data,dev]"
+          python -m pip install --no-deps -e packages/contracts -e packages/bybit-public -e packages/bybit-private
+          python -m pip install --no-deps -e apps/data -e apps/research -e apps/release -e apps/live
+      - name: Lint
+        run: python -m ruff check .
+      - name: Format
+        run: python -m ruff format --check .
+      - name: Static typing
+        run: python -m mypy packages apps benchmarks scripts
+      - name: Test
+        run: python -m pytest
+      - name: Verify source manifest
+        run: python scripts/update_manifest.py
+      - name: Prove live dependency isolation
+        run: |
+          python -m venv /tmp/grid-live-venv
+          /tmp/grid-live-venv/bin/pip install --no-deps packages/contracts apps/live
+          /tmp/grid-live-venv/bin/grid-live doctor

@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/real-market-layout-skew.schema.json",
+  "title": "Bounded Bybit real-market exact-layout skew evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "content_sha256",
+    "decision_evidence",
+    "distribution",
+    "evidence_schema",
+    "fetched_at_utc",
+    "hardware",
+    "inventory_evidence",
+    "layouts",
+    "limitations",
+    "per_symbol",
+    "raw_storage_policy",
+    "request",
+    "selection",
+    "source_content_sha256",
+    "status",
+    "total_row_count",
+    "work_evidence"
+  ],
+  "properties": {
+    "command": {"type": "string", "minLength": 1},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "decision_evidence": {"$ref": "#/$defs/decisionEvidence"},
+    "distribution": {"$ref": "#/$defs/distribution"},
+    "evidence_schema": {"const": "grid.real-market-layout-skew/v1"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine", "platform"],
+      "properties": {
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1}
+      }
+    },
+    "inventory_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "fetched_at_utc"],
+      "properties": {
+        "artifact": {"const": "m1-bybit-public-inventory.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "layouts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/layoutResult"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "per_symbol": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/symbolSummary"}
+    },
+    "raw_storage_policy": {"const": "ignored operator work directory; never committed"},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "closed_candles_only",
+        "end_ms",
+        "endpoint",
+        "expected_rows_per_symbol",
+        "interval",
+        "start_ms"
+      ],
+      "properties": {
+        "category": {"const": "linear"},
+        "closed_candles_only": {"const": true},
+        "end_ms": {"type": "integer", "minimum": 1},
+        "endpoint": {"const": "/v5/market/kline"},
+        "expected_rows_per_symbol": {"type": "integer", "minimum": 1, "maximum": 10080},
+        "interval": {"const": "1"},
+        "start_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible_instrument_count",
+        "liquid_pool_size",
+        "observed_ticker_endpoint",
+        "pool_ranking",
+        "selected",
+        "selected_price_rank_indices",
+        "selection"
+      ],
+      "properties": {
+        "eligible_instrument_count": {"type": "integer", "minimum": 3},
+        "liquid_pool_size": {"type": "integer", "minimum": 3, "maximum": 120},
+        "observed_ticker_endpoint": {"const": "/v5/market/tickers"},
+        "pool_ranking": {"const": "turnover_24h_desc,symbol_asc"},
+        "selected": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/selectedSymbol"}
+        },
+        "selected_price_rank_indices": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0, "maximum": 119}
+        },
+        "selection": {"const": "even exact-mark-price ranks across the liquid pool"}
+      }
+    },
+    "source_content_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "complete-bounded-real-market-skew"},
+    "total_row_count": {"type": "integer", "minimum": 3, "maximum": 120960},
+    "work_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "work_schema"],
+      "properties": {
+        "artifact": {"const": "run.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "work_schema": {"const": "grid.real-market-layout-skew-work/v1"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "decimal": {"type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+    "decisionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "benchmark_schema", "status"],
+      "properties": {
+        "artifact": {"const": "m1-layout-exact-decision-candidate.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema": {"const": "grid.layout-benchmark/v3"},
+        "status": {"const": "decision-matrix-candidate"}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"const": "zstd"},
+        "compression_level": {"const": 3},
+        "numeric_representation": {"const": "hybrid_int64_decimal"},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "logicalSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb_polars_equal", "logical_sha256", "row_count"],
+      "properties": {
+        "duckdb_polars_equal": {"const": true},
+        "logical_sha256": {"$ref": "#/$defs/sha256"},
+        "row_count": {"type": "integer", "minimum": 1, "maximum": 120960}
+      }
+    },
+    "layoutResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket_row_count_max",
+        "bucket_row_count_min",
+        "bytes_per_row",
+        "exact_schema_verified",
+        "file_count",
+        "layout",
+        "logical_summary",
+        "total_bytes",
+        "tree_sha256"
+      ],
+      "properties": {
+        "bucket_row_count_max": {"type": "integer", "minimum": 1},
+        "bucket_row_count_min": {"type": "integer", "minimum": 1},
+        "bytes_per_row": {"$ref": "#/$defs/metric"},
+        "exact_schema_verified": {"const": true},
+        "file_count": {"type": "integer", "minimum": 1},
+        "layout": {"$ref": "#/$defs/layout"},
+        "logical_summary": {"$ref": "#/$defs/logicalSummary"},
+        "total_bytes": {"type": "integer", "minimum": 1},
+        "tree_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distinct_close_count",
+        "maximum_price",
+        "maximum_price_decimal_places",
+        "maximum_turnover",
+        "maximum_turnover_decimal_places",
+        "maximum_volume",
+        "maximum_volume_decimal_places",
+        "minimum_price",
+        "minimum_turnover",
+        "minimum_volume",
+        "price_dynamic_range",
+        "zero_turnover_count",
+        "zero_volume_count"
+      ],
+      "properties": {
+        "distinct_close_count": {"type": "integer", "minimum": 1},
+        "maximum_price": {"$ref": "#/$defs/decimal"},
+        "maximum_price_decimal_places": {"type": "integer", "minimum": 0, "maximum": 8},
+        "maximum_turnover": {"$ref": "#/$defs/decimal"},
+        "maximum_turnover_decimal_places": {"type": "integer", "minimum": 0, "maximum": 12},
+        "maximum_volume": {"$ref": "#/$defs/decimal"},
+        "maximum_volume_decimal_places": {"type": "integer", "minimum": 0, "maximum": 4},
+        "minimum_price": {"$ref": "#/$defs/decimal"},
+        "minimum_turnover": {"$ref": "#/$defs/decimal"},
+        "minimum_volume": {"$ref": "#/$defs/decimal"},
+        "price_dynamic_range": {"$ref": "#/$defs/decimal"},
+        "zero_turnover_count": {"type": "integer", "minimum": 0},
+        "zero_volume_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "selectedSymbol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument_id", "launch_time_ms", "mark_price", "symbol", "turnover_24h"],
+      "properties": {
+        "instrument_id": {"type": "integer", "minimum": 1},
+        "launch_time_ms": {"type": "integer", "minimum": 0},
+        "mark_price": {"$ref": "#/$defs/decimal"},
+        "symbol": {"$ref": "#/$defs/symbol"},
+        "turnover_24h": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "symbolSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["close_max", "close_min", "content_sha256", "instrument_id", "row_count", "symbol"],
+      "properties": {
+        "close_max": {"$ref": "#/$defs/decimal"},
+        "close_min": {"$ref": "#/$defs/decimal"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_id": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1, "maximum": 10080},
+        "symbol": {"$ref": "#/$defs/symbol"}
+      }
+    }
+  }
+}

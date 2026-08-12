@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-archive-coverage.schema.json",
+  "title": "Bounded Bybit official archive coverage evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "content_sha256",
+    "coverage_findings",
+    "detailed_trade_coverage",
+    "evidence_schema",
+    "fetched_at_utc",
+    "instrument_inventory",
+    "observed_root_index",
+    "product_index_summaries",
+    "source",
+    "universe_comparison"
+  ],
+  "properties": {
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "coverage_findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archive_first_date_before_current_launch_date_count",
+        "archive_first_date_before_current_launch_date_symbols",
+        "direct_paths_with_files_but_not_listed_count",
+        "direct_paths_with_files_but_not_listed_symbols",
+        "interpretation",
+        "sampled_direct_paths_not_found_count",
+        "sampled_direct_paths_not_found_symbols",
+        "sampled_direct_paths_without_daily_files_count",
+        "sampled_direct_paths_without_daily_files_symbols"
+      ],
+      "properties": {
+        "archive_first_date_before_current_launch_date_count": {"type": "integer", "minimum": 0},
+        "archive_first_date_before_current_launch_date_symbols": {"$ref": "#/$defs/symbols"},
+        "direct_paths_with_files_but_not_listed_count": {"type": "integer", "minimum": 0},
+        "direct_paths_with_files_but_not_listed_symbols": {"$ref": "#/$defs/symbols"},
+        "interpretation": {"type": "string", "minLength": 1},
+        "sampled_direct_paths_not_found_count": {"type": "integer", "minimum": 0},
+        "sampled_direct_paths_not_found_symbols": {"$ref": "#/$defs/symbols"},
+        "sampled_direct_paths_without_daily_files_count": {"type": "integer", "minimum": 0},
+        "sampled_direct_paths_without_daily_files_symbols": {"$ref": "#/$defs/symbols"}
+      }
+    },
+    "detailed_trade_coverage": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/detailedCoverage"}
+    },
+    "evidence_schema": {"const": "grid.bybit-archive-coverage/v1"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "instrument_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_sha256", "evidence_schema", "fetched_at_utc"],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+        "fetched_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "observed_root_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["funding_top_level_matches", "mark_price_top_level_matches", "products", "semantics", "trading_raw_trade_directory_advertised"],
+      "properties": {
+        "funding_top_level_matches": {"type": "array", "items": {"type": "string"}},
+        "mark_price_top_level_matches": {"type": "array", "items": {"type": "string"}},
+        "products": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "semantics": {"type": "string", "minLength": 1},
+        "trading_raw_trade_directory_advertised": {"type": "boolean"}
+      }
+    },
+    "product_index_summaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["child_link_count", "product", "sample_links", "trailing_slash_child_count"],
+        "properties": {
+          "child_link_count": {"type": "integer", "minimum": 0},
+          "product": {"type": "string", "minLength": 1},
+          "sample_links": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1}},
+          "trailing_slash_child_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "source": {"const": "https://public.bybit.com/"},
+    "universe_comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archive_only_symbol_count",
+        "archive_trading_index_symbol_count",
+        "by_current_status",
+        "current_symbols_absent_from_trading_index",
+        "current_symbols_present_in_trading_index_count",
+        "current_usdt_linear_perpetual_count",
+        "semantics"
+      ],
+      "properties": {
+        "archive_only_symbol_count": {"type": "integer", "minimum": 0},
+        "archive_trading_index_symbol_count": {"type": "integer", "minimum": 0},
+        "by_current_status": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/statusSummary"}
+        },
+        "current_symbols_absent_from_trading_index": {"$ref": "#/$defs/symbols"},
+        "current_symbols_present_in_trading_index_count": {"type": "integer", "minimum": 0},
+        "current_usdt_linear_perpetual_count": {"type": "integer", "minimum": 1},
+        "semantics": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "symbols": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Z0-9_-]+$"}
+    },
+    "statusSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absent_from_trading_index", "present_in_trading_index", "records"],
+      "properties": {
+        "absent_from_trading_index": {"type": "integer", "minimum": 0},
+        "present_in_trading_index": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0}
+      }
+    },
+    "archiveCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_count", "first_date", "last_date", "missing_date_count", "missing_dates_sample", "symbol"],
+      "properties": {
+        "file_count": {"type": "integer", "minimum": 0},
+        "first_date": {"oneOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+        "last_date": {"oneOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+        "missing_date_count": {"type": "integer", "minimum": 0},
+        "missing_dates_sample": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/date"}},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9_-]+$"}
+      }
+    },
+    "detailedCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archive_coverage", "archive_first_date_before_current_launch_date", "archive_path_status", "current_metadata", "present_in_trading_index", "selection_reasons", "symbol"],
+      "properties": {
+        "archive_coverage": {"oneOf": [{"$ref": "#/$defs/archiveCoverage"}, {"type": "null"}]},
+        "archive_first_date_before_current_launch_date": {"type": ["boolean", "null"]},
+        "archive_path_status": {"enum": ["found", "not-found"]},
+        "current_metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["launch_date_utc", "launch_time_ms", "status"],
+          "properties": {
+            "launch_date_utc": {"$ref": "#/$defs/date"},
+            "launch_time_ms": {"type": "integer", "minimum": 0},
+            "status": {"type": "string", "minLength": 1}
+          }
+        },
+        "present_in_trading_index": {"type": "boolean"},
+        "selection_reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["absent-from-trading-index", "current-status-prelaunch", "launch-time-stratified-sample"]}
+        },
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9_-]+$"}
+      }
+    }
+  }
+}

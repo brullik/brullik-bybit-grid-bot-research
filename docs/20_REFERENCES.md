@@ -1,6 +1,6 @@
 # Authoritative References
 
-Accessed: 2026-07-28.
+Accessed: 2026-08-12.
 
 The implementation phase must re-check current documentation and record exact API behavior because exchange interfaces, rate limits, and product availability can change.
 
@@ -18,6 +18,8 @@ The implementation phase must re-check current documentation and record exact AP
 - [Rate Limit Rules](https://bybit-exchange.github.io/docs/v5/rate-limit)
 - [Demo Trading Service](https://bybit-exchange.github.io/docs/v5/demo)
 - [Bybit API Documentation Home / Historical Data reference](https://bybit-exchange.github.io/docs/v5/intro)
+- [Bybit Historical Market Data](https://www.bybit.com/en/derivative-activity/history-data)
+- [Bybit Historical Market Data product catalog](https://api2.bybit.com/quote/public/support/download/list-products)
 - [Bybit Public Historical Data](https://public.bybit.com/)
 
 Native Futures Grid endpoint references must be verified against the current account/region before implementation and must be captured in the feasibility report.

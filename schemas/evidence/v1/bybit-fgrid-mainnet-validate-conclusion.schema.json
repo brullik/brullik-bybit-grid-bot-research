@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-fgrid-mainnet-validate-conclusion.schema.json",
+  "title": "Redacted Mainnet Futures Grid validate-only conclusion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_count",
+    "candidates",
+    "conclusion",
+    "create_capability",
+    "endpoint",
+    "environment",
+    "evidence_schema",
+    "observed_at_utc",
+    "safety",
+    "status"
+  ],
+  "properties": {
+    "candidate_count": {"const": 3},
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_summary", "response_summary", "symbol"],
+        "properties": {
+          "request_summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cell_number",
+              "grid_mode",
+              "grid_type",
+              "leverage",
+              "max_price",
+              "min_price",
+              "numeric_encoding",
+              "stop_loss_price",
+              "take_profit_price"
+            ],
+            "properties": {
+              "cell_number": {"const": "2"},
+              "grid_mode": {"const": "1"},
+              "grid_type": {"const": "2"},
+              "leverage": {"const": "1"},
+              "max_price": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+              "min_price": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+              "numeric_encoding": {"const": "exact-decimal-and-integer-strings"},
+              "stop_loss_price": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+              "take_profit_price": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"}
+            }
+          },
+          "response_summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check_code", "minimum_investment", "ret_code", "successful"],
+            "properties": {
+              "check_code": {"const": "FGRID_CHECK_CODE_UNSPECIFIED"},
+              "minimum_investment": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+              "ret_code": {"const": 0},
+              "successful": {"const": true}
+            }
+          },
+          "symbol": {"enum": ["DOGEUSDT", "LINKUSDT", "XRPUSDT"]}
+        }
+      }
+    },
+    "conclusion": {"type": "string", "minLength": 1},
+    "create_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "endpoint",
+        "exercised",
+        "official_source_commit",
+        "official_source_path",
+        "official_source_repository",
+        "required_additional_parameter",
+        "successful_response_identifier"
+      ],
+      "properties": {
+        "endpoint": {"const": "/v5/fgridbot/create"},
+        "exercised": {"const": false},
+        "official_source_commit": {"const": "562291168e9fd3d679275bf28c16056d562cefce"},
+        "official_source_path": {"const": "src/tools/bot/createFGridBot.ts"},
+        "official_source_repository": {"const": "https://github.com/bybit-exchange/trading-mcp"},
+        "required_additional_parameter": {"const": "total_investment"},
+        "successful_response_identifier": {"const": "bot_id"}
+      }
+    },
+    "endpoint": {"const": "/v5/fgridbot/validate"},
+    "environment": {"const": "mainnet"},
+    "evidence_schema": {"const": "grid.bybit-fgrid-mainnet-validate-conclusion/v1"},
+    "observed_at_utc": {"type": "string", "format": "date-time"},
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create_endpoint_called",
+        "credentials_persisted",
+        "mainnet_fallback",
+        "mutating_endpoint_called",
+        "owner_authorization_scope",
+        "private_artifacts_committed",
+        "private_receipts_verified",
+        "request_count",
+        "retry_count",
+        "unified_trading_account_confirmed_by_owner"
+      ],
+      "properties": {
+        "create_endpoint_called": {"const": false},
+        "credentials_persisted": {"const": false},
+        "mainnet_fallback": {"const": false},
+        "mutating_endpoint_called": {"const": false},
+        "owner_authorization_scope": {"const": "validate-only-mainnet"},
+        "private_artifacts_committed": {"const": false},
+        "private_receipts_verified": {"const": true},
+        "request_count": {"const": 3},
+        "retry_count": {"const": 0},
+        "unified_trading_account_confirmed_by_owner": {"const": true}
+      }
+    },
+    "status": {"const": "mainnet-validate-success-create-unexercised"}
+  }
+}

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid-research"
+version = "0.2.0"
+description = "Offline grid research application boundary"
+requires-python = ">=3.12"
+dependencies = ["grid-contracts==0.2.0"]
+
+[project.scripts]
+grid-research = "grid_research.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

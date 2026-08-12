@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/gate1-review-pack.schema.json",
+  "title": "Gate 1 reference evidence owner-review pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capacity",
+    "command",
+    "decisions",
+    "evidence_schema",
+    "gate_1",
+    "layout_candidates",
+    "limitations",
+    "owner_decision_required",
+    "reference_host",
+    "software",
+    "sources",
+    "status"
+  ],
+  "properties": {
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature", "reference_volume_bytes", "theoretical_trade_and_mark_rows", "theoretical_trade_rows"],
+      "properties": {
+        "feature": {"$ref": "#/$defs/featureCapacity"},
+        "reference_volume_bytes": {"type": "integer", "minimum": 2199023255552},
+        "theoretical_trade_and_mark_rows": {"const": 7363288800},
+        "theoretical_trade_rows": {"const": 3681644400}
+      }
+    },
+    "command": {"type": "string", "minLength": 1},
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["P-001", "P-002", "P-003", "P-004", "P-005"],
+      "properties": {
+        "P-001": {"$ref": "#/$defs/decision"},
+        "P-002": {"$ref": "#/$defs/decision"},
+        "P-003": {"$ref": "#/$defs/decision"},
+        "P-004": {"$ref": "#/$defs/decision"},
+        "P-005": {"$ref": "#/$defs/decision"}
+      }
+    },
+    "evidence_schema": {"const": "grid.gate1-review-pack/v1"},
+    "gate_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatic_promotion", "blockers", "owner_decision_required", "status"],
+      "properties": {
+        "automatic_promotion": {"const": false},
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["feature-memory-gate-failed", "no-layout-meets-provisional-performance-targets"]
+          }
+        },
+        "owner_decision_required": {"const": true},
+        "status": {"const": "pending-owner-decision"}
+      }
+    },
+    "layout_candidates": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/layoutCandidate"},
+      "allOf": [
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 4}}}}}},
+        {"contains": {"properties": {"layout": {"properties": {"bucket_count": {"const": 8}}}}}}
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "owner_decision_required": {"const": true},
+    "reference_host": {"$ref": "#/$defs/referenceHostEvidence"},
+    "software": {"$ref": "#/$defs/layoutSoftware"},
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_layout", "feature", "layout", "real_market", "workstation"],
+      "properties": {
+        "decision_layout": {"$ref": "#/$defs/source"},
+        "feature": {"$ref": "#/$defs/source"},
+        "layout": {"$ref": "#/$defs/source"},
+        "real_market": {"$ref": "#/$defs/source"},
+        "workstation": {"$ref": "#/$defs/source"}
+      }
+    },
+    "status": {"enum": ["ready-for-owner-review", "blocked-by-reference-results"]}
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_values", "status"],
+      "properties": {
+        "candidate_values": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "status": {"enum": ["owner-decision-required", "blocked-by-reference-results"]}
+      }
+    },
+    "featureCapacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured_memory_limit_percent",
+        "memory_gate_passed",
+        "observed_core_rows_per_second",
+        "peak_rss_bytes",
+        "peak_rss_percent_of_ram",
+        "projected_trade_and_mark_seconds",
+        "projected_trade_seconds"
+      ],
+      "properties": {
+        "configured_memory_limit_percent": {"type": "integer", "minimum": 1, "maximum": 70},
+        "memory_gate_passed": {"type": "boolean"},
+        "observed_core_rows_per_second": {"$ref": "#/$defs/decimal"},
+        "peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "peak_rss_percent_of_ram": {"$ref": "#/$defs/decimal"},
+        "projected_trade_and_mark_seconds": {"$ref": "#/$defs/decimal"},
+        "projected_trade_seconds": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"const": "zstd"},
+        "compression_level": {"const": 3},
+        "numeric_representation": {"const": "hybrid_int64_decimal"},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provisional_performance_passed",
+        "single_symbol_cold_10y_under_15_seconds",
+        "single_symbol_warm_10y_under_5_seconds",
+        "universe_month_cold_under_15_seconds",
+        "write_100m_under_20_minutes"
+      ],
+      "properties": {
+        "provisional_performance_passed": {"type": "boolean"},
+        "single_symbol_cold_10y_under_15_seconds": {"type": "boolean"},
+        "single_symbol_warm_10y_under_5_seconds": {"type": "boolean"},
+        "universe_month_cold_under_15_seconds": {"type": "boolean"},
+        "write_100m_under_20_minutes": {"type": "boolean"}
+      }
+    },
+    "engineMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars"],
+      "properties": {
+        "duckdb": {"$ref": "#/$defs/decimal"},
+        "polars": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "queryMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb_single_symbol", "duckdb_universe_month", "polars_single_symbol", "polars_universe_month"],
+      "properties": {
+        "duckdb_single_symbol": {"$ref": "#/$defs/decimal"},
+        "duckdb_universe_month": {"$ref": "#/$defs/decimal"},
+        "polars_single_symbol": {"$ref": "#/$defs/decimal"},
+        "polars_universe_month": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "layoutCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gates", "layout", "maintenance", "observed", "projections"],
+      "properties": {
+        "gates": {"$ref": "#/$defs/gates"},
+        "layout": {"$ref": "#/$defs/layout"},
+        "maintenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["compaction_seconds", "logical_parity_verified", "repair_seconds", "source_tree_unchanged"],
+          "properties": {
+            "compaction_seconds": {"$ref": "#/$defs/decimal"},
+            "logical_parity_verified": {"const": true},
+            "repair_seconds": {"$ref": "#/$defs/decimal"},
+            "source_tree_unchanged": {"const": true}
+          }
+        },
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["first_seconds", "query_hashes", "single_symbol_rows", "synthetic_bytes_per_row", "synthetic_total_bytes", "universe_month_rows", "warm_seconds", "write_seconds"],
+          "properties": {
+            "first_seconds": {"$ref": "#/$defs/queryMetrics"},
+            "query_hashes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["single_symbol", "universe_month"],
+              "properties": {
+                "single_symbol": {"$ref": "#/$defs/sha256"},
+                "universe_month": {"$ref": "#/$defs/sha256"}
+              }
+            },
+            "single_symbol_rows": {"const": 142857},
+            "synthetic_bytes_per_row": {"$ref": "#/$defs/decimal"},
+            "synthetic_total_bytes": {"type": "integer", "minimum": 1},
+            "universe_month_rows": {"const": 31248000},
+            "warm_seconds": {"$ref": "#/$defs/queryMetrics"},
+            "write_seconds": {"$ref": "#/$defs/decimal"}
+          }
+        },
+        "projections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["real_trade_and_mark_bytes_at_trade_row_width", "real_trade_bytes", "real_trade_bytes_per_row", "single_symbol_10y_cold_seconds", "single_symbol_10y_warm_seconds"],
+          "properties": {
+            "real_trade_and_mark_bytes_at_trade_row_width": {"type": "integer", "minimum": 1},
+            "real_trade_bytes": {"type": "integer", "minimum": 1},
+            "real_trade_bytes_per_row": {"$ref": "#/$defs/decimal"},
+            "single_symbol_10y_cold_seconds": {"$ref": "#/$defs/engineMetrics"},
+            "single_symbol_10y_warm_seconds": {"$ref": "#/$defs/engineMetrics"}
+          }
+        }
+      }
+    },
+    "referenceHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 16},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 68719476736},
+        "storage_kind": {"const": "nvme"},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 2199023255552}
+      }
+    },
+    "referenceHostEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "hardware", "observed_at_utc", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.workstation-snapshot/v1"},
+        "hardware": {"$ref": "#/$defs/referenceHardware"},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "status": {"const": "meets-documented-full-research-profile"}
+      }
+    },
+    "layoutSoftware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "psutil", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "psutil": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "schema", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "schema": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

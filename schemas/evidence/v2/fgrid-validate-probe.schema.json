@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/fgrid-validate-probe.schema.json",
+  "title": "Owner-controlled Futures Grid validate-only probe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "content_sha256",
+    "created_at_utc",
+    "endpoint",
+    "environment",
+    "probe_schema",
+    "request",
+    "response",
+    "result",
+    "safety"
+  ],
+  "properties": {
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "endpoint": {"const": "/v5/fgridbot/validate"},
+    "environment": {"enum": ["demo", "testnet", "mainnet"]},
+    "probe_schema": {"const": "grid.bybit-fgrid-validate-probe/v2"},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_number",
+        "grid_mode",
+        "grid_type",
+        "leverage",
+        "max_price",
+        "min_price",
+        "stop_loss_price",
+        "symbol"
+      ],
+      "properties": {
+        "cell_number": {"type": "string", "pattern": "^[0-9]+$"},
+        "grid_mode": {"const": "1"},
+        "grid_type": {"const": "2"},
+        "leverage": {"$ref": "#/$defs/positiveDecimal"},
+        "max_price": {"$ref": "#/$defs/positiveDecimal"},
+        "min_price": {"$ref": "#/$defs/positiveDecimal"},
+        "stop_loss_price": {"$ref": "#/$defs/positiveDecimal"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "take_profit_price": {"$ref": "#/$defs/positiveDecimal"}
+      }
+    },
+    "response": {"type": "object"},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_code", "ret_code", "successful"],
+      "properties": {
+        "check_code": {"type": ["string", "null"]},
+        "ret_code": {"type": ["integer", "null"]},
+        "successful": {"type": "boolean"}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "credentials_persisted",
+        "environment_is_simulated",
+        "mutating_endpoint_called",
+        "validate_only"
+      ],
+      "properties": {
+        "credentials_persisted": {"const": false},
+        "environment_is_simulated": {"type": "boolean"},
+        "mutating_endpoint_called": {"const": false},
+        "validate_only": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "positiveDecimal": {
+      "type": "string",
+      "pattern": "^(?:0*[1-9][0-9]*)(?:\\.[0-9]+)?$|^0*\\.0*[1-9][0-9]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

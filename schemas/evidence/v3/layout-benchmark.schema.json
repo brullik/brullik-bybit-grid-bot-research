@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v3/layout-benchmark.schema.json",
+  "title": "Density-derived exact Parquet layout decision benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmark_schema",
+    "cache_semantics",
+    "command",
+    "decision",
+    "decision_inputs",
+    "hardware",
+    "input",
+    "numeric_contracts",
+    "profile",
+    "results",
+    "scratch_policy",
+    "software",
+    "status"
+  ],
+  "properties": {
+    "benchmark_schema": {"const": "grid.layout-benchmark/v3"},
+    "cache_semantics": {"type": "string", "minLength": 1},
+    "command": {"type": "string", "minLength": 1},
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible_layout_count",
+        "eligibility",
+        "owner_approval_required",
+        "ranking_policy",
+        "reference_rerun_shortlist"
+      ],
+      "properties": {
+        "eligible_layout_count": {"type": "integer", "minimum": 0, "maximum": 16},
+        "eligibility": {"type": "string", "minLength": 1},
+        "owner_approval_required": {"const": true},
+        "ranking_policy": {"type": "string", "minLength": 1},
+        "reference_rerun_shortlist": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/layout"}
+        }
+      }
+    },
+    "decision_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["precision_basis", "predecessor"],
+      "properties": {
+        "precision_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact",
+            "artifact_sha256",
+            "derived_turnover_scale",
+            "max_observed_price_decimal_places",
+            "max_observed_quantity_decimal_places",
+            "relevant_record_count",
+            "semantics"
+          ],
+          "properties": {
+            "artifact": {"const": "m1-bybit-public-inventory.json"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "derived_turnover_scale": {"const": 12},
+            "max_observed_price_decimal_places": {"const": 8},
+            "max_observed_quantity_decimal_places": {"const": 4},
+            "relevant_record_count": {"type": "integer", "minimum": 1},
+            "semantics": {"type": "string", "minLength": 1}
+          }
+        },
+        "predecessor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "layout_count", "status"],
+          "properties": {
+            "artifact": {"const": "m1-layout-out-of-core-full-candidate.json"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "layout_count": {"const": 54},
+            "status": {"const": "full-matrix-insufficient-file-scale"}
+          }
+        }
+      }
+    },
+    "hardware": {"$ref": "#/$defs/hardware"},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation_chunk_rows",
+        "instrument_count",
+        "row_count",
+        "row_group_rows",
+        "synthetic_generator"
+      ],
+      "properties": {
+        "generation_chunk_rows": {"type": "integer", "minimum": 1},
+        "instrument_count": {"const": 700},
+        "row_count": {"type": "integer", "minimum": 99999900},
+        "row_group_rows": {"type": "integer", "minimum": 1},
+        "synthetic_generator": {"const": "deterministic-v1"}
+      }
+    },
+    "numeric_contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decimal128", "hybrid_int64_decimal"],
+      "properties": {
+        "decimal128": {"$ref": "#/$defs/decimalContract"},
+        "hybrid_int64_decimal": {"$ref": "#/$defs/hybridContract"}
+      }
+    },
+    "profile": {"const": "decision"},
+    "results": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/result"}
+    },
+    "scratch_policy": {"enum": ["deleted after each layout", "retained by explicit request"]},
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {
+      "enum": ["decision-matrix-candidate", "decision-matrix-no-eligible-layout"]
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "machine", "platform", "ram_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": ["integer", "null"], "minimum": 1},
+        "cpu_count_physical": {"type": ["integer", "null"], "minimum": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "compression", "compression_level", "numeric_representation", "target_file_mb"],
+      "properties": {
+        "bucket_count": {"enum": [4, 8]},
+        "compression": {"enum": ["zstd", "snappy"]},
+        "compression_level": {"type": ["integer", "null"]},
+        "numeric_representation": {"enum": ["decimal128", "hybrid_int64_decimal"]},
+        "target_file_mb": {"enum": [16, 32]}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkpoint_reused", "layout", "scan", "write"],
+      "properties": {
+        "checkpoint_reused": {"type": "boolean"},
+        "layout": {"$ref": "#/$defs/layout"},
+        "scan": {"$ref": "#/$defs/scan"},
+        "write": {"$ref": "#/$defs/write"}
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duckdb_single_symbol_first_seconds",
+        "duckdb_single_symbol_warm_seconds",
+        "duckdb_universe_month_seconds",
+        "polars_single_symbol_first_seconds",
+        "polars_single_symbol_warm_seconds",
+        "polars_universe_month_seconds",
+        "validation"
+      ],
+      "properties": {
+        "duckdb_single_symbol_first_seconds": {"$ref": "#/$defs/metric"},
+        "duckdb_single_symbol_warm_seconds": {"$ref": "#/$defs/metric"},
+        "duckdb_universe_month_seconds": {"$ref": "#/$defs/metric"},
+        "polars_single_symbol_first_seconds": {"$ref": "#/$defs/metric"},
+        "polars_single_symbol_warm_seconds": {"$ref": "#/$defs/metric"},
+        "polars_universe_month_seconds": {"$ref": "#/$defs/metric"},
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "engines_match_aggregate_values",
+            "engines_match_expected_row_counts",
+            "expected_single_symbol_rows",
+            "expected_universe_month_rows",
+            "universe_window_end_ms_exclusive",
+            "universe_window_start_ms"
+          ],
+          "properties": {
+            "engines_match_aggregate_values": {"const": true},
+            "engines_match_expected_row_counts": {"const": true},
+            "expected_single_symbol_rows": {"type": "integer", "minimum": 1},
+            "expected_universe_month_rows": {"type": "integer", "minimum": 1},
+            "universe_window_end_ms_exclusive": {"type": "integer", "minimum": 1},
+            "universe_window_start_ms": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "calendar_partition_count",
+        "calibration_bytes",
+        "calibration_bytes_per_row",
+        "calibration_rows",
+        "calibration_seconds",
+        "file_count",
+        "generation_chunk_rows",
+        "largest_file_bytes",
+        "largest_file_target_ratio",
+        "largest_non_tail_file_bytes",
+        "non_tail_file_count",
+        "numeric_contract_id",
+        "numeric_schema_verified",
+        "peak_rss_bytes",
+        "rows_per_file_target",
+        "rss_baseline_bytes",
+        "rss_peak_delta_bytes",
+        "scratch_estimated_layout_bytes",
+        "scratch_free_bytes_before",
+        "scratch_required_free_bytes",
+        "smallest_file_bytes",
+        "target_exercise_criterion",
+        "target_file_bytes",
+        "target_file_exercised",
+        "write_seconds",
+        "writer"
+      ],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 1},
+        "calendar_partition_count": {"type": "integer", "minimum": 1},
+        "calibration_bytes": {"type": "integer", "minimum": 1},
+        "calibration_bytes_per_row": {"$ref": "#/$defs/metric"},
+        "calibration_rows": {"type": "integer", "minimum": 1},
+        "calibration_seconds": {"$ref": "#/$defs/metric"},
+        "file_count": {"type": "integer", "minimum": 1},
+        "generation_chunk_rows": {"type": "integer", "minimum": 1},
+        "largest_file_bytes": {"type": "integer", "minimum": 1},
+        "largest_file_target_ratio": {"$ref": "#/$defs/metric"},
+        "largest_non_tail_file_bytes": {"type": ["integer", "null"], "minimum": 1},
+        "non_tail_file_count": {"type": "integer", "minimum": 0},
+        "numeric_contract_id": {"const": "grid.candle-exact-physical/v1"},
+        "numeric_schema_verified": {"const": true},
+        "peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "rows_per_file_target": {"type": "integer", "minimum": 1},
+        "rss_baseline_bytes": {"type": "integer", "minimum": 1},
+        "rss_peak_delta_bytes": {"type": "integer", "minimum": 0},
+        "scratch_estimated_layout_bytes": {"type": "integer", "minimum": 1},
+        "scratch_free_bytes_before": {"type": "integer", "minimum": 1},
+        "scratch_required_free_bytes": {"type": "integer", "minimum": 1},
+        "smallest_file_bytes": {"type": "integer", "minimum": 1},
+        "target_exercise_criterion": {"const": "at least one non-tail file is at least 80% of requested target"},
+        "target_file_bytes": {"type": "integer", "minimum": 1},
+        "target_file_exercised": {"type": "boolean"},
+        "write_seconds": {"$ref": "#/$defs/metric"},
+        "writer": {"const": "pyarrow-parquet-writer"}
+      }
+    },
+    "decimalContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "exact", "fields", "self_describing"],
+      "properties": {
+        "contract_id": {"const": "grid.candle-exact-physical/v1"},
+        "exact": {"const": true},
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ohlc", "turnover", "volume"],
+          "properties": {
+            "ohlc": {"const": {"physical_type": "decimal128(38,8)", "scale": 8}},
+            "turnover": {"const": {"physical_type": "decimal128(38,12)", "scale": 12}},
+            "volume": {"const": {"physical_type": "decimal128(38,4)", "scale": 4}}
+          }
+        },
+        "self_describing": {"const": true}
+      }
+    },
+    "hybridContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "exact", "fields", "self_describing"],
+      "properties": {
+        "contract_id": {"const": "grid.candle-exact-physical/v1"},
+        "exact": {"const": true},
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ohlc", "turnover", "volume"],
+          "properties": {
+            "ohlc": {
+              "const": {
+                "field_metadata_required": true,
+                "physical_type": "int64",
+                "scale": 8,
+                "unit": "1e-8"
+              }
+            },
+            "turnover": {"const": {"physical_type": "decimal128(38,12)", "scale": 12}},
+            "volume": {"const": {"physical_type": "decimal128(38,4)", "scale": 4}}
+          }
+        },
+        "self_describing": {"const": true}
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/funding-event.schema.json",
+  "title": "Funding event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["category", "instrument_id", "funding_time_ms", "funding_rate", "funding_interval_minutes", "source_id", "ingestion_id", "quality_flags"],
+  "properties": {
+    "category": {"type": "string", "minLength": 1},
+    "instrument_id": {"type": "integer", "minimum": 1},
+    "funding_time_ms": {"type": "integer", "minimum": 0},
+    "funding_rate": {"type": "string", "pattern": "^-?(?:0|[0-9]+)(?:\\.[0-9]+)?$"},
+    "funding_interval_minutes": {"type": "integer", "minimum": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "ingestion_id": {"type": "string", "minLength": 1},
+    "quality_flags": {"type": "integer", "minimum": 0}
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/workstation-snapshot.schema.json",
+  "title": "Research workstation snapshot evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assessment", "command", "evidence_schema", "hardware", "observed_at_utc", "recommendation", "software", "status"],
+  "properties": {
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documented_full_research_profile", "documented_local_feasibility_profile"],
+      "properties": {
+        "documented_full_research_profile": {"$ref": "#/$defs/assessment"},
+        "documented_local_feasibility_profile": {"$ref": "#/$defs/assessment"}
+      }
+    },
+    "command": {"type": "string", "minLength": 1},
+    "evidence_schema": {"const": "grid.workstation-snapshot/v1"},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": ["integer", "null"], "minimum": 1},
+        "cpu_count_physical": {"type": ["integer", "null"], "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd", "usb", "unknown"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "observed_at_utc": {"type": "string", "format": "date-time"},
+    "recommendation": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["psutil", "python"],
+      "properties": {
+        "psutil": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {"enum": ["meets-documented-full-research-profile", "below-documented-full-research-profile"]}
+  },
+  "$defs": {
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["meets", "observed_shortfalls", "requirements"],
+      "properties": {
+        "meets": {"type": "boolean"},
+        "observed_shortfalls": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum_physical_cores", "minimum_ram_bytes", "minimum_volume_bytes", "storage_kind"],
+          "properties": {
+            "minimum_physical_cores": {"type": "integer", "minimum": 1},
+            "minimum_ram_bytes": {"type": "integer", "minimum": 1},
+            "minimum_volume_bytes": {"type": "integer", "minimum": 1},
+            "storage_kind": {"const": "nvme"}
+          }
+        }
+      }
+    }
+  }
+}

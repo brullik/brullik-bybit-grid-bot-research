@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/dataset/v1/completion-receipt.schema.json",
+  "title": "Dataset completion receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "manifest_sha256", "status", "committed_at_ms"],
+  "properties": {
+    "dataset_id": {"type": "string", "minLength": 1},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"const": "complete"},
+    "committed_at_ms": {"type": "integer", "minimum": 0}
+  }
+}

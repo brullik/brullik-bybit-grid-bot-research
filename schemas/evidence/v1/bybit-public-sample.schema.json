@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-public-sample.schema.json",
+  "title": "Bybit public market sample evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "content_sha256",
+    "datasets",
+    "evidence_schema",
+    "fetched_at_utc",
+    "request",
+    "sample_status",
+    "storage_policy"
+  ],
+  "properties": {
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "datasets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["funding_event", "mark_kline_1m", "trade_kline_1m"],
+      "properties": {
+        "funding_event": {"$ref": "#/$defs/summary"},
+        "mark_kline_1m": {"$ref": "#/$defs/summary"},
+        "trade_kline_1m": {"$ref": "#/$defs/summary"}
+      }
+    },
+    "evidence_schema": {"const": "grid.bybit-public-sample/v1"},
+    "fetched_at_utc": {"type": "string", "format": "date-time"},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "end_ms",
+        "funding_interval_minutes",
+        "instrument_metadata_sha256",
+        "instrument_metadata_source",
+        "start_ms",
+        "symbol"
+      ],
+      "properties": {
+        "category": {"const": "linear"},
+        "end_ms": {"type": "integer", "minimum": 0},
+        "funding_interval_minutes": {"type": "integer", "minimum": 1},
+        "instrument_metadata_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_metadata_source": {"const": "/v5/market/instruments-info"},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    },
+    "sample_status": {"enum": ["complete", "partial"]},
+    "storage_policy": {
+      "const": "summary-and-content-hash-only; raw market rows are not committed"
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_sha256",
+        "coverage_semantics",
+        "duplicate_timestamp_count",
+        "first_time_ms",
+        "last_time_ms",
+        "missing_expected_timestamp_count",
+        "missing_expected_timestamps_sample",
+        "requested_end_ms",
+        "requested_start_ms",
+        "row_count"
+      ],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_semantics": {"type": "string", "minLength": 1},
+        "duplicate_timestamp_count": {"type": "integer", "minimum": 0},
+        "first_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "last_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "missing_expected_timestamp_count": {"type": "integer", "minimum": 0},
+        "missing_expected_timestamps_sample": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "integer", "minimum": 0},
+          "uniqueItems": true
+        },
+        "requested_end_ms": {"type": "integer", "minimum": 0},
+        "requested_start_ms": {"type": "integer", "minimum": 0},
+        "row_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

@@ -43,6 +43,23 @@ Trade + mark at 40 bytes/row is roughly 294.5 GB before raw archives, feature st
 
 These are planning envelopes, not guaranteed final sizes. A representative compression benchmark must be completed before hardware purchase is treated as final.
 
+### Current-universe operational sizing
+
+The formal capacity envelope and a point-in-time operating estimate answer different questions.
+The former protects the architecture from future growth; the latter helps preflight a concrete
+bootstrap on a concrete volume.
+
+The receipt-pinned 2026-08-12 owner storage review observed 1,770,106,722 equal-coverage
+trade+mark lifecycle rows, `24.039621018%` of the formal row envelope. Applying the larger bounded
+real-market row width projected about 41.907 GiB for the first canonical build, 83.815 GiB for a
+full active-plus-building replacement, about 49 MiB for one day of current `Trading` instruments,
+and 1.484 GiB for a maximum 31-day partition rewrite.
+
+These values do not size raw tick-trade archives or download staging. Normal operation must append
+new closed intervals and repair only detected gaps; immutable replacement rewrites only affected
+monthly partitions. See
+[M1 current-universe capacity](../benchmarks/specifications/M1_CURRENT_UNIVERSE_CAPACITY.md).
+
 ## Reference execution profiles
 
 ### Profile A — local feasibility
