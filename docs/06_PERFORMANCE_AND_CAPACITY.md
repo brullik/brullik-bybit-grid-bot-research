@@ -47,6 +47,15 @@ they exclude retry, gap repair, staging, schema validation, canonical publicatio
 long-duration service variability. See
 [M1 bounded REST throughput](../benchmarks/specifications/M1_REST_THROUGHPUT.md).
 
+A read-only 2026-08-12 inventory of an older local Bybit downloader run found 14,548,890 contiguous
+trade-price 1m rows and 14,549,137 mark-price 1m rows for 123 symbols over 2026-04-09 through
+2026-07-08. Its 466 ZSTD Parquet files per candle family occupied 328,194,604 and 213,195,238 bytes,
+or 22.558051095 and 14.653462814 bytes per row. The retained legacy performance report records
+29,120,414 rows in 372.558 seconds, 29,445 requests, 79.035 effective requests/second, and zero
+failures. This corroborates practical laptop throughput and sub-terabyte 1m storage, but it is not
+current acceptance evidence: it lacks this repository's receipts, uses binary floating-point
+price columns, covers only three months/123 symbols, and cannot replace the canonical downloader.
+
 ## Storage model
 
 Storage depends on schema, encoding, compression, cardinality, and value distributions. Illustrative trade-price estimates:

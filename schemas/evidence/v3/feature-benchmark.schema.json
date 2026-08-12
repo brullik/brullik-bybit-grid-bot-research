@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v3/feature-benchmark.schema.json",
+  "title": "ADR-0019 qualified-host rolling feature benchmark evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["benchmark_schema", "command", "correctness", "hardware", "input", "limitations", "memory_gate", "profile", "reference_host_qualification", "result", "software", "status"],
+  "properties": {
+    "benchmark_schema": {"const": "grid.feature-benchmark/v3"},
+    "command": {"type": "string", "minLength": 1},
+    "correctness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core_rows_written_once", "future_rows_read", "halo_minutes", "semantics"],
+      "properties": {
+        "core_rows_written_once": {"const": true},
+        "future_rows_read": {"const": 0},
+        "halo_minutes": {"const": 1440},
+        "semantics": {"const": "rolling window uses only the current and prior closed rows"}
+      }
+    },
+    "hardware": {"$ref": "#/$defs/basicHardware"},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core_minutes_per_shard", "feature_columns", "instrument_count", "row_count", "synthetic_generator", "window_minutes"],
+      "properties": {
+        "core_minutes_per_shard": {"type": "integer", "minimum": 1},
+        "feature_columns": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "instrument_count": {"const": 700},
+        "row_count": {"type": "integer", "minimum": 99999900},
+        "synthetic_generator": {"const": "deterministic-range-v1"},
+        "window_minutes": {"const": 1440}
+      }
+    },
+    "limitations": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "memory_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configured_limit_percent", "passed", "peak_rss_percent_of_ram"],
+      "properties": {
+        "configured_limit_percent": {"type": "integer", "minimum": 1, "maximum": 70},
+        "passed": {"type": "boolean"},
+        "peak_rss_percent_of_ram": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "profile": {"const": "reference"},
+    "reference_host_qualification": {"$ref": "#/$defs/qualificationSummary"},
+    "result": {"$ref": "#/$defs/result"},
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["polars", "psutil", "python"],
+      "properties": {
+        "polars": {"type": "string", "minLength": 1},
+        "psutil": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {"enum": ["qualified-host-feature-candidate", "qualified-feature-rejected-memory"]}
+  },
+  "allOf": [{
+    "if": {"properties": {"memory_gate": {"properties": {"passed": {"const": true}}}}},
+    "then": {"properties": {"status": {"const": "qualified-host-feature-candidate"}}},
+    "else": {"properties": {"status": {"const": "qualified-feature-rejected-memory"}}}
+  }],
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^-?[0-9]+\\.[0-9]{9}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "basicHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "machine", "platform", "ram_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualifiedHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualificationMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_scratch_required_bytes", "canonical_rebuild_required_bytes", "feature_peak_rss_bytes", "feature_peak_rss_percent_of_ram", "free_space_headroom_bytes", "free_space_shortfall_bytes", "maximum_layout_peak_rss_bytes", "observed_free_bytes", "qualified", "required_free_bytes", "same_host_full_scale_evidence"],
+      "properties": {
+        "campaign_scratch_required_bytes": {"type": "integer", "minimum": 1},
+        "canonical_rebuild_required_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_percent_of_ram": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+        "free_space_headroom_bytes": {"type": "integer", "minimum": 0},
+        "free_space_shortfall_bytes": {"const": 0},
+        "maximum_layout_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "observed_free_bytes": {"type": "integer", "minimum": 1},
+        "qualified": {"const": true},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "same_host_full_scale_evidence": {"const": true}
+      }
+    },
+    "qualificationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "hardware", "qualified_at_utc", "qualification", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.reference-host-qualification/v1"},
+        "hardware": {"$ref": "#/$defs/qualifiedHardware"},
+        "qualified_at_utc": {"type": "string", "format": "date-time"},
+        "qualification": {"$ref": "#/$defs/qualificationMetrics"},
+        "status": {"const": "qualified-measured-reference-host"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aggregate_sums", "elapsed_seconds", "input_rows_including_halos", "maximum_shard_input_rows", "output_rows", "peak_rss_bytes", "rss_baseline_bytes", "rss_peak_delta_bytes", "shards", "throughput_core_rows_per_second", "warmup_null_rows"],
+      "properties": {
+        "aggregate_sums": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["range_position", "range_width", "rolling_atr", "rolling_high", "rolling_low", "rolling_mid", "rolling_volume_mean"],
+          "properties": {
+            "range_position": {"$ref": "#/$defs/decimal"},
+            "range_width": {"$ref": "#/$defs/decimal"},
+            "rolling_atr": {"$ref": "#/$defs/decimal"},
+            "rolling_high": {"$ref": "#/$defs/decimal"},
+            "rolling_low": {"$ref": "#/$defs/decimal"},
+            "rolling_mid": {"$ref": "#/$defs/decimal"},
+            "rolling_volume_mean": {"$ref": "#/$defs/decimal"}
+          }
+        },
+        "elapsed_seconds": {"$ref": "#/$defs/decimal"},
+        "input_rows_including_halos": {"type": "integer", "minimum": 1},
+        "maximum_shard_input_rows": {"type": "integer", "minimum": 1},
+        "output_rows": {"type": "integer", "minimum": 99999900},
+        "peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "rss_baseline_bytes": {"type": "integer", "minimum": 1},
+        "rss_peak_delta_bytes": {"type": "integer", "minimum": 0},
+        "shards": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["core_end_minute_exclusive", "core_start_minute", "elapsed_seconds", "halo_start_minute", "input_rows", "output_rows"],
+            "properties": {
+              "core_end_minute_exclusive": {"type": "integer", "minimum": 1},
+              "core_start_minute": {"type": "integer", "minimum": 0},
+              "elapsed_seconds": {"$ref": "#/$defs/decimal"},
+              "halo_start_minute": {"type": "integer", "minimum": 0},
+              "input_rows": {"type": "integer", "minimum": 1},
+              "output_rows": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        "throughput_core_rows_per_second": {"$ref": "#/$defs/decimal"},
+        "warmup_null_rows": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

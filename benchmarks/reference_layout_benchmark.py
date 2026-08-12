@@ -34,16 +34,24 @@ from benchmarks.layout_benchmark import (
     _verify_exact_numeric_schema,
     write_layout,
 )
+from benchmarks.measured_host_qualification import (
+    admit_measured_host_qualification,
+    recheck_admitted_qualification,
+)
 from benchmarks.reference_host import admit_reference_host
 
 PREPARATION_SCHEMA = "grid.reference-layout-preparation/v1"
 PREPARATION_SCHEMA_V2 = "grid.reference-layout-preparation/v2"
+PREPARATION_SCHEMA_V3 = "grid.reference-layout-preparation/v3"
 RUN_SCHEMA = "grid.reference-layout-run/v1"
 RUN_SCHEMA_V2 = "grid.reference-layout-run/v2"
+RUN_SCHEMA_V3 = "grid.reference-layout-run/v3"
 MEASUREMENT_SCHEMA = "grid.reference-layout-measurement/v1"
 MEASUREMENT_SCHEMA_V2 = "grid.reference-layout-measurement/v2"
+MEASUREMENT_SCHEMA_V3 = "grid.reference-layout-measurement/v3"
 FINAL_SCHEMA = "grid.reference-layout-benchmark/v1"
 FINAL_SCHEMA_V2 = "grid.reference-layout-benchmark/v2"
+FINAL_SCHEMA_V3 = "grid.reference-layout-benchmark/v3"
 DECISION_SCHEMA = "grid.layout-benchmark/v3"
 REAL_MARKET_SCHEMA = "grid.real-market-layout-skew/v1"
 SOURCE_SEMANTICS = "deterministic-exact-synthetic-v1"
@@ -114,10 +122,11 @@ def _safe_replace_work_dir(work_dir: Path) -> None:
         raise ValueError("refusing to replace a broad reference benchmark work directory")
     preparation_owned = verify_evidence(preparation) and _load_json(preparation).get(
         "preparation_schema"
-    ) in {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2}
+    ) in {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2, PREPARATION_SCHEMA_V3}
     run_owned = verify_evidence(run_marker) and _load_json(run_marker).get("run_schema") in {
         RUN_SCHEMA,
         RUN_SCHEMA_V2,
+        RUN_SCHEMA_V3,
     }
     if not preparation_owned and not run_owned:
         raise ValueError("refusing to replace work directory without a verified benchmark marker")
@@ -543,6 +552,7 @@ def prepare_reference_workdir(
     generation_chunk_rows: int,
     real_market_evidence: Path | None = None,
     reference_host_evidence: Path | None = None,
+    reference_host_qualification: Path | None = None,
     force: bool = False,
 ) -> Path:
     work_dir = work_dir.resolve()
@@ -555,23 +565,47 @@ def prepare_reference_workdir(
         if real_market_evidence is not None
         else None
     )
+    requested_host_admissions = sum(
+        path is not None for path in (reference_host_evidence, reference_host_qualification)
+    )
+    if profile == "reference" and (real_market is None or requested_host_admissions != 1):
+        raise ValueError(
+            "reference profile requires verified real-market evidence and exactly one "
+            "reference-host admission"
+        )
+    if profile != "reference" and (real_market is not None or requested_host_admissions != 0):
+        raise ValueError("smoke profile cannot claim real-market or reference-host evidence")
     reference_host = (
         _reference_host_input(reference_host_evidence, work_dir)
         if reference_host_evidence is not None
         else None
     )
-    if profile == "reference" and (real_market is None or reference_host is None):
-        raise ValueError(
-            "reference profile requires verified real-market and full-profile host evidence"
+    qualified_host = (
+        admit_measured_host_qualification(
+            reference_host_qualification,
+            required_volume_path=work_dir,
         )
-    if profile != "reference" and (real_market is not None or reference_host is not None):
-        raise ValueError("smoke profile cannot claim real-market or reference-host evidence")
+        if reference_host_qualification is not None
+        else None
+    )
     if work_dir.exists():
         if not force:
             raise FileExistsError(f"work directory exists: {work_dir}")
         _safe_replace_work_dir(work_dir)
-    preparation_schema = PREPARATION_SCHEMA_V2 if reference_host is not None else PREPARATION_SCHEMA
-    run_schema = RUN_SCHEMA_V2 if reference_host is not None else RUN_SCHEMA
+    preparation_schema = (
+        PREPARATION_SCHEMA_V3
+        if qualified_host is not None
+        else PREPARATION_SCHEMA_V2
+        if reference_host is not None
+        else PREPARATION_SCHEMA
+    )
+    run_schema = (
+        RUN_SCHEMA_V3
+        if qualified_host is not None
+        else RUN_SCHEMA_V2
+        if reference_host is not None
+        else RUN_SCHEMA
+    )
     software = _software()
     work_dir.mkdir(parents=True)
     run_payload = {
@@ -589,6 +623,9 @@ def prepare_reference_workdir(
         run_payload["real_market_evidence"] = real_market
     if reference_host is not None:
         run_payload["reference_host_evidence"] = reference_host
+        run_payload["software"] = software
+    if qualified_host is not None:
+        run_payload["reference_host_qualification"] = qualified_host
         run_payload["software"] = software
     publish_evidence(work_dir / "run.json", run_payload)
     datasets = []
@@ -657,6 +694,12 @@ def prepare_reference_workdir(
         payload["real_market_evidence"] = real_market
     if reference_host is not None:
         payload["reference_host_evidence"] = reference_host
+        payload["software"] = software
+    if qualified_host is not None:
+        recheck_admitted_qualification(qualified_host, required_volume_path=work_dir)
+        if _software() != software:
+            raise RuntimeError("layout benchmark software changed during preparation")
+        payload["reference_host_qualification"] = qualified_host
         payload["software"] = software
     publish_evidence(preparation_path, payload)
     return preparation_path
@@ -730,18 +773,25 @@ def measure_leg(
     preparation = _load_verified_any(
         preparation_path,
         "preparation_schema",
-        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2},
+        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2, PREPARATION_SCHEMA_V3},
     )
     preparation_schema = str(preparation["preparation_schema"])
-    measurement_schema = (
-        MEASUREMENT_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else MEASUREMENT_SCHEMA
-    )
+    measurement_schema = {
+        PREPARATION_SCHEMA: MEASUREMENT_SCHEMA,
+        PREPARATION_SCHEMA_V2: MEASUREMENT_SCHEMA_V2,
+        PREPARATION_SCHEMA_V3: MEASUREMENT_SCHEMA_V3,
+    }[preparation_schema]
     current_software = _software()
     if (
-        measurement_schema == MEASUREMENT_SCHEMA_V2
+        measurement_schema in {MEASUREMENT_SCHEMA_V2, MEASUREMENT_SCHEMA_V3}
         and preparation.get("software") != current_software
     ):
         raise ValueError("reference benchmark software changed after preparation")
+    qualified_host = preparation.get("reference_host_qualification")
+    if measurement_schema == MEASUREMENT_SCHEMA_V3:
+        if not isinstance(qualified_host, dict):
+            raise ValueError("qualified preparation has no host qualification")
+        recheck_admitted_qualification(qualified_host, required_volume_path=work_dir)
     profile = preparation.get("profile")
     if profile == "reference" and cache_proof != "reboot":
         raise ValueError("reference measurement requires reboot cache proof")
@@ -811,7 +861,11 @@ def measure_leg(
             "reboot-separated-first-read" if cache_proof == "reboot" else "unverified-smoke-read"
         ),
     }
-    if measurement_schema == MEASUREMENT_SCHEMA_V2:
+    if measurement_schema == MEASUREMENT_SCHEMA_V3:
+        if not isinstance(qualified_host, dict):
+            raise ValueError("qualified preparation has no host qualification")
+        recheck_admitted_qualification(qualified_host, required_volume_path=work_dir)
+    if measurement_schema in {MEASUREMENT_SCHEMA_V2, MEASUREMENT_SCHEMA_V3}:
         payload["preparation"]["preparation_schema"] = preparation_schema
         payload["software"] = current_software
     publish_evidence(output, payload)
@@ -825,13 +879,24 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
     preparation = _load_verified_any(
         preparation_path,
         "preparation_schema",
-        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2},
+        {PREPARATION_SCHEMA, PREPARATION_SCHEMA_V2, PREPARATION_SCHEMA_V3},
     )
     preparation_schema = str(preparation["preparation_schema"])
-    measurement_schema = (
-        MEASUREMENT_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else MEASUREMENT_SCHEMA
-    )
-    final_schema = FINAL_SCHEMA_V2 if preparation_schema == PREPARATION_SCHEMA_V2 else FINAL_SCHEMA
+    measurement_schema = {
+        PREPARATION_SCHEMA: MEASUREMENT_SCHEMA,
+        PREPARATION_SCHEMA_V2: MEASUREMENT_SCHEMA_V2,
+        PREPARATION_SCHEMA_V3: MEASUREMENT_SCHEMA_V3,
+    }[preparation_schema]
+    final_schema = {
+        PREPARATION_SCHEMA: FINAL_SCHEMA,
+        PREPARATION_SCHEMA_V2: FINAL_SCHEMA_V2,
+        PREPARATION_SCHEMA_V3: FINAL_SCHEMA_V3,
+    }[preparation_schema]
+    qualified_host = preparation.get("reference_host_qualification")
+    if final_schema == FINAL_SCHEMA_V3:
+        if not isinstance(qualified_host, dict):
+            raise ValueError("qualified preparation has no host qualification")
+        recheck_admitted_qualification(qualified_host, required_volume_path=work_dir)
     measurement_paths = [
         work_dir / f"measurement-{engine}-{query}.json"
         for engine in ("duckdb", "polars")
@@ -871,7 +936,7 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
     if any(item.get("hardware") != hardware for item in measurements):
         raise ValueError("reference benchmark hardware changed between stages")
     software = preparation.get("software")
-    if final_schema == FINAL_SCHEMA_V2 and any(
+    if final_schema in {FINAL_SCHEMA_V2, FINAL_SCHEMA_V3} and any(
         item.get("software") != software for item in measurements
     ):
         raise ValueError("reference benchmark software changed between stages")
@@ -906,7 +971,7 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
             (
                 "Timed layout rows are deterministic exact synthetic data; bounded real-market "
                 "physical skew is linked separately."
-                if final_schema == FINAL_SCHEMA_V2
+                if final_schema in {FINAL_SCHEMA_V2, FINAL_SCHEMA_V3}
                 else (
                     "The input is deterministic exact synthetic data, not real-market-skew "
                     "evidence."
@@ -936,16 +1001,24 @@ def finalize_reference_evidence(*, work_dir: Path, output: Path, force: bool = F
             else (
                 "reference-protocol-candidate"
                 if final_schema == FINAL_SCHEMA_V2
+                else "qualified-reference-protocol-candidate"
+                if final_schema == FINAL_SCHEMA_V3
                 else "reference-synthetic-protocol-candidate"
             )
         ),
     }
-    if final_schema == FINAL_SCHEMA_V2:
+    if final_schema in {FINAL_SCHEMA_V2, FINAL_SCHEMA_V3}:
         payload["preparation"]["preparation_schema"] = preparation_schema
         payload["preparation"]["real_market_evidence"] = preparation["real_market_evidence"]
-        payload["preparation"]["reference_host_evidence"] = preparation["reference_host_evidence"]
         payload["preparation"]["software"] = software
         payload["software"] = software
+    if final_schema == FINAL_SCHEMA_V2:
+        payload["preparation"]["reference_host_evidence"] = preparation["reference_host_evidence"]
+    if final_schema == FINAL_SCHEMA_V3:
+        if not isinstance(qualified_host, dict):
+            raise ValueError("qualified preparation has no host qualification")
+        recheck_admitted_qualification(qualified_host, required_volume_path=work_dir)
+        payload["preparation"]["reference_host_qualification"] = qualified_host
     publish_evidence(output, payload, force=force)
     return output
 
@@ -967,6 +1040,7 @@ def arguments() -> argparse.Namespace:
     prepare.add_argument("--generation-chunk-rows", type=int, default=1_000_000)
     prepare.add_argument("--real-market-evidence", type=Path)
     prepare.add_argument("--reference-host-evidence", type=Path)
+    prepare.add_argument("--reference-host-qualification", type=Path)
     prepare.add_argument("--force", action="store_true")
 
     measure = commands.add_parser("measure")
@@ -997,6 +1071,7 @@ def main() -> int:
             generation_chunk_rows=args.generation_chunk_rows,
             real_market_evidence=args.real_market_evidence,
             reference_host_evidence=args.reference_host_evidence,
+            reference_host_qualification=args.reference_host_qualification,
             force=args.force,
         )
     elif args.command_name == "measure":

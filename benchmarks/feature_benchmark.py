@@ -17,6 +17,7 @@ import polars as pl
 import psutil  # type: ignore[import-untyped]
 from grid_data.evidence import preflight_evidence, publish_evidence
 
+from benchmarks.measured_host_qualification import admit_measured_host_qualification
 from benchmarks.reference_host import admit_reference_host
 
 BASE_TIME_MS = 1_767_225_600_000  # 2026-01-01T00:00:00Z
@@ -37,6 +38,7 @@ FEATURE_COLUMNS = (
 )
 FEATURE_SCHEMA_V1 = "grid.feature-benchmark/v1"
 FEATURE_SCHEMA_V2 = "grid.feature-benchmark/v2"
+FEATURE_SCHEMA_V3 = "grid.feature-benchmark/v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,6 +327,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--window-minutes", type=int, default=DEFAULT_WINDOW_MINUTES)
     parser.add_argument("--memory-limit-percent", type=int, default=70)
     parser.add_argument("--reference-host-evidence", type=Path)
+    parser.add_argument("--reference-host-qualification", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
@@ -340,6 +343,7 @@ def run_feature_benchmark(
     memory_limit_percent: int,
     output: Path,
     reference_host_evidence: Path | None,
+    reference_host_qualification: Path | None = None,
     force: bool = False,
     command: str | None = None,
 ) -> dict[str, Any]:
@@ -354,12 +358,25 @@ def run_feature_benchmark(
         memory_limit_percent,
     )
     reference_host: dict[str, Any] | None = None
+    qualified_host: dict[str, Any] | None = None
     if profile == "reference":
-        if reference_host_evidence is None:
-            raise ValueError("reference profile requires --reference-host-evidence")
-        reference_host = admit_reference_host(reference_host_evidence)
-    elif reference_host_evidence is not None:
-        raise ValueError("--reference-host-evidence is allowed only with --profile reference")
+        admission_count = sum(
+            item is not None for item in (reference_host_evidence, reference_host_qualification)
+        )
+        if admission_count != 1:
+            raise ValueError(
+                "reference profile requires exactly one of --reference-host-evidence or "
+                "--reference-host-qualification"
+            )
+        if reference_host_evidence is not None:
+            reference_host = admit_reference_host(reference_host_evidence)
+        elif reference_host_qualification is not None:
+            qualified_host = admit_measured_host_qualification(
+                reference_host_qualification,
+                required_volume_path=output,
+            )
+    elif reference_host_evidence is not None or reference_host_qualification is not None:
+        raise ValueError("reference-host admission is allowed only with --profile reference")
 
     software = _software()
     output, _receipt = preflight_evidence(output, force=force)
@@ -381,6 +398,17 @@ def run_feature_benchmark(
             raise RuntimeError("reference workstation evidence changed during the feature run")
         if _software() != software:
             raise RuntimeError("feature benchmark software changed during the reference run")
+    if qualified_host is not None:
+        if reference_host_qualification is None:
+            raise RuntimeError("reference host qualification path was lost during the feature run")
+        final_qualified_host = admit_measured_host_qualification(
+            reference_host_qualification,
+            required_volume_path=output,
+        )
+        if final_qualified_host != qualified_host:
+            raise RuntimeError("reference host qualification changed during the feature run")
+        if _software() != software:
+            raise RuntimeError("feature benchmark software changed during the reference run")
 
     is_reference = profile == "reference"
     limitations = [
@@ -395,7 +423,13 @@ def run_feature_benchmark(
             "approval of P-005 or Gate 1."
         )
     payload = {
-        "benchmark_schema": FEATURE_SCHEMA_V2 if is_reference else FEATURE_SCHEMA_V1,
+        "benchmark_schema": (
+            FEATURE_SCHEMA_V3
+            if qualified_host is not None
+            else FEATURE_SCHEMA_V2
+            if is_reference
+            else FEATURE_SCHEMA_V1
+        ),
         "command": shlex.join(sys.argv) if command is None else command,
         "correctness": {
             "core_rows_written_once": True,
@@ -422,10 +456,14 @@ def run_feature_benchmark(
         "result": result,
         "software": software,
         "status": (
-            "reference-host-feature-candidate"
-            if is_reference and memory_passed
+            "qualified-host-feature-candidate"
+            if qualified_host is not None and memory_passed
+            else "qualified-feature-rejected-memory"
+            if qualified_host is not None
+            else "reference-host-feature-candidate"
+            if reference_host is not None and memory_passed
             else "reference-feature-rejected-memory"
-            if is_reference
+            if reference_host is not None
             else {
                 "scaled": "scaled-only",
                 "smoke": "smoke-only",
@@ -434,6 +472,8 @@ def run_feature_benchmark(
     }
     if reference_host is not None:
         payload["reference_host_evidence"] = reference_host
+    if qualified_host is not None:
+        payload["reference_host_qualification"] = qualified_host
     publish_evidence(output, payload, force=force)
     return payload
 
@@ -452,6 +492,7 @@ def main() -> int:
         memory_limit_percent=args.memory_limit_percent,
         output=args.output,
         reference_host_evidence=args.reference_host_evidence,
+        reference_host_qualification=args.reference_host_qualification,
         force=args.force,
     )
     return 0 if payload["memory_gate"]["passed"] else 2

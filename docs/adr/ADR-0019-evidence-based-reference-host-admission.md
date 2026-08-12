@@ -1,6 +1,6 @@
 # ADR-0019: Evidence-Based Reference-Host Admission
 
-- Status: accepted by owner; implementation pending
+- Status: accepted by owner; qualification and workload admission implemented
 - Date: 2026-08-12
 - Supersedes in part: ADR-0011, ADR-0013, ADR-0015, and ADR-0018 (fixed hardware thresholds only)
 

@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v3/reference-layout-benchmark.schema.json",
+  "title": "ADR-0019 qualified-host staged reference layout benchmark evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["benchmark_schema", "cache_semantics", "command", "hardware", "limitations", "measurements", "preparation", "profile", "software", "status"],
+  "properties": {
+    "benchmark_schema": {"const": "grid.reference-layout-benchmark/v3"},
+    "cache_semantics": {"type": "string", "minLength": 1},
+    "command": {"type": "string", "minLength": 1},
+    "hardware": {"$ref": "#/$defs/basicHardware"},
+    "limitations": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "measurements": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/measurement"}},
+    "preparation": {"$ref": "#/$defs/preparation"},
+    "profile": {"const": "reference"},
+    "software": {"$ref": "#/$defs/software"},
+    "status": {"const": "qualified-reference-protocol-candidate"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+    "basicHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "machine", "platform", "ram_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualifiedHardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_count_logical", "cpu_count_physical", "cpu_model", "machine", "platform", "ram_bytes", "storage_kind", "storage_model", "volume_free_bytes", "volume_root", "volume_total_bytes"],
+      "properties": {
+        "cpu_count_logical": {"type": "integer", "minimum": 1},
+        "cpu_count_physical": {"type": "integer", "minimum": 1},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "storage_kind": {"enum": ["nvme", "ssd"]},
+        "storage_model": {"type": "string", "minLength": 1},
+        "volume_free_bytes": {"type": "integer", "minimum": 0},
+        "volume_root": {"type": "string", "minLength": 1},
+        "volume_total_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "qualificationMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_scratch_required_bytes", "canonical_rebuild_required_bytes", "feature_peak_rss_bytes", "feature_peak_rss_percent_of_ram", "free_space_headroom_bytes", "free_space_shortfall_bytes", "maximum_layout_peak_rss_bytes", "observed_free_bytes", "qualified", "required_free_bytes", "same_host_full_scale_evidence"],
+      "properties": {
+        "campaign_scratch_required_bytes": {"type": "integer", "minimum": 1},
+        "canonical_rebuild_required_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "feature_peak_rss_percent_of_ram": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{9}$"},
+        "free_space_headroom_bytes": {"type": "integer", "minimum": 0},
+        "free_space_shortfall_bytes": {"const": 0},
+        "maximum_layout_peak_rss_bytes": {"type": "integer", "minimum": 1},
+        "observed_free_bytes": {"type": "integer", "minimum": 1},
+        "qualified": {"const": true},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "same_host_full_scale_evidence": {"const": true}
+      }
+    },
+    "qualificationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "evidence_schema", "hardware", "qualified_at_utc", "qualification", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.reference-host-qualification/v1"},
+        "hardware": {"$ref": "#/$defs/qualifiedHardware"},
+        "qualified_at_utc": {"type": "string", "format": "date-time"},
+        "qualification": {"$ref": "#/$defs/qualificationMetrics"},
+        "status": {"const": "qualified-measured-reference-host"}
+      }
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duckdb", "polars", "psutil", "pyarrow", "python"],
+      "properties": {
+        "duckdb": {"type": "string", "minLength": 1},
+        "polars": {"type": "string", "minLength": 1},
+        "psutil": {"type": "string", "minLength": 1},
+        "pyarrow": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "timedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_path", "first_seconds", "observed_row_count", "post_scan_content_verified", "pre_scan_metadata_verified", "result_sha256", "warm_seconds"],
+      "properties": {
+        "dataset_path": {"type": "string", "minLength": 1},
+        "first_seconds": {"$ref": "#/$defs/metric"},
+        "observed_row_count": {"type": "integer", "minimum": 1},
+        "post_scan_content_verified": {"const": true},
+        "pre_scan_metadata_verified": {"const": true},
+        "result_sha256": {"$ref": "#/$defs/sha256"},
+        "warm_seconds": {"$ref": "#/$defs/metric"}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boot_marker", "cache_proof", "command", "engine", "hardware", "measurement_schema", "measurements", "preparation", "profile", "query_shape", "software", "status"],
+      "properties": {
+        "boot_marker": {"type": "string", "format": "date-time"},
+        "cache_proof": {"const": "reboot"},
+        "command": {"type": "string", "minLength": 1},
+        "engine": {"enum": ["duckdb", "polars"]},
+        "hardware": {"$ref": "#/$defs/basicHardware"},
+        "measurement_schema": {"const": "grid.reference-layout-measurement/v3"},
+        "measurements": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/timedResult"}},
+        "preparation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "artifact_sha256", "preparation_schema"],
+          "properties": {
+            "artifact": {"const": "preparation.json"},
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "preparation_schema": {"const": "grid.reference-layout-preparation/v3"}
+          }
+        },
+        "profile": {"const": "reference"},
+        "query_shape": {"enum": ["single-symbol", "universe-month"]},
+        "software": {"$ref": "#/$defs/software"},
+        "status": {"const": "reboot-separated-first-read"}
+      }
+    },
+    "preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "boot_marker", "datasets", "decision_evidence", "input", "preparation_schema", "real_market_evidence", "reference_host_qualification", "software", "source_semantics"],
+      "properties": {
+        "artifact": {"const": "preparation.json"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "boot_marker": {"type": "string", "format": "date-time"},
+        "datasets": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["dataset_path", "layout", "maintenance", "manifest", "write"],
+            "properties": {
+              "dataset_path": {"type": "string", "minLength": 1},
+              "maintenance": {
+                "type": "object",
+                "required": ["logical_parity_verified", "source_tree_unchanged"],
+                "properties": {"logical_parity_verified": {"const": true}, "source_tree_unchanged": {"const": true}}
+              },
+              "write": {
+                "type": "object",
+                "required": ["numeric_schema_verified", "target_file_exercised"],
+                "properties": {"numeric_schema_verified": {"const": true}, "target_file_exercised": {"const": true}}
+              }
+            }
+          }
+        },
+        "decision_evidence": {"type": "object"},
+        "input": {
+          "type": "object",
+          "required": ["generation_chunk_rows", "instrument_count", "row_count", "row_group_rows"],
+          "properties": {
+            "generation_chunk_rows": {"type": "integer", "minimum": 1},
+            "instrument_count": {"const": 700},
+            "row_count": {"type": "integer", "minimum": 99999900},
+            "row_group_rows": {"type": "integer", "minimum": 1}
+          }
+        },
+        "preparation_schema": {"const": "grid.reference-layout-preparation/v3"},
+        "real_market_evidence": {"type": "object"},
+        "reference_host_qualification": {"$ref": "#/$defs/qualificationSummary"},
+        "software": {"$ref": "#/$defs/software"},
+        "source_semantics": {"const": "deterministic-exact-synthetic-v1+bounded-real-market-layout-skew-v1"}
+      }
+    }
+  }
+}

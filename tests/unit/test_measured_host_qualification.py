@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -213,3 +214,88 @@ def test_invalid_source_does_not_replace_existing_qualification(tmp_path: Path) 
 
     assert load_json(output) == {"preserved": True}
     assert verify_evidence(output)
+
+
+def test_admit_measured_qualification_rechecks_current_identity_and_free_space(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = tmp_path / "qualification.json"
+    publish_evidence(artifact, build())
+    hardware = observed_hardware()
+    monkeypatch.setattr(
+        qualification,
+        "current_hardware",
+        lambda: qualification._basic_hardware(hardware),
+    )
+    monkeypatch.setattr(qualification, "cpu_model", lambda: hardware["cpu_model"])
+    monkeypatch.setattr(
+        qualification,
+        "storage_identity",
+        lambda _volume: (hardware["storage_kind"], hardware["storage_model"]),
+    )
+    monkeypatch.setattr(
+        qualification.psutil,
+        "disk_usage",
+        lambda _volume: SimpleNamespace(
+            free=hardware["volume_free_bytes"],
+            total=hardware["volume_total_bytes"],
+        ),
+    )
+    monkeypatch.setattr(
+        qualification,
+        "volume_root_for_path",
+        lambda _path: Path(hardware["volume_root"]).resolve(),
+    )
+
+    admitted = qualification.admit_measured_host_qualification(
+        artifact,
+        required_volume_path=tmp_path,
+        admitted_at=QUALIFIED_AT,
+    )
+
+    assert admitted["artifact_sha256"]
+    assert admitted["status"] == "qualified-measured-reference-host"
+
+
+def test_admit_measured_qualification_rejects_free_space_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = tmp_path / "qualification.json"
+    publish_evidence(artifact, build())
+    hardware = observed_hardware()
+    monkeypatch.setattr(
+        qualification,
+        "current_hardware",
+        lambda: qualification._basic_hardware(hardware),
+    )
+    monkeypatch.setattr(qualification, "cpu_model", lambda: hardware["cpu_model"])
+    monkeypatch.setattr(
+        qualification,
+        "storage_identity",
+        lambda _volume: (hardware["storage_kind"], hardware["storage_model"]),
+    )
+    monkeypatch.setattr(
+        qualification.psutil,
+        "disk_usage",
+        lambda _volume: SimpleNamespace(
+            free=100_000_000_000,
+            total=hardware["volume_total_bytes"],
+        ),
+    )
+
+    with pytest.raises(ValueError, match="no longer has the required"):
+        qualification.admit_measured_host_qualification(
+            artifact,
+            admitted_at=QUALIFIED_AT,
+        )
+
+
+def test_admit_measured_qualification_rejects_stale_artifact(tmp_path: Path) -> None:
+    artifact = tmp_path / "qualification.json"
+    publish_evidence(artifact, build())
+
+    with pytest.raises(ValueError, match="older than 24 hours"):
+        qualification.admit_measured_host_qualification(
+            artifact,
+            admitted_at=datetime(2026, 8, 14, 16, 0, tzinfo=UTC),
+        )

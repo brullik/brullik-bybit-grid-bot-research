@@ -33,6 +33,18 @@ python benchmarks/feature_benchmark.py `
   --output D:\grid-reference\m1-feature-reference.json --force
 ```
 
+The command above preserves the immutable legacy v2 path. The ADR-0019 successor consumes the
+fresh measured-host qualification instead:
+
+```powershell
+python benchmarks/feature_benchmark.py `
+  --profile reference --rows 100000000 --instruments 700 `
+  --core-minutes 2880 --window-minutes 1440 `
+  --reference-host-qualification `
+    benchmarks/results/m1-owner-measured-host-qualification-20260812.json `
+  --output D:\grid-reference\m1-feature-qualified-reference.json --force
+```
+
 Because 100,000,000 is not divisible by 700, the recorded core row count is 99,999,900. The
 profile threshold applies to the requested scale; the exact normalized count is always retained in
 the artifact. The reference command requires a receipt-verified snapshot from the current host
@@ -42,6 +54,10 @@ those fixed thresholds for a future append-only contract with same-host 99,999,9
 the 70% memory gate, suitable local SSD/NVMe identity, and evidence-derived current free space.
 It verifies the host before and after the workload and freezes Polars, psutil, and Python versions.
 A memory-passing v2 run is `reference-host-feature-candidate`; owner/PM acceptance is still required.
+The append-only v3 command requires exactly one legacy or qualified-host admission, requires the
+qualification to be no more than 24 hours old, binds the output volume, rechecks current identity
+and required free space before and after the workload, and publishes
+`qualified-host-feature-candidate` only when the unchanged 70% memory gate passes.
 
 The checked-in `m1-feature-reference-candidate.json` is an immutable v1 artifact produced before
 reference-host admission existed. It remains useful 100-million-row local scale evidence, but its
@@ -74,10 +90,13 @@ ADR-0010 decision, and real-market artifacts without changing v1-v3 semantics; s
   cannot change past features.
 - Every core row is counted exactly once; halo rows are read-only and excluded from output counts.
 - Peak RSS is sampled every 10 ms and compared with the configured 70% RAM limit.
-- `smoke-only`, `scaled-only`, legacy `reference-scale-candidate`, and v2
-  `reference-host-feature-candidate` are evidence inputs, not a Gate 1 or P-005 owner decision.
+- `smoke-only`, `scaled-only`, legacy `reference-scale-candidate`, v2
+  `reference-host-feature-candidate`, and v3 `qualified-host-feature-candidate` are evidence
+  inputs, not a Gate 1 or P-005 owner decision.
 - A v2 run that exceeds its configured memory limit is preserved as
   `reference-feature-rejected-memory` and exits non-successfully.
+- A v3 run that exceeds the limit is preserved as `qualified-feature-rejected-memory` and exits
+  non-successfully.
 - Synthetic results do not justify production compression, skew, or hardware-purchase claims.
 - The capacity projection verifies all three source receipts and retains their artifact hashes.
   It reports both the measured synthetic extrapolation and the documented 24/40/64-byte planning
