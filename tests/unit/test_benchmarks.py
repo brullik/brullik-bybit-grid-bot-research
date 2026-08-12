@@ -921,6 +921,7 @@ def test_workstation_snapshot_resolves_the_measured_volume_device(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     requested_values: list[str] = []
+    monkeypatch.setattr("benchmarks.workstation_snapshot.sys.platform", "win32")
     monkeypatch.setattr(
         "benchmarks.workstation_snapshot.windows_volume_device_number",
         lambda _volume: 2,
