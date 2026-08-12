@@ -98,6 +98,8 @@ Owns bounded current market data, signal evaluation from one promoted release, r
 - `bybit-private` is not an allowed dependency of data, research, or release.
 - `simulator` is not an allowed dependency of live.
 - `market-store` is not an allowed dependency of live.
+- `market-store` owns the exact Arrow/Parquet layout contract and has no network dependency;
+  acquisition and publication orchestration remain in `grid-data`.
 - `feature-kernel` supports batch/live parity but has no storage or network orchestration.
 - Contracts are backward-compatible within a declared support window.
 

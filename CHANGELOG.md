@@ -4,6 +4,12 @@ All notable project-governance and architecture changes are recorded here.
 
 ## Unreleased
 
+### Added
+
+- Independently installable `grid-market-store` package with the accepted exact-hybrid Arrow
+  schema, deterministic eight-bucket mapping, UTC month partition paths, strict no-rounding
+  conversion, and cross-platform physical-contract tests.
+
 ### Governance
 
 - Owner/PM acceptance of Gate 1 and the Phase 2 canonical one-minute market-data MVP.
