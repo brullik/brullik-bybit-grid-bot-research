@@ -38,6 +38,20 @@ def test_data_has_no_private_or_live_import() -> None:
     assert not {name for name in imported if name.startswith(forbidden_prefixes)}
 
 
+def test_market_store_has_no_network_research_private_or_live_import() -> None:
+    imported = imports_under(ROOT / "packages" / "market-store" / "src")
+    forbidden_prefixes = (
+        "grid_bybit_public",
+        "grid_bybit_private",
+        "grid_research",
+        "grid_live",
+        "urllib",
+        "requests",
+        "httpx",
+    )
+    assert not {name for name in imported if name.startswith(forbidden_prefixes)}
+
+
 def test_research_and_release_have_no_private_import() -> None:
     for application in ("research", "release"):
         imported = imports_under(ROOT / "apps" / application / "src")
@@ -84,3 +98,7 @@ def test_each_application_declares_its_own_build_metadata() -> None:
 def test_each_bybit_adapter_declares_its_own_build_metadata() -> None:
     for adapter in ("bybit-public", "bybit-private"):
         assert (ROOT / "packages" / adapter / "pyproject.toml").is_file()
+
+
+def test_market_store_declares_its_own_build_metadata() -> None:
+    assert (ROOT / "packages" / "market-store" / "pyproject.toml").is_file()
