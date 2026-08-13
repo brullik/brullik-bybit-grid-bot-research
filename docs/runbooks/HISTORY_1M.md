@@ -573,6 +573,11 @@ after preflight passes. Writers run sequentially; each emits progress JSON only 
 canonical completion receipt verifies. If interrupted, rerun the same command: already committed
 datasets are hash-verified and reused, never rewritten.
 
+Aggregate preflight decodes each verified Landing page once through the typed child handoff and
+releases that child's Arrow batch before moving to the next child. It is still intentionally a
+full exact verification and can take several minutes for multi-million-row campaigns. A long
+runtime with active CPU is not permission to skip the preflight or lower its digest/receipt checks.
+
 Verify the aggregate receipt and every source/canonical relationship independently:
 
 ```powershell

@@ -240,7 +240,11 @@ before `--execute`; successful writing is not lifecycle/gap acceptance.
 ADR-0039 composes that adapter with the funding equivalent for a completed ADR-0038 campaign. Its
 runtime aggregate plan lives under `.publication-campaigns`, never embeds Arrow batches, and uses
 each canonical completion receipt as the resume marker. It neither merges partitions nor changes
-the immutable single-child layout.
+the immutable single-child layout. Aggregate preflight uses a typed verified-child handoff: each
+Landing page is digest-checked and decoded once for its child, the resulting batch is used only
+for that child's publication preflight, and no batch survives into the aggregate plan. Execution
+still performs a fresh complete child verification immediately before that child can mutate the
+canonical store, and final aggregate verification remains independent.
 
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact

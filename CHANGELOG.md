@@ -19,6 +19,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Canonical campaign publication now hands each typed, receipt-verified Landing child directly
+  from its single page-verification pass into bounded publication preflight. This removes repeated
+  JSON/Decimal/Arrow decoding while preserving every page digest, manifest, receipt, source
+  substitution, and final aggregate lineage check.
 - Public REST transport now classifies direct stdlib connection/protocol failures such as
   `RemoteDisconnected`, `IncompleteRead`, and connection resets as bounded retryable transport
   errors. Non-retryable HTTP responses remain immediate failures.

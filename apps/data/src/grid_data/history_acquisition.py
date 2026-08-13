@@ -22,6 +22,7 @@ from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha
 from grid_contracts.market import MINUTE_MS, Candle1m, DatasetType, MarkCandle1m
 from grid_market_store import (
     MAX_MEMORY_PERCENT,
+    CanonicalCandleBatch,
     CapacityBudget,
     HostSnapshot,
     build_canonical_candle_batch,
@@ -818,8 +819,12 @@ def execute_history_job(
     return verify_completed_history_job(plan.paths.job_root)
 
 
-def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
-    """Verify plan, page receipts, completion manifest, and the exact file allowlist."""
+def _verify_completed_history_job(
+    job_root: Path,
+    *,
+    load_batch: bool,
+) -> tuple[CompletedHistoryJob, CanonicalCandleBatch | None]:
+    """Verify once and optionally build the exact batch from those same verified page bytes."""
 
     root = job_root.resolve()
     if not root.is_dir() or root.is_symlink() or (root / ".run-lock").exists():
@@ -892,6 +897,8 @@ def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
     total_rows = 0
     total_attempts = 0
     empty_pages = 0
+    logical_rows: list[Candle1m | MarkCandle1m] | None = [] if load_batch else None
+    batch_dataset_type: DatasetType | None = None
     expected_files = {
         "plan.json",
         "plan.receipt.json",
@@ -911,6 +918,21 @@ def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
         page = root / "pages" / task.artifact_name
         payload, digest = _verify_artifact(page)
         _validate_page_payload(payload, task)
+        if logical_rows is not None:
+            raw_rows = cast(list[list[str]], payload["rows"])
+            logical_rows.extend(
+                _logical_rows(
+                    task,
+                    [tuple(item) for item in raw_rows],
+                    ingestion_id=f"bybit-page-sha256:{digest}",
+                )
+            )
+            current_type = (
+                DatasetType.TRADE_KLINE_1M if task.kind == "trade" else DatasetType.MARK_KLINE_1M
+            )
+            batch_dataset_type = current_type if batch_dataset_type is None else batch_dataset_type
+            if current_type is not batch_dataset_type:
+                raise HistoryAcquisitionError("completed history job mixes dataset types")
         if (
             raw_page.get("artifact") != f"pages/{page.name}"
             or raw_page.get("artifact_sha256") != digest
@@ -974,7 +996,7 @@ def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
     }
     if actual_directories != {"pages"}:
         raise HistoryAcquisitionError("history job contains orphan or missing directories")
-    return CompletedHistoryJob(
+    completed = CompletedHistoryJob(
         job_root=root,
         plan_path=plan_path,
         manifest_path=manifest_path,
@@ -984,36 +1006,39 @@ def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
         row_count=total_rows,
     )
 
+    batch: CanonicalCandleBatch | None = None
+    if logical_rows is not None:
+        if batch_dataset_type is None:
+            raise HistoryAcquisitionError("completed history job has no task dataset type")
+        try:
+            batch = build_canonical_candle_batch(logical_rows, batch_dataset_type)
+        except ValueError as error:
+            raise HistoryAcquisitionError(
+                "completed pages do not form one canonical batch"
+            ) from error
+    return completed, batch
 
-def load_completed_history_batch(job_root: Path):  # type: ignore[no-untyped-def]
+
+def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
+    """Verify plan, page receipts, completion manifest, and the exact file allowlist."""
+
+    completed, _batch = _verify_completed_history_job(job_root, load_batch=False)
+    return completed
+
+
+def load_verified_completed_history_batch(
+    job_root: Path,
+) -> tuple[CompletedHistoryJob, CanonicalCandleBatch]:
+    """Verify and convert a completed job in one linear page read."""
+
+    completed, batch = _verify_completed_history_job(job_root, load_batch=True)
+    if batch is None:  # pragma: no cover - guarded by load_batch=True
+        raise HistoryAcquisitionError("completed history batch was not built")
+    return completed, batch
+
+
+def load_completed_history_batch(job_root: Path) -> CanonicalCandleBatch:
     """Verify and convert one completed month/bucket job into the exact Arrow batch."""
 
-    completed = verify_completed_history_job(job_root)
-    plan = _load_object(completed.plan_path)
-    raw_tasks = cast(list[dict[str, object]], plan["tasks"])
-    rows: list[Candle1m | MarkCandle1m] = []
-    dataset_type: DatasetType | None = None
-    for raw_task in raw_tasks:
-        task = HistoryPageTask(**raw_task)  # type: ignore[arg-type]
-        page = completed.job_root / "pages" / task.artifact_name
-        payload, digest = _verify_artifact(page)
-        raw_rows = cast(list[list[str]], payload["rows"])
-        rows.extend(
-            _logical_rows(
-                task,
-                [tuple(item) for item in raw_rows],
-                ingestion_id=f"bybit-page-sha256:{digest}",
-            )
-        )
-        current_type = (
-            DatasetType.TRADE_KLINE_1M if task.kind == "trade" else DatasetType.MARK_KLINE_1M
-        )
-        dataset_type = current_type if dataset_type is None else dataset_type
-        if current_type is not dataset_type:
-            raise HistoryAcquisitionError("completed history job mixes dataset types")
-    if dataset_type is None:
-        raise HistoryAcquisitionError("completed history job has no task dataset type")
-    try:
-        return build_canonical_candle_batch(rows, dataset_type)
-    except ValueError as error:
-        raise HistoryAcquisitionError("completed pages do not form one canonical batch") from error
+    _completed, batch = load_verified_completed_history_batch(job_root)
+    return batch

@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import grid_data.funding_acquisition as funding_acquisition
+import grid_data.history_acquisition as history_acquisition
+import grid_data.history_campaign as history_campaign
 import pytest
 from grid_contracts.canonical import sha256_file
 from grid_data.history_campaign import HistoryCampaignError
@@ -120,6 +123,50 @@ def test_publication_campaign_preflight_is_aggregate_bounded_and_no_mutation(
         "receipt_resume": True,
         "tick_rows_requested": False,
     }
+
+
+def test_publication_preflight_uses_one_verified_page_read_per_child(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    history_page_reads: dict[Path, int] = {}
+    funding_page_reads: dict[Path, int] = {}
+    original_history_verify = history_acquisition._verify_artifact
+    original_funding_verify = funding_acquisition._verify_artifact
+
+    def count_history(path: Path):  # type: ignore[no-untyped-def]
+        if path.parent.name == "pages" and path.suffix == ".json":
+            history_page_reads[path] = history_page_reads.get(path, 0) + 1
+        return original_history_verify(path)
+
+    def count_funding(path: Path):  # type: ignore[no-untyped-def]
+        if path.parent.name == "pages" and path.suffix == ".json":
+            funding_page_reads[path] = funding_page_reads.get(path, 0) + 1
+        return original_funding_verify(path)
+
+    monkeypatch.setattr(history_acquisition, "_verify_artifact", count_history)
+    monkeypatch.setattr(funding_acquisition, "_verify_artifact", count_funding)
+    monkeypatch.setattr(
+        history_campaign,
+        "verify_completed_history_job",
+        lambda _path: (_ for _ in ()).throw(
+            AssertionError("campaign bypassed its typed child verifier")
+        ),
+    )
+    monkeypatch.setattr(
+        history_campaign,
+        "verify_completed_funding_job",
+        lambda _path: (_ for _ in ()).throw(
+            AssertionError("campaign bypassed its typed child verifier")
+        ),
+    )
+
+    plan = preflight_publication(tmp_path, source.campaign_root)
+
+    assert len(plan.jobs) == 2
+    assert history_page_reads and set(history_page_reads.values()) == {1}
+    assert funding_page_reads and set(funding_page_reads.values()) == {1}
 
 
 def test_publication_campaign_executes_verifies_schemas_and_is_idempotent(
