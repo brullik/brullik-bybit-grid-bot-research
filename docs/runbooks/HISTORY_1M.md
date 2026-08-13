@@ -583,6 +583,16 @@ limit. First run aggregate no-mutation preflight:
   --staging-root data\history
 ```
 
+For a campaign containing `funding`, first complete ADR-0048 discovery for the exact registry and
+symbol/range scope, then bind it in both preflight and execute/resume commands:
+
+```powershell
+  --funding-source-boundary-root data\funding-boundary\<discovery>--<plan-prefix>
+```
+
+This removes pre-source empty funding months and makes the first child request the exact proven
+predecessor. Do not use registry `launchTime` alone as a historical funding-source boundary.
+
 Review the deterministic plan hash, job/page counts, fresh host identity, aggregate required free
 space, peak memory, and `preflight_elapsed_ms`. ADR-0047 verifies the registry/capacity files once
 per command and derives all child plans from that exact snapshot; every execute/resume command

@@ -288,6 +288,14 @@ def parser() -> argparse.ArgumentParser:
     history_campaign.add_argument("--capacity-evidence", type=Path, required=True)
     history_campaign.add_argument("--staging-root", type=Path, required=True)
     history_campaign.add_argument(
+        "--funding-source-boundary-root",
+        type=Path,
+        help=(
+            "optional completed receipt-verified source-boundary root used to clip and bind "
+            "funding starts"
+        ),
+    )
+    history_campaign.add_argument(
         "--execute",
         action="store_true",
         help="write campaign/child receipts and call public endpoints; omitted means preflight",
@@ -795,6 +803,7 @@ def _history_campaign(args: argparse.Namespace) -> int:
         snapshot=snapshot,
         now_ms=now_ms,
         closed_before_ms=closed_before_now_ms(now_ms),
+        funding_source_boundary_root=args.funding_source_boundary_root,
     )
     preflight_elapsed_ms = max(
         1,
@@ -824,6 +833,8 @@ def _history_campaign(args: argparse.Namespace) -> int:
         "required_free_bytes": plan.required_free_bytes,
         "status": "preflight-passed",
     }
+    if "funding_source_boundary" in plan.plan_payload:
+        summary["funding_source_boundary"] = plan.plan_payload["funding_source_boundary"]
     if not args.execute:
         print(json.dumps(summary))
         return 0

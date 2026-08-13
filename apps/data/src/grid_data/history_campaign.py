@@ -35,6 +35,10 @@ from grid_data.funding_request import (
     FUNDING_REQUEST_CONTRACT,
     resolve_funding_request_payload,
 )
+from grid_data.funding_source_boundary import (
+    FundingSourceBoundaryError,
+    verify_completed_funding_source_boundary,
+)
 from grid_data.history_acquisition import (
     MAX_PAGE_ARTIFACT_BYTES as HISTORY_MAX_PAGE_ARTIFACT_BYTES,
 )
@@ -65,6 +69,8 @@ MAX_CAMPAIGN_MONTHS: Final = 120
 MAX_CAMPAIGN_JOBS: Final = MAX_CAMPAIGN_MONTHS * BUCKET_COUNT * 3
 MAX_CAMPAIGN_SYMBOLS: Final = 700
 CAMPAIGN_ID_RE: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
+SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
+SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 CampaignKind = Literal["trade", "mark", "funding"]
 CampaignChildVerifier = Callable[
     [Path, CampaignKind],
@@ -261,6 +267,7 @@ def _series_window(
     kind: CampaignKind,
     window_start_ms: int,
     window_end_ms: int,
+    funding_source_start_ms: int | None = None,
 ) -> tuple[int, int] | None:
     launch_floor = (
         _first_aligned_after(instrument.launch_time_ms)
@@ -268,6 +275,8 @@ def _series_window(
         else _first_aligned_at_or_after(instrument.launch_time_ms)
     )
     start_ms = max(window_start_ms, launch_floor)
+    if kind == "funding" and funding_source_start_ms is not None:
+        start_ms = max(start_ms, funding_source_start_ms)
     end_ms = window_end_ms
     if instrument.delivery_time_ms is not None:
         end_ms = min(end_ms, _last_aligned_at_or_before(instrument.delivery_time_ms))
@@ -351,6 +360,7 @@ def _campaign_plan_payload(
     capacity_evidence_sha256: str,
     staging_root: Path,
     jobs: tuple[PreparedCampaignJob, ...],
+    funding_source_boundary: Mapping[str, object] | None,
 ) -> dict[str, object]:
     descriptors: list[dict[str, object]] = []
     for job in jobs:
@@ -368,7 +378,7 @@ def _campaign_plan_payload(
                 "sequence": job.sequence,
             }
         )
-    return {
+    payload: dict[str, object] = {
         "campaign_id": request["campaign_id"],
         "campaign_request": request,
         "campaign_request_sha256": request_sha256,
@@ -385,6 +395,9 @@ def _campaign_plan_payload(
             "tick_rows_requested": False,
         },
     }
+    if funding_source_boundary is not None:
+        payload["funding_source_boundary"] = dict(funding_source_boundary)
+    return payload
 
 
 def _receipt_payload(artifact: str, digest: str) -> dict[str, object]:
@@ -474,6 +487,7 @@ def preflight_history_campaign(
     snapshot: HostSnapshot,
     now_ms: int,
     closed_before_ms: int,
+    funding_source_boundary_root: Path | None = None,
 ) -> HistoryCampaignPlan:
     """Resolve every monthly/bucket job and aggregate admission before mutation."""
 
@@ -533,6 +547,45 @@ def preflight_history_campaign(
             raise HistoryCampaignError(f"campaign symbol is not a USDT linear perpetual: {symbol}")
         selected.append(instrument)
     selected.sort(key=lambda item: item.instrument_id)
+    funding_source_starts: dict[str, int] = {}
+    funding_source_predecessors: dict[str, int] = {}
+    funding_boundary_binding: dict[str, object] | None = None
+    if funding_source_boundary_root is not None:
+        if "funding" not in kinds:
+            raise HistoryCampaignError(
+                "funding source boundary requires funding in the campaign kinds"
+            )
+        try:
+            completed_boundary = verify_completed_funding_source_boundary(
+                funding_source_boundary_root
+            )
+        except FundingSourceBoundaryError as error:
+            raise HistoryCampaignError("funding source boundary does not verify") from error
+        if completed_boundary.registry_sha256 != registry.artifact_sha256:
+            raise HistoryCampaignError("funding source boundary registry differs from campaign")
+        if completed_boundary.scan_start_ms > start_ms or completed_boundary.scan_end_ms < end_ms:
+            raise HistoryCampaignError("funding source boundary does not cover campaign range")
+        results_by_symbol = {result.symbol: result for result in completed_boundary.results}
+        if set(results_by_symbol) != set(symbols):
+            raise HistoryCampaignError("funding source boundary symbol inventory differs")
+        selected_by_symbol = {instrument.symbol: instrument for instrument in selected}
+        for symbol, result in results_by_symbol.items():
+            instrument = selected_by_symbol[symbol]
+            if (
+                result.instrument_id != instrument.instrument_id
+                or result.predecessor_settlement_ms != result.first_observed_settlement_ms
+                or result.predecessor_settlement_ms >= result.canonical_start_ms
+                or result.canonical_start_ms > end_ms
+            ):
+                raise HistoryCampaignError("funding source boundary result is incompatible")
+            funding_source_starts[symbol] = result.canonical_start_ms
+            funding_source_predecessors[symbol] = result.predecessor_settlement_ms
+        funding_boundary_binding = {
+            "manifest_sha256": completed_boundary.manifest_sha256,
+            "plan_sha256": completed_boundary.plan_sha256,
+            "request_sha256": completed_boundary.request_sha256,
+            "software_identity": completed_boundary.software_identity,
+        }
     windows = _month_windows(start_ms, end_ms)
 
     prepared: list[PreparedCampaignJob] = []
@@ -547,6 +600,9 @@ def preflight_history_campaign(
                     kind=kind,
                     window_start_ms=window_start,
                     window_end_ms=window_end,
+                    funding_source_start_ms=(
+                        funding_source_starts.get(instrument.symbol) if kind == "funding" else None
+                    ),
                 )
                 if intersection is None:
                     continue
@@ -573,12 +629,21 @@ def preflight_history_campaign(
                     max_attempts=max_attempts,
                 )
                 if kind == "funding":
+                    predecessor_by_symbol = {
+                        cast(str, item["symbol"]): funding_source_predecessors[
+                            cast(str, item["symbol"])
+                        ]
+                        for item in series
+                        if cast(int, item["start_ms"])
+                        == funding_source_starts.get(cast(str, item["symbol"]))
+                    }
                     funding = resolve_funding_request_payload(
                         payload,
                         source_path=resolved_request_path,
                         instrument_registry_path=instrument_registry_path,
                         capacity_evidence_path=capacity_path,
                         verified_evidence=verified_evidence,
+                        predecessor_by_symbol=predecessor_by_symbol,
                     )
                     job_plan: HistoryJobPlan | FundingJobPlan = preflight_funding_job(
                         root,
@@ -641,6 +706,7 @@ def preflight_history_campaign(
         capacity_evidence_sha256=capacity_sha256,
         staging_root=root,
         jobs=jobs,
+        funding_source_boundary=funding_boundary_binding,
     )
     plan_sha256 = canonical_sha256(plan_payload)
     campaigns_root = root / ".campaigns"
@@ -838,6 +904,8 @@ def verify_completed_history_campaign(
         "lifecycle_policy",
         "source_policy",
     }
+    if "funding_source_boundary" in plan:
+        expected_plan_keys.add("funding_source_boundary")
     expected_manifest_keys = {
         "campaign_id",
         "campaign_plan_sha256",
@@ -913,6 +981,21 @@ def verify_completed_history_campaign(
     }
     if plan.get("source_policy") != expected_source_policy:
         raise HistoryCampaignError("campaign source policy is unsupported")
+    funding_boundary = plan.get("funding_source_boundary")
+    if funding_boundary is not None and (
+        not isinstance(funding_boundary, dict)
+        or set(funding_boundary)
+        != {"manifest_sha256", "plan_sha256", "request_sha256", "software_identity"}
+        or any(
+            not isinstance(funding_boundary.get(name), str)
+            or SHA256_RE.fullmatch(cast(str, funding_boundary[name])) is None
+            for name in ("manifest_sha256", "plan_sha256", "request_sha256")
+        )
+        or not isinstance(funding_boundary.get("software_identity"), str)
+        or SOFTWARE_IDENTITY_RE.fullmatch(cast(str, funding_boundary["software_identity"])) is None
+        or "funding" not in cast(list[object], campaign_request.get("kinds"))
+    ):
+        raise HistoryCampaignError("campaign funding source-boundary binding is invalid")
     completed_at_ms = manifest.get("completed_at_ms")
     if (
         isinstance(completed_at_ms, bool)

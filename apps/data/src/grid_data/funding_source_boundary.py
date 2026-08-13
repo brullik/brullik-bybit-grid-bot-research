@@ -144,6 +144,17 @@ class FundingBoundaryPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class FundingBoundaryResult:
+    canonical_start_ms: int
+    event_count: int
+    first_observed_settlement_ms: int
+    instrument_id: int
+    page_count: int
+    predecessor_settlement_ms: int
+    symbol: str
+
+
+@dataclass(frozen=True, slots=True)
 class CompletedFundingBoundary:
     job_root: Path
     manifest_path: Path
@@ -160,6 +171,7 @@ class CompletedFundingBoundary:
     event_count: int
     http_attempt_count: int
     adaptive_throttling: dict[str, object]
+    results: tuple[FundingBoundaryResult, ...]
 
 
 def _integer(name: str, value: object, *, minimum: int, maximum: int) -> int:
@@ -904,4 +916,16 @@ def verify_completed_funding_source_boundary(job_root: Path) -> CompletedFunding
         event_count=total_events,
         http_attempt_count=total_attempts,
         adaptive_throttling=adaptive_summary,
+        results=tuple(
+            FundingBoundaryResult(
+                canonical_start_ms=cast(int, item["canonical_start_ms"]),
+                event_count=cast(int, item["event_count"]),
+                first_observed_settlement_ms=cast(int, item["first_observed_settlement_ms"]),
+                instrument_id=cast(int, item["instrument_id"]),
+                page_count=cast(int, item["page_count"]),
+                predecessor_settlement_ms=cast(int, item["predecessor_settlement_ms"]),
+                symbol=cast(str, item["symbol"]),
+            )
+            for item in results
+        ),
     )

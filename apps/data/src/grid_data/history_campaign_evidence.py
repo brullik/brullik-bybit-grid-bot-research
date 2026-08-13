@@ -449,6 +449,15 @@ def build_history_campaign_evidence(
             "runtime_market_artifacts_committed_to_git": False,
         },
     }
+    raw_boundary_binding = plan.get("funding_source_boundary")
+    if raw_boundary_binding is not None:
+        if not isinstance(raw_boundary_binding, dict) or not isinstance(
+            raw_boundary_binding.get("manifest_sha256"), str
+        ):
+            raise HistoryCampaignError("campaign funding source-boundary binding is invalid")
+        cast(dict[str, object], payload["bindings"])["funding_source_boundary_manifest_sha256"] = (
+            raw_boundary_binding["manifest_sha256"]
+        )
     if adaptive is not None:
         payload["adaptive_throttling"] = adaptive
     if timing is not None:

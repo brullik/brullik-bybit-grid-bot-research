@@ -86,6 +86,7 @@ class FundingSeries:
     launch_time_ms: int
     start_ms: int
     end_ms: int
+    predecessor_settlement_ms: int | None = None
 
     def __post_init__(self) -> None:
         if self.category != "linear":
@@ -116,6 +117,16 @@ class FundingSeries:
         ):
             raise FundingAcquisitionError(
                 "funding bounds must be aligned UTC minutes after instrument launch"
+            )
+        if self.predecessor_settlement_ms is not None and (
+            isinstance(self.predecessor_settlement_ms, bool)
+            or not isinstance(self.predecessor_settlement_ms, int)
+            or self.predecessor_settlement_ms < self.launch_time_ms
+            or self.predecessor_settlement_ms >= self.start_ms
+            or self.predecessor_settlement_ms % MINUTE_MS
+        ):
+            raise FundingAcquisitionError(
+                "funding predecessor must be an aligned settlement from launch before start"
             )
 
 
@@ -237,6 +248,16 @@ def _plan_tasks(spec: FundingJobSpec) -> tuple[FundingPageTask, ...]:
     tasks: list[FundingPageTask] = []
     page_span_ms = spec.page_span_minutes * MINUTE_MS
     for item in spec.series:
+        boundary_start = (
+            item.predecessor_settlement_ms
+            if item.predecessor_settlement_ms is not None
+            else item.launch_time_ms
+        )
+        boundary_end = (
+            item.predecessor_settlement_ms
+            if item.predecessor_settlement_ms is not None
+            else item.start_ms - 1
+        )
         tasks.append(
             FundingPageTask(
                 sequence=len(tasks),
@@ -244,8 +265,8 @@ def _plan_tasks(spec: FundingJobSpec) -> tuple[FundingPageTask, ...]:
                 category=item.category,
                 symbol=item.symbol,
                 instrument_id=item.instrument_id,
-                start_ms=item.launch_time_ms,
-                end_ms=item.start_ms - 1,
+                start_ms=boundary_start,
+                end_ms=boundary_end,
                 limit=1,
             )
         )

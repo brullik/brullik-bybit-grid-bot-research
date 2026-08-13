@@ -10,6 +10,10 @@ import pytest
 from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_contracts.canonical import canonical_sha256
 from grid_data.evidence import publish_evidence
+from grid_data.funding_source_boundary import (
+    execute_funding_source_boundary,
+    preflight_funding_source_boundary,
+)
 from grid_data.history_acquisition import HistoryAcquisitionError
 from grid_data.history_campaign import (
     CAMPAIGN_REQUEST_CONTRACT,
@@ -295,6 +299,67 @@ def execute(plan, kline, funding):  # type: ignore[no-untyped-def]
     )
 
 
+def funding_boundary(
+    tmp_path: Path,
+    *,
+    registry: Path,
+    symbol: str = "AAAUSDT",
+    events: tuple[int, ...] = (
+        JANUARY_31_2026_2358_MS,
+        JANUARY_31_2026_2358_MS + 2 * 60_000,
+        FEBRUARY_1_2026_0001_MS,
+    ),
+) -> Path:
+    request = tmp_path / "funding-boundary-request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "contract": "grid.bybit-funding-source-boundary-request/v1",
+                "discovery_id": "campaign-funding-boundary-fixture",
+                "end_ms": FEBRUARY_1_2026_0001_MS,
+                "max_attempts": 1,
+                "max_pages_per_symbol": 10,
+                "page_limit": 2,
+                "start_ms": JANUARY_31_2026_2358_MS - 60_000,
+                "symbols": [symbol],
+                "target_rps": 96,
+                "workers": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = preflight_funding_source_boundary(
+        request,
+        instrument_registry_path=registry,
+        output_root=tmp_path / "funding-boundary",
+        snapshot=snapshot(tmp_path, observed_at_ms=1_800_000_000_000),
+        now_ms=1_800_000_000_000,
+        software_identity="git:" + "8" * 40,
+    )
+
+    class BoundaryClient:
+        def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
+            selected = [
+                value for value in events if kwargs["start_ms"] <= value <= kwargs["end_ms"]
+            ]
+            return tuple(
+                {
+                    "fundingRate": "0.0001",
+                    "fundingRateTimestamp": str(value),
+                    "symbol": kwargs["symbol"],
+                }
+                for value in sorted(selected, reverse=True)[: kwargs["limit"]]
+            )
+
+    completed = execute_funding_source_boundary(
+        plan,
+        client_factory=BoundaryClient,
+        snapshot_provider=lambda: snapshot(tmp_path, observed_at_ms=1_800_000_000_000),
+        now_ms=lambda: 1_800_000_000_001,
+    )
+    return completed.job_root
+
+
 def test_campaign_schema_split_order_and_no_mutation(tmp_path: Path) -> None:
     request = request_payload()
     schema = json.loads(
@@ -450,6 +515,110 @@ def test_campaign_clips_each_series_to_registry_lifecycle(tmp_path: Path) -> Non
     assert january["end_ms"] == JANUARY_31_2026_2358_MS + 60_000
     assert february["start_ms"] == FEBRUARY_1_2026_0001_MS - 60_000
     assert february["end_ms"] == FEBRUARY_1_2026_0001_MS - 60_000
+
+
+def test_funding_campaign_binds_discovered_start_and_exact_predecessor(
+    tmp_path: Path,
+) -> None:
+    registry, capacity = evidence_files(
+        tmp_path,
+        records=[inventory_record("AAAUSDT", 1)],
+    )
+    boundary_root = funding_boundary(tmp_path, registry=registry)
+    request = write_request(
+        tmp_path,
+        request_payload(kinds=["funding"], symbols=["AAAUSDT"]),
+    )
+    plan = preflight_history_campaign(
+        request,
+        instrument_registry_path=registry,
+        capacity_evidence_path=capacity,
+        staging_root=tmp_path / "history",
+        snapshot=snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=FEBRUARY_1_2026_0001_MS + 60_000,
+        funding_source_boundary_root=boundary_root,
+    )
+
+    assert len(plan.jobs) == 1
+    assert plan.jobs[0].year == 2026
+    assert plan.jobs[0].month == 2
+    resolved_series = plan.jobs[0].plan.spec.series[0]  # type: ignore[union-attr]
+    assert resolved_series.start_ms == JANUARY_31_2026_2358_MS + 2 * 60_000
+    assert resolved_series.predecessor_settlement_ms == JANUARY_31_2026_2358_MS
+    boundary_task = plan.jobs[0].plan.tasks[0]
+    assert boundary_task.start_ms == JANUARY_31_2026_2358_MS
+    assert boundary_task.end_ms == JANUARY_31_2026_2358_MS
+    binding = plan.plan_payload["funding_source_boundary"]
+    assert binding["software_identity"] == "git:" + "8" * 40  # type: ignore[index]
+    assert len(binding["manifest_sha256"]) == 64  # type: ignore[index]
+    Draft202012Validator(
+        json.loads(
+            (ROOT / "schemas/market/v1/public-history-campaign-plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+    ).validate(plan.plan_payload)
+
+    class ExactFundingClient(FakeFundingClient):
+        def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
+            self._thread_state.observation = RateLimitObservation(
+                200, 0, "absent", None, None, None
+            )
+            values = (
+                JANUARY_31_2026_2358_MS,
+                JANUARY_31_2026_2358_MS + 2 * 60_000,
+                FEBRUARY_1_2026_0001_MS,
+            )
+            return tuple(
+                {
+                    "symbol": kwargs["symbol"],
+                    "fundingRate": "0.0001",
+                    "fundingRateTimestamp": str(value),
+                }
+                for value in sorted(values, reverse=True)
+                if kwargs["start_ms"] <= value <= kwargs["end_ms"]
+            )[: kwargs["limit"]]
+
+    completed = execute(plan, NeverKlineClient(), ExactFundingClient())
+    payload = build_history_campaign_evidence(
+        completed.campaign_root,
+        generated_at_utc="2026-08-13T12:00:00Z",
+        software_identity="git:" + "1" * 40,
+        require_complete_throttling_evidence=True,
+    )
+    assert (
+        payload["bindings"]["funding_source_boundary_manifest_sha256"]
+        == binding[  # type: ignore[index]
+            "manifest_sha256"
+        ]
+    )
+
+
+def test_funding_source_boundary_must_match_campaign_registry_and_symbols(
+    tmp_path: Path,
+) -> None:
+    registry, capacity = evidence_files(
+        tmp_path,
+        records=[inventory_record("AAAUSDT", 1), inventory_record("BBBUSDT", 2)],
+    )
+    boundary_root = funding_boundary(tmp_path, registry=registry, symbol="AAAUSDT")
+    request = write_request(
+        tmp_path,
+        request_payload(kinds=["funding"], symbols=["AAAUSDT", "BBBUSDT"]),
+    )
+
+    with pytest.raises(HistoryCampaignError, match="symbol inventory"):
+        preflight_history_campaign(
+            request,
+            instrument_registry_path=registry,
+            capacity_evidence_path=capacity,
+            staging_root=tmp_path / "history",
+            snapshot=snapshot(tmp_path),
+            now_ms=1_001,
+            closed_before_ms=FEBRUARY_1_2026_0001_MS + 60_000,
+            funding_source_boundary_root=boundary_root,
+        )
 
 
 def test_campaign_rejects_aggregate_disk_shortfall_before_mutation(tmp_path: Path) -> None:
