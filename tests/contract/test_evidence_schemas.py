@@ -266,6 +266,91 @@ def test_representative_multi_year_campaign_evidence_is_bound_and_sanitized() ->
         assert forbidden not in rendered
 
 
+def test_representative_canonical_campaign_evidence_is_bound_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks/results/m2-canonical-history-campaign-5x24-20260813.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/phase2-history-campaign-publication.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["bindings"] == {
+        "capacity_evidence_sha256": (
+            "2363e5795c108186764f098e572388c6bf61185f77ab342c07e1fc61b2ac46d0"
+        ),
+        "instrument_registry_sha256": (
+            "a351fd4a28e143b84ca7bc1f3449601f4f07904bd9c0dda1d31a9dfd9e3e3c88"
+        ),
+        "publication_manifest_sha256": (
+            "0a5f8b24fd5cfd11d790528dde808fd23c3264100fe25243ec0615d56eeb281d"
+        ),
+        "publication_plan_sha256": (
+            "a127ee5abb5dd74e7be033b60fea5a5140403212b35b8dec53f7a916ae9aae1f"
+        ),
+        "source_campaign_manifest_sha256": (
+            "cef361cb5eb04cee9f2c645a5281b06f50b050eaaf327c58d170b725f558485a"
+        ),
+        "source_campaign_plan_sha256": (
+            "ab32162397e396975071ee3a64cdc372b58938c3f1865439b9e93501611d8f4e"
+        ),
+        "source_campaign_request_sha256": (
+            "2c93143e6cec6bf402994cb23dac98ff25bffd3b8319e19de029f5ec378fc120"
+        ),
+    }
+    assert payload["canonical"] == {
+        "by_kind": [
+            {
+                "dataset_count": 24,
+                "file_count": 24,
+                "kind": "trade",
+                "parquet_bytes": 119_694_112,
+                "row_count": 5_263_200,
+            },
+            {
+                "dataset_count": 24,
+                "file_count": 24,
+                "kind": "mark",
+                "parquet_bytes": 67_476_126,
+                "row_count": 5_263_200,
+            },
+            {
+                "dataset_count": 24,
+                "file_count": 24,
+                "kind": "funding",
+                "parquet_bytes": 182_293,
+                "row_count": 10_965,
+            },
+        ],
+        "dataset_count": 72,
+        "file_count": 72,
+        "parquet_bytes": 187_352_531,
+        "row_count": 10_537_365,
+    }
+    assert payload["resource_bounds"] == {
+        "maximum_child_planned_peak_memory_bytes": 199_020_064,
+        "maximum_child_required_free_bytes": 98_858_563_994,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"source_job_root"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
     specifications = ROOT / "benchmarks" / "specifications"
     results = ROOT / "benchmarks" / "results"

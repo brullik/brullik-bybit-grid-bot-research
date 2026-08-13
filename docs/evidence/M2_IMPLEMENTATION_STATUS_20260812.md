@@ -527,6 +527,25 @@ using that immutable merge commit as the evidence-builder identity.
 The builder contract and redaction tests are tracked in
 [PR #46](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/46).
 
+The representative publication completed all 72 immutable datasets (24 trade, 24 mark, and 24
+funding) from 10,537,365 verified source rows. It produced 72 Parquet files totaling 187,352,531
+bytes: 119,694,112 trade bytes, 67,476,126 mark bytes, and 182,293 funding bytes. The aggregate
+publication manifest SHA-256 is
+`0a5f8b24fd5cfd11d790528dde808fd23c3264100fe25243ec0615d56eeb281d`; the plan SHA-256 is
+`a127ee5abb5dd74e7be033b60fea5a5140403212b35b8dec53f7a916ae9aae1f`. The measured maximum
+single-child bounds were 199,020,064 planned peak-memory bytes and 98,858,563,994 required free
+bytes. Independent aggregate verification returned valid, and an execute replay found 72 existing
+commits, zero pending datasets, and left the aggregate completion receipt timestamp unchanged.
+
+The receipt-verified
+[sanitized canonical evidence](../../benchmarks/results/m2-canonical-history-campaign-5x24-20260813.json)
+has artifact SHA-256
+`c4ced7244633c62a574b23262a95f8b3705da3ff474f0c2e69e20ea618df3547`, content SHA-256
+`e7355d29615fbbd1c62d1342989001c9ba622b52fae756ca7e4e01d685914085`, binds publisher identity
+`git:9887c9d5d4aec51966495e6618ffa67909d59743` and evidence-builder identity
+`git:c6c5c8a29de4628647c1562164522efb9604e64e`, and contains no runtime path, market value,
+instrument/dataset identity, account data, or credential.
+
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime
