@@ -67,6 +67,11 @@ from grid_data.history_campaign import (
     verify_completed_history_campaign,
 )
 from grid_data.history_campaign_evidence import build_history_campaign_evidence
+from grid_data.history_campaign_publication import (
+    execute_history_campaign_publication,
+    preflight_history_campaign_publication,
+    verify_completed_history_campaign_publication,
+)
 from grid_data.history_compaction import (
     build_compaction_evidence,
     preflight_history_compaction,
@@ -292,6 +297,30 @@ def parser() -> argparse.ArgumentParser:
     campaign_evidence.add_argument("--software-identity", required=True)
     campaign_evidence.add_argument("--output", type=Path, required=True)
     campaign_evidence.set_defaults(handler=_history_campaign_evidence)
+
+    campaign_publish = commands.add_parser(
+        "publish-history-campaign",
+        help="preflight or sequentially publish every completed campaign child as canonical",
+    )
+    campaign_publish.add_argument("--campaign-root", type=Path, required=True)
+    campaign_publish.add_argument("--instrument-registry", type=Path, required=True)
+    campaign_publish.add_argument("--capacity-evidence", type=Path, required=True)
+    campaign_publish.add_argument("--store-root", type=Path, required=True)
+    campaign_publish.add_argument("--software-identity", required=True)
+    campaign_publish.add_argument(
+        "--execute",
+        action="store_true",
+        help="write canonical datasets and aggregate receipts; omitted means preflight",
+    )
+    campaign_publish.set_defaults(handler=_publish_history_campaign)
+
+    campaign_publication_verify = commands.add_parser(
+        "verify-history-campaign-publication",
+        help="verify aggregate publication, source campaign lineage, and canonical datasets",
+    )
+    campaign_publication_verify.add_argument("publication_root", type=Path)
+    campaign_publication_verify.add_argument("--campaign-root", type=Path, required=True)
+    campaign_publication_verify.set_defaults(handler=_verify_history_campaign_publication)
 
     funding = commands.add_parser(
         "funding-history",
@@ -788,6 +817,87 @@ def _history_campaign_evidence(args: argparse.Namespace) -> int:
                 "content_sha256": payload["content_sha256"],
                 "receipt": str(receipt),
                 "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _publish_history_campaign(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    plan = preflight_history_campaign_publication(
+        args.campaign_root,
+        instrument_registry_path=args.instrument_registry,
+        capacity_evidence_path=args.capacity_evidence,
+        store_root=args.store_root,
+        snapshot=snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    summary = {
+        "dataset_count": len(plan.jobs),
+        "execute": bool(args.execute),
+        "existing_commit_count": sum(job.existing_commit for job in plan.jobs),
+        "existing_complete": plan.existing_complete,
+        "pending_dataset_count": sum(not job.existing_commit for job in plan.jobs),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "publication_root": str(plan.publication_root),
+        "required_free_bytes": plan.required_free_bytes,
+        "row_count": sum(job.row_count for job in plan.jobs),
+        "source_campaign_manifest_sha256": plan.source_campaign_manifest_sha256,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    completed = execute_history_campaign_publication(
+        plan,
+        snapshot_provider=lambda: probe_host_snapshot(args.store_root),
+        now_ms=lambda: time.time_ns() // 1_000_000,
+        progress=lambda child, published: print(
+            json.dumps(
+                {
+                    "dataset_count": len(plan.jobs),
+                    "dataset_id": published.manifest.dataset_id,
+                    "event": "campaign-publication-complete",
+                    "existing_commit": child.existing_commit,
+                    "kind": child.kind,
+                    "row_count": published.manifest.row_count,
+                    "sequence": child.sequence,
+                }
+            ),
+            flush=True,
+        ),
+    )
+    summary.update(
+        {
+            "file_count": completed.file_count,
+            "manifest": str(completed.manifest_path),
+            "manifest_sha256": completed.manifest_sha256,
+            "parquet_bytes": completed.parquet_bytes,
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_history_campaign_publication(args: argparse.Namespace) -> int:
+    completed = verify_completed_history_campaign_publication(
+        args.publication_root,
+        args.campaign_root,
+    )
+    print(
+        json.dumps(
+            {
+                "dataset_count": completed.dataset_count,
+                "file_count": completed.file_count,
+                "manifest_sha256": completed.manifest_sha256,
+                "parquet_bytes": completed.parquet_bytes,
+                "publication_root": str(completed.publication_root),
+                "row_count": completed.row_count,
+                "valid": True,
             }
         )
     )

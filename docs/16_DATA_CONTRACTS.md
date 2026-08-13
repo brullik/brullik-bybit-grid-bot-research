@@ -111,6 +111,21 @@ scope counts, measured runtime bytes, and aggregate plus per-kind job/page/row/H
 Its schema contains no symbols, instrument IDs, market values, runtime paths, device/account data,
 or credentials. It proves public Landing acquisition and resume integrity only.
 
+`grid.history-campaign-publication-plan/v1` binds one verified acquisition campaign, its exact
+registry/capacity evidence, immutable publisher Git identity, and every source-job/canonical
+input/request/dataset identity. Preflight loads at most one child Arrow batch at a time. The
+resource bound is the maximum sequential child requirement; each child already includes the full
+active-plus-building reservation, retained Landing budget, operating reserve, and bounded writer
+workspace.
+
+`grid.history-campaign-publication-manifest/v1`, committed by a separate
+`grid.history-campaign-publication-receipt/v1`, inventories every verified canonical dataset and
+its source manifest, request hash, manifest hash, rows, files, and bytes. Children run in source
+sequence with one writer and resume from their immutable canonical completion receipts. The
+aggregate verifier recomputes source-derived dataset/build identities and verifies every canonical
+file, audit, manifest, and receipt. This is publication lineage, not coverage/lifecycle acceptance
+or catalog registration. See ADR-0039.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle
