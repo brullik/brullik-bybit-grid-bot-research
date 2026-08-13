@@ -35,6 +35,7 @@
 | D-029 | Repair executes only after whole-plan admission; exact returned gaps create a new receipt-last child dataset with explicit parent lineage | accepted | Standard resumable tasks, repeated-empty blocking, exact key-union proof, unchanged parent hashes, and ADR-0028 |
 | D-030 | Canonical compaction creates a receipt-last child from one same-partition parent union and exposes observed 16 MiB target/tail facts | accepted | Duplicate rejection, deterministic calibration, logical-hash parity, complete parent lineage, and ADR-0029 |
 | D-031 | Canonical metadata registration uses a logical-hash DuckDB catalog; range selection binds an exact catalog snapshot and explicit dataset IDs | accepted | Receipt re-verification, complete lineage, atomic revision chain, no implicit latest, partition/key-overlap rejection, and ADR-0030 |
+| D-032 | Canonical funding uses exact Decimal128(38,18) and settlement-derived intervals with receipt-last immutable publication | accepted | Current interval metadata is not historical evidence; predecessor binding, internal delta checks, exact schema, and ADR-0031 |
 
 ## Decisions requiring benchmark or owner evidence
 

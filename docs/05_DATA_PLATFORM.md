@@ -142,6 +142,13 @@ Where:
 - row groups are sized and sorted to maximize statistics-based skipping;
 - canonical candle files use ZSTD compression level 3.
 
+Canonical funding uses the same UTC month/eight-bucket/16-MiB/ZSTD-3 envelope under
+`dataset=funding_event`, but has its own `grid.canonical-funding-layout/v1` schema. Rows are sorted
+by `instrument_id, funding_time_ms`; rates are exact signed Decimal128(38, 18). The interval is
+the elapsed time since the preceding authoritative settlement and cannot be backfilled from
+today's undated instrument metadata. Receipt-last publication and verification are defined in
+ADR-0031.
+
 ### Why not partition by symbol
 
 A symbol/year/month layout produces up to 84,000 logical symbol-month partitions for 700 instruments over ten years, often with small files. Excessive small files increase discovery, metadata, open/close, and planning overhead. Monthly time partitions plus a small bucket count keep files large while retaining symbol pruning through bucket lookup, sorting, row-group statistics, and Bloom filters where supported.

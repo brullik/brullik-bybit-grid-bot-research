@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 from grid_contracts.canonical import CanonicalizationError, canonical_json_bytes
-from grid_contracts.market import Candle1m, ContractViolation
+from grid_contracts.market import Candle1m, ContractViolation, FundingEvent
 
 
 def candle(**overrides: object) -> Candle1m:
@@ -50,3 +50,19 @@ def test_candle_accepts_exact_minute_and_ohlc_invariants() -> None:
 def test_candle_fails_closed(overrides: dict[str, object], expected: str) -> None:
     with pytest.raises(ContractViolation, match=expected):
         candle(**overrides)
+
+
+def test_funding_event_requires_an_exact_utc_minute() -> None:
+    values = {
+        "category": "linear",
+        "instrument_id": 1,
+        "funding_time_ms": 1_700_000_040_000,
+        "funding_rate": Decimal("-0.0001"),
+        "funding_interval_minutes": 480,
+        "source_id": "fixture",
+        "ingestion_id": "test-run",
+    }
+    assert FundingEvent(**values).funding_rate == Decimal("-0.0001")  # type: ignore[arg-type]
+    values["funding_time_ms"] = 1_700_000_040_001
+    with pytest.raises(ContractViolation, match="funding timestamp"):
+        FundingEvent(**values)  # type: ignore[arg-type]

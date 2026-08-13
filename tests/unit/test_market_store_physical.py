@@ -4,13 +4,17 @@ from decimal import Decimal
 
 import pyarrow as pa  # type: ignore[import-untyped]
 import pytest
-from grid_contracts.market import Candle1m, DatasetType, MarkCandle1m
+from grid_contracts.market import Candle1m, DatasetType, FundingEvent, MarkCandle1m
 from grid_market_store.physical import (
     BUCKET_COUNT,
     CANONICAL_LAYOUT_ID,
+    FUNDING_CANONICAL_LAYOUT_ID,
+    FUNDING_RATE_SCALE,
     PhysicalContractError,
     build_canonical_candle_batch,
+    build_canonical_funding_batch,
     canonical_candle_schema,
+    canonical_funding_partition_path,
     canonical_partition_path,
     stable_bucket,
     verify_canonical_candle_schema,
@@ -50,6 +54,21 @@ def mark_candle(**overrides: object) -> MarkCandle1m:
         ingestion_id=trade.ingestion_id,
         quality_flags=trade.quality_flags,
     )
+
+
+def funding_event(**overrides: object) -> FundingEvent:
+    values: dict[str, object] = {
+        "category": "linear",
+        "instrument_id": 9,
+        "funding_time_ms": 1_767_225_600_000,
+        "funding_rate": Decimal("-0.000012345678901234"),
+        "funding_interval_minutes": 480,
+        "source_id": "bybit-v5-funding-history/v1",
+        "ingestion_id": "fixture-run",
+        "quality_flags": 0,
+    }
+    values.update(overrides)
+    return FundingEvent(**values)  # type: ignore[arg-type]
 
 
 def test_stable_bucket_matches_qualified_modulo_layout() -> None:
@@ -147,3 +166,66 @@ def test_schema_verifier_rejects_missing_layout_metadata() -> None:
     schema = canonical_candle_schema(DatasetType.TRADE_KLINE_1M).remove_metadata()
     with pytest.raises(PhysicalContractError, match="metadata"):
         verify_canonical_candle_schema(schema, DatasetType.TRADE_KLINE_1M)
+
+
+def test_funding_batch_sorts_and_preserves_exact_rate_and_interval() -> None:
+    first = funding_event()
+    second = funding_event(
+        funding_time_ms=first.funding_time_ms + 480 * 60_000,
+        funding_rate=Decimal("0.000000000000000001"),
+    )
+    batch = build_canonical_funding_batch((second, first))
+
+    assert batch.dataset_type is DatasetType.FUNDING_EVENT
+    assert batch.partition_path == canonical_funding_partition_path(
+        instrument_id=9,
+        funding_time_ms=first.funding_time_ms,
+    )
+    assert batch.table.column("funding_time_ms").to_pylist() == [
+        first.funding_time_ms,
+        second.funding_time_ms,
+    ]
+    assert batch.table.column("funding_rate").to_pylist() == [
+        first.funding_rate,
+        second.funding_rate,
+    ]
+    assert batch.table.schema.field("funding_rate").type == pa.decimal128(38, FUNDING_RATE_SCALE)
+    assert (
+        batch.table.schema.metadata[b"grid.layout_contract"] == FUNDING_CANONICAL_LAYOUT_ID.encode()
+    )
+
+
+def test_funding_batch_rejects_rounding_duplicates_and_interval_mismatch() -> None:
+    with pytest.raises(PhysicalContractError, match="scale 18"):
+        build_canonical_funding_batch(
+            (funding_event(funding_rate=Decimal("0.0000000000000000001")),)
+        )
+    event = funding_event()
+    with pytest.raises(PhysicalContractError, match="duplicate"):
+        build_canonical_funding_batch((event, event))
+    with pytest.raises(PhysicalContractError, match="previous settlement"):
+        build_canonical_funding_batch(
+            (
+                event,
+                funding_event(
+                    funding_time_ms=event.funding_time_ms + 240 * 60_000,
+                    funding_interval_minutes=480,
+                ),
+            )
+        )
+
+
+def test_funding_batch_requires_one_month_bucket_and_minute_aligned_time() -> None:
+    event = funding_event()
+    with pytest.raises(PhysicalContractError, match="one month/bucket"):
+        build_canonical_funding_batch(
+            (
+                event,
+                funding_event(
+                    funding_time_ms=1_769_904_000_000,
+                    funding_interval_minutes=44_640,
+                ),
+            )
+        )
+    with pytest.raises(ValueError, match="funding timestamp"):
+        funding_event(funding_time_ms=event.funding_time_ms + 1)
