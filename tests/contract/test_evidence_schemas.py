@@ -642,6 +642,66 @@ def test_100x31_integrity_fastpath_evidence_is_bound_measured_and_sanitized() ->
         assert forbidden not in rendered
 
 
+def test_full_history_campaign_preflight_performance_is_bound_and_sanitized() -> None:
+    artifact = (
+        ROOT / "benchmarks/results/m2-history-campaign-preflight-performance-5xfull-20260813.json"
+    )
+    schema = load_json(
+        ROOT / "schemas/evidence/v1/phase2-history-campaign-preflight-performance.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "3ee0eb78079900d203c102af3142dbe536c06c4c5eabfa7d4cf35946fb48a340"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["baseline"]["implementation_identity"] == (
+        "git:f14df8fe8eff4741ca7c488b97ad28704c1d1372"
+    )
+    assert payload["qualified"]["implementation_identity"] == (
+        "git:8bb04ef4e21b84c7a3461c95d95fba70e28888f2"
+    )
+    assert payload["baseline"]["preflight_elapsed_ms"] == 125_600
+    assert payload["qualified"]["preflight_elapsed_ms"] == 3_284
+    assert payload["comparison"] == {
+        "job_count_unchanged": True,
+        "page_count_unchanged": True,
+        "planned_peak_memory_unchanged": True,
+        "preflight_elapsed_reduction_basis_points": 9_739,
+        "request_scope_equivalent_except_campaign_id": True,
+        "required_free_bytes_unchanged": True,
+        "same_reference_host_identity_verified": True,
+        "speedup_milli": 38_246,
+    }
+    assert payload["scope"] == {
+        "end_ms": 1_785_542_340_000,
+        "kind_count": 3,
+        "month_count": 103,
+        "start_ms": 1_514_764_800_000,
+        "symbol_count": 5,
+        "tick_rows_requested": False,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"campaign_root"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_representative_campaign_coverage_audit_is_bound_and_sanitized() -> None:
     artifact = ROOT / "benchmarks/results/m2-history-campaign-coverage-audit-20260813.json"
     schema = load_json(ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json")
