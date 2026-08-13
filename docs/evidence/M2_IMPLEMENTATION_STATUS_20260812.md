@@ -517,6 +517,16 @@ canonical dataset, exchange request, order, bot, or transfer was created by eith
 The implementation and its regression proof are tracked in
 [PR #45](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/45).
 
+ADR-0040 adds a separate GitHub-safe evidence transition for the completed aggregate publication.
+The builder re-verifies the original campaign plus every canonical Parquet file, audit, manifest,
+and receipt, then projects only aggregate/per-kind counts and bytes, maximum sequential-child
+resource bounds, immutable publisher/builder identities, and transitive hashes. Its exact schema
+forbids runtime paths, dataset/symbol/instrument identities, market values, account data, and
+credentials. The measured evidence artifact must be generated only after this builder is merged,
+using that immutable merge commit as the evidence-builder identity.
+The builder contract and redaction tests are tracked in
+[PR #46](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/46).
+
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime

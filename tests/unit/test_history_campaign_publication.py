@@ -7,13 +7,16 @@ import grid_data.funding_acquisition as funding_acquisition
 import grid_data.history_acquisition as history_acquisition
 import grid_data.history_campaign as history_campaign
 import pytest
-from grid_contracts.canonical import sha256_file
+from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.history_campaign import HistoryCampaignError
 from grid_data.history_campaign_publication import (
     HistoryCampaignPublicationError,
     execute_history_campaign_publication,
     preflight_history_campaign_publication,
     verify_completed_history_campaign_publication,
+)
+from grid_data.history_campaign_publication_evidence import (
+    build_history_campaign_publication_evidence,
 )
 from jsonschema import Draft202012Validator
 
@@ -308,4 +311,80 @@ def test_publication_campaign_detects_source_substitution(tmp_path: Path) -> Non
         verify_completed_history_campaign_publication(
             completed.publication_root,
             source.campaign_root,
+        )
+
+
+def test_publication_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(
+    tmp_path: Path,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = preflight_publication(tmp_path, source.campaign_root)
+    completed = execute_publication(plan)
+
+    payload = build_history_campaign_publication_evidence(
+        completed.publication_root,
+        source.campaign_root,
+        generated_at_utc="2026-08-13T14:00:00Z",
+        software_identity="git:" + "8" * 40,
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-history-campaign-publication.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(payload)
+    hash_input = dict(payload)
+    embedded = hash_input.pop("content_sha256")
+    assert embedded == canonical_sha256(hash_input)
+    assert payload["canonical"]["dataset_count"] == 2  # type: ignore[index]
+    assert payload["canonical"]["row_count"] == 2  # type: ignore[index]
+    assert payload["canonical"]["file_count"] == 2  # type: ignore[index]
+    by_kind = payload["canonical"]["by_kind"]  # type: ignore[index]
+    assert [item["kind"] for item in by_kind] == ["trade", "funding"]
+    assert [item["dataset_count"] for item in by_kind] == [1, 1]
+    assert [item["file_count"] for item in by_kind] == [1, 1]
+    assert [item["row_count"] for item in by_kind] == [1, 1]
+    assert all(item["parquet_bytes"] > 0 for item in by_kind)
+    assert (
+        sum(item["parquet_bytes"] for item in by_kind)
+        == payload["canonical"][  # type: ignore[index]
+            "parquet_bytes"
+        ]
+    )
+    assert payload["process"] == {  # type: ignore[index]
+        "canonical_child_receipts_verified": True,
+        "deterministic_resume_supported": True,
+        "evidence_builder_software_identity": "git:" + "8" * 40,
+        "max_concurrent_writers": 1,
+        "publication_aggregate_receipt_verified": True,
+        "publisher_software_identity": SOFTWARE_IDENTITY,
+        "source_aggregate_receipt_verified": True,
+        "source_child_receipts_verified": True,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "aaausdt",
+        "c:\\",
+        "/home/",
+        '"dataset_id"',
+        '"instrument_id"',
+        '"source_job_root"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+        "api_key",
+        "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
+def test_publication_campaign_evidence_rejects_mutable_identity(tmp_path: Path) -> None:
+    source = completed_source_campaign(tmp_path)
+    completed = execute_publication(preflight_publication(tmp_path, source.campaign_root))
+    with pytest.raises(HistoryCampaignPublicationError, match="software identity"):
+        build_history_campaign_publication_evidence(
+            completed.publication_root,
+            source.campaign_root,
+            generated_at_utc="2026-08-13T14:00:00Z",
+            software_identity="working-tree",
         )

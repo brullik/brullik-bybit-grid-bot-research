@@ -126,6 +126,15 @@ aggregate verifier recomputes source-derived dataset/build identities and verifi
 file, audit, manifest, and receipt. This is publication lineage, not coverage/lifecycle acceptance
 or catalog registration. See ADR-0039.
 
+`grid.phase2-history-campaign-publication/v1` is the GitHub-safe projection of that fully verified
+publication. It binds source request/campaign, registry, capacity, publication plan, and
+publication manifest hashes; records only aggregate/per-kind datasets, rows, files, Parquet bytes,
+scope counts, requested bounds, and maximum sequential child resource bounds; and binds immutable
+publisher and evidence-builder Git identities. Its exact schema excludes dataset/symbol/instrument
+identities, runtime paths, market values, account data, and credentials. It proves immutable
+canonical publication lineage only; coverage audits, catalog registration, and Gate 2 remain
+separate. See ADR-0040.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle

@@ -42,6 +42,8 @@
 | D-036 | The receipt-verified canonical catalog admits `funding_event` while every snapshot-bound selection remains single-type | accepted | Shared revision/hash semantics, strict funding verifier and key column, no mixed candle/funding request, and ADR-0035 |
 | D-037 | Instrument metadata accumulates in an immutable timeline with point-in-time selection separated from ex-post lifecycle coverage | accepted | Later snapshot fields never enter earlier decisions; lifecycle conflicts and partial inventories remain blockers; ADR-0037 |
 | D-038 | Multi-month public history acquisition is a receipt-resumable sequential campaign of immutable month/type/eight-bucket child jobs | accepted | Aggregate preflight, deterministic membership, exact child attempt bounds, no pacer multiplication, and ADR-0038 |
+| D-039 | A completed public history campaign publishes as a receipt-resumable sequence of immutable canonical child datasets with one aggregate commit | accepted | Maximum single-writer resource bound, fresh child admission, deterministic receipt reuse, full source/canonical lineage verification, and ADR-0039 |
+| D-040 | Canonical campaign publication results enter GitHub only through a schema-bound aggregate/per-kind hash projection | accepted | Full source/canonical re-verification without paths, identities, market values, account data, credentials, or implicit Gate 2 acceptance; ADR-0040 |
 
 ## Decisions requiring benchmark or owner evidence
 

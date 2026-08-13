@@ -590,3 +590,19 @@ This command performs no exchange request. A successful result proves immutable 
 lineage only. Run the separate candle and funding coverage audits before claiming requested-range
 quality; register only explicitly selected verified datasets in the catalog. Do not commit runtime
 campaign plans, Landing data, Parquet, or local catalog files.
+
+After the evidence-builder implementation is merged, use that exact merge commit identity to
+publish the GitHub-safe projection. The builder fully re-verifies source and canonical lineage and
+therefore can take minutes:
+
+```powershell
+.venv\Scripts\grid-data.exe history-campaign-publication-evidence `
+  --publication-root data\market-store\.publication-campaigns\m2-representative-5x24--<plan-prefix> `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<source-plan-prefix> `
+  --software-identity git:<full-evidence-builder-merge-commit-sha> `
+  --output benchmarks\results\m2-canonical-history-campaign-<date>.json
+```
+
+Commit only the resulting evidence JSON and receipt. The exact schema excludes runtime paths,
+symbols, instrument/dataset identities, market values, account data, and credentials. Do not use
+publication evidence as a substitute for the subsequent candle/funding coverage audits.

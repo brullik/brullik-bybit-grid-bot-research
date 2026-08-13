@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-history-campaign-publication.schema.json",
+  "title": "Sanitized Phase 2 canonical history campaign publication evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "canonical",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "process",
+    "resource_bounds",
+    "scope",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capacity_evidence_sha256",
+        "instrument_registry_sha256",
+        "publication_manifest_sha256",
+        "publication_plan_sha256",
+        "source_campaign_manifest_sha256",
+        "source_campaign_plan_sha256",
+        "source_campaign_request_sha256"
+      ],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_request_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by_kind", "dataset_count", "file_count", "parquet_bytes", "row_count"],
+      "properties": {
+        "by_kind": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/kindSummary"}
+        },
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "file_count": {"type": "integer", "minimum": 1},
+        "parquet_bytes": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-history-campaign-publication/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_child_receipts_verified",
+        "deterministic_resume_supported",
+        "evidence_builder_software_identity",
+        "max_concurrent_writers",
+        "publication_aggregate_receipt_verified",
+        "publisher_software_identity",
+        "source_aggregate_receipt_verified",
+        "source_child_receipts_verified"
+      ],
+      "properties": {
+        "canonical_child_receipts_verified": {"const": true},
+        "deterministic_resume_supported": {"const": true},
+        "evidence_builder_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "max_concurrent_writers": {"const": 1},
+        "publication_aggregate_receipt_verified": {"const": true},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "source_aggregate_receipt_verified": {"const": true},
+        "source_child_receipts_verified": {"const": true}
+      }
+    },
+    "resource_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_child_planned_peak_memory_bytes",
+        "maximum_child_required_free_bytes"
+      ],
+      "properties": {
+        "maximum_child_planned_peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "maximum_child_required_free_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "end_ms", "kind_count", "month_count", "start_ms", "symbol_count"],
+      "properties": {
+        "bucket_count": {"type": "integer", "minimum": 1, "maximum": 8},
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "kind_count": {"type": "integer", "minimum": 1, "maximum": 3},
+        "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "status": {"const": "verified-canonical-history-campaign-publication"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "kindSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_count", "file_count", "kind", "parquet_bytes", "row_count"],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "file_count": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["trade", "mark", "funding"]},
+        "parquet_bytes": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
