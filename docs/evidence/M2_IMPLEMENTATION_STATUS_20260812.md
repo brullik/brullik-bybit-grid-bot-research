@@ -80,6 +80,8 @@ The authoritative implementation and review history is:
   transport-attempt versus HTTP-response accounting correction for strict qualification.
 - PR [#55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55): receipt-verified
   100-instrument x 31-day public long-run throttling and resume evidence.
+- PR [#56](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/56): receipt-verified
+  100-instrument canonical publication plus preserved blocked funding-cadence audit evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -701,6 +703,8 @@ events, 100 predecessor and 500 range pages, with zero empty pages, duplicate ke
 mismatches, lifecycle failures, unexpected timestamps, or unrequested rows. This is preserved
 negative evidence: resolving it requires dated cadence evidence or a separately owner-reviewed
 policy, not an implementation change to the accepted audit.
+The canonical and audit artifacts plus exact assertions are tracked in
+[PR #56](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/56).
 
 ## Still required before Gate 2
 
