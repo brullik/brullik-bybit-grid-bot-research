@@ -1,6 +1,6 @@
 # Authoritative References
 
-Accessed: 2026-08-12.
+Accessed: 2026-08-13.
 
 The implementation phase must re-check current documentation and record exact API behavior because exchange interfaces, rate limits, and product availability can change.
 

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Exact canonical funding Arrow/Parquet contract with Decimal128(38,18) rates,
+  settlement-derived interval semantics, minute/eight-bucket partitioning, ZSTD-3, no-rounding
+  conversion, and receipt-last immutable publication with independent tamper/orphan verification.
 - Receipt-verified DuckDB dataset catalog registration with atomic revision/content-hash chaining,
   complete parent lineage, idempotent binding, and snapshot-bound reproducible range selection
   that rejects implicit latest, missing partitions, ancestor/child ambiguity, and key overlap.

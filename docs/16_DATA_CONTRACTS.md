@@ -191,12 +191,21 @@ Primary key:
 
 Fields:
 
-- funding rate;
-- applicable funding interval/version;
+- exact signed funding rate, physically Decimal128(38, 18) in v1;
+- applicable funding interval as elapsed whole minutes since the immediately preceding
+  authoritative settlement;
 - source and ingestion identity;
 - quality flags.
 
-Backtests join funding by the exact economic application interval, not nearest-row convenience.
+Settlement timestamps are exact UTC minutes. Within each instrument, every event after the first
+event present in a canonical batch must equal the preceding settlement time plus its declared
+interval. The first event requires hash-bound predecessor or dated interval evidence; current
+instrument metadata is not historical proof. Missing boundary evidence blocks publication.
+
+Funding files use `grid.canonical-funding-layout/v1`: UTC month plus
+`instrument_id mod 8`, sorted by `instrument_id, funding_time_ms`, exact Decimal128 values, the
+16 MiB target, and ZSTD level 3. Backtests join funding by the exact economic application
+interval, not nearest-row convenience. See ADR-0031.
 
 ## Dataset manifest
 

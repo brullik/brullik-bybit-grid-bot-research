@@ -13,6 +13,8 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0031 - Exact funding layout and receipt-last publication](ADR-0031-exact-funding-layout-and-receipt-last-publication.md)
+
 - [ADR-0030 — Receipt-verified DuckDB catalog and snapshot-bound selection](ADR-0030-receipt-verified-duckdb-catalog-and-snapshot-bound-selection.md)
 
 - [ADR-0029 — Target-size immutable canonical compaction](ADR-0029-target-size-immutable-canonical-compaction.md)

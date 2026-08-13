@@ -179,7 +179,7 @@ class FundingEvent:
         _require_nonempty("category", self.category)
         _require_nonempty("source_id", self.source_id)
         _require_nonempty("ingestion_id", self.ingestion_id)
-        if self.instrument_id <= 0 or self.funding_time_ms < 0:
+        if self.instrument_id <= 0 or self.funding_time_ms < 0 or self.funding_time_ms % MINUTE_MS:
             raise ContractViolation("invalid instrument identity or funding timestamp")
         _require_decimal("funding_rate", self.funding_rate)
         if self.funding_interval_minutes <= 0:
