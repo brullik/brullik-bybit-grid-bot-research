@@ -108,6 +108,8 @@ The authoritative implementation and review history is:
   coverage classification and strict exclusion from ordinary same-source gap repair.
 - PR [#68](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/68): exact immutable
   canonical funding compaction with cross-parent settlement-interval verification.
+- PR [#69](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/69): fail-closed private
+  funding repair discovery planning without cadence acceptance or market execution.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -780,6 +782,8 @@ re-verifies and recomputes a blocked audit, admits only a complete set of isolat
 requests for the inferred candidate settlements. It does not execute those requests, use current
 interval metadata, accept a candidate or schedule change, mutate canonical data, or publish exact
 runtime identities to GitHub. Execution and immutable repair-child publication remain separate.
+The implementation, exact contract, ADR, and synthetic failure proofs are tracked in
+[PR #69](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/69).
 
 ## Still required before Gate 2
 
