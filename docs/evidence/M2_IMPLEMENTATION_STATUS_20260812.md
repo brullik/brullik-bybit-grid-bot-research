@@ -31,6 +31,8 @@ The authoritative implementation and review history is:
   immutable compaction, multi-file/tail verification, and complete parent lineage.
 - PR [#27](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/27): receipt-verified
   DuckDB catalog registration and snapshot-bound reproducible range selection.
+- PR [#28](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/28): representative
+  catalog registration/selection evidence for the existing receipt-verified public pilot.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
