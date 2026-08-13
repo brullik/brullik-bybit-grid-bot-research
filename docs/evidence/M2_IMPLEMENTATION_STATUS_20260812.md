@@ -72,6 +72,8 @@ The authoritative implementation and review history is:
   response-partition validation.
 - PR [#51](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/51): receipt-verified
   complete-current mainnet inventory evidence plus preserved cumulative partial-snapshot evidence.
+- PR [#52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52): shared
+  decrease-only public REST response-header throttling and resumable IP-ban abort behavior.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -633,7 +635,9 @@ facts under optional backward-compatible `request_bound.adaptive_throttling`; al
 receipts without the extension still verify. Tests prove low-headroom reduction, no recovery to a
 higher rate, 403 abort after one application attempt, resumable plan preservation, malformed
 summary rejection, and unchanged candle/funding schemas. A measured long-duration public run
-under the merged implementation remains required before full-history scale.
+under the merged implementation remains required before full-history scale. The implementation,
+ADR, and fault-injection proof are tracked in
+[PR #52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52).
 
 ## Still required before Gate 2
 
