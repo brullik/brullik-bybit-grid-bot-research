@@ -76,6 +76,25 @@ class SparsePageClient:
         return (row(kwargs["end_ms"]), row(kwargs["start_ms"]))
 
 
+class QuarantinedPageClient:
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        def row(open_time_ms: object, open_price: str) -> tuple[str, ...]:
+            return (
+                str(open_time_ms),
+                open_price,
+                "102",
+                "99.5",
+                "101",
+                "10.5000",
+                "1050.000000000001",
+            )
+
+        return (
+            row(kwargs["end_ms"], "100.00000001"),
+            row(kwargs["start_ms"], "103"),
+        )
+
+
 def snapshot(root: Path, *, observed_at_ms: int = 1_000) -> HostSnapshot:
     return HostSnapshot(
         observed_at_ms=observed_at_ms,
@@ -148,7 +167,9 @@ def completed_inputs(
     tmp_path: Path,
     *,
     end_ms: int = JANUARY_1_2026_MS,
-    client_factory: type[OnePageClient] | type[SparsePageClient] = OnePageClient,
+    client_factory: (
+        type[OnePageClient] | type[SparsePageClient] | type[QuarantinedPageClient]
+    ) = OnePageClient,
 ) -> tuple[Path, Path, Path]:
     registry_payload = build_instrument_registry(
         inventory_payload(), inventory_artifact_sha256="a" * 64
@@ -485,6 +506,132 @@ def test_canonical_coverage_audit_blocks_rest_returned_gap(tmp_path: Path) -> No
             "start_ms": JANUARY_1_2026_MS + 60_000,
         }
     ]
+
+
+def test_canonical_coverage_audit_separates_quarantine_from_repairable_gap(
+    tmp_path: Path,
+) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(
+        tmp_path,
+        end_ms=JANUARY_1_2026_MS + 60_000,
+        client_factory=QuarantinedPageClient,
+    )
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-13T22:00:00Z",
+    )
+
+    assert audit.passed is False
+    assert audit.payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {"quarantined_source_row": 1},
+        "unaccepted_reason_codes": ["quarantined_source_row"],
+        "unknown_reason_count": 0,
+    }
+    gap_evidence = audit.payload["gap_evidence"]
+    assert isinstance(gap_evidence, dict)
+    assert gap_evidence["sample_ranges"] == [
+        {
+            "end_ms": JANUARY_1_2026_MS,
+            "instrument_id": 1,
+            "minute_count": 1,
+            "start_ms": JANUARY_1_2026_MS,
+        }
+    ]
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-1m-coverage-audit.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(audit.payload)
+
+    audit_path, _ = publish_evidence(tmp_path / "quarantined-audit.json", audit.payload)
+    with pytest.raises(HistoryAcquisitionError, match="not repair-plan compatible"):
+        build_gap_repair_plan(
+            audit_path,
+            job_root,
+            registry_path,
+            capacity_path,
+            store_root,
+            generated_at_utc="2026-08-13T22:01:00Z",
+            planner_software_identity=PLANNER_SOFTWARE_IDENTITY,
+        )
+
+
+def test_canonical_coverage_audit_does_not_double_count_quarantined_missing_minute(
+    tmp_path: Path,
+) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(
+        tmp_path,
+        end_ms=JANUARY_1_2026_MS + 2 * 60_000,
+        client_factory=QuarantinedPageClient,
+    )
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-13T22:02:00Z",
+    )
+
+    assert audit.payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {
+            "quarantined_source_row": 1,
+            "rest_returned_no_data": 1,
+        },
+        "unaccepted_reason_codes": [
+            "quarantined_source_row",
+            "rest_returned_no_data",
+        ],
+        "unknown_reason_count": 0,
+    }
+    quality = audit.payload["quality"]
+    assert isinstance(quality, dict)
+    assert quality["missing_minute_count"] == 2
 
 
 def test_canonical_coverage_audit_blocks_source_value_mismatch(tmp_path: Path) -> None:

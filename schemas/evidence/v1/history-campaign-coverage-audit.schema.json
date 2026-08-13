@@ -69,7 +69,7 @@
       "properties": {
         "accepted_reason_codes": {"type": "array", "maxItems": 0},
         "observed_reason_counts": {"$ref": "#/$defs/reasonCounts"},
-        "unaccepted_reason_codes": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"$ref": "#/$defs/reason"}},
+        "unaccepted_reason_codes": {"type": "array", "maxItems": 11, "uniqueItems": true, "items": {"$ref": "#/$defs/reason"}},
         "unknown_reason_count": {"const": 0}
       }
     },
@@ -129,7 +129,7 @@
         "row_count": {"type": "integer", "minimum": 1}
       }
     },
-    "reason": {"enum": ["canonical_source_mismatch", "duplicate_canonical_key", "internal_interval_mismatch", "predecessor_interval_mismatch", "registry_lifecycle_failure", "rest_returned_no_data", "source_window_returned_no_event", "unexpected_settlement_timestamp", "unrequested_instrument_row", "unexplained_interval_change"]},
+    "reason": {"enum": ["canonical_source_mismatch", "duplicate_canonical_key", "internal_interval_mismatch", "predecessor_interval_mismatch", "quarantined_source_row", "registry_lifecycle_failure", "rest_returned_no_data", "source_window_returned_no_event", "unexpected_settlement_timestamp", "unrequested_instrument_row", "unexplained_interval_change"]},
     "reasonCounts": {
       "type": "object",
       "additionalProperties": false,
@@ -138,6 +138,7 @@
         "duplicate_canonical_key": {"type": "integer", "minimum": 1},
         "internal_interval_mismatch": {"type": "integer", "minimum": 1},
         "predecessor_interval_mismatch": {"type": "integer", "minimum": 1},
+        "quarantined_source_row": {"type": "integer", "minimum": 1},
         "registry_lifecycle_failure": {"type": "integer", "minimum": 1},
         "rest_returned_no_data": {"type": "integer", "minimum": 1},
         "source_window_returned_no_event": {"type": "integer", "minimum": 1},

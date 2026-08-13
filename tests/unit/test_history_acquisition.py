@@ -475,6 +475,7 @@ def test_exact_ohlc_anomaly_is_receipted_but_excluded_from_canonical_batch(
 
     assert completed.row_count == 1
     assert completed.quarantined_row_count == 1
+    assert completed.quarantined_source_keys == ((1, JANUARY_1_2026_MS + 60_000),)
     assert page["source_row_count"] == 2
     assert page["row_count"] == 1
     assert page["quarantined_row_count"] == 1

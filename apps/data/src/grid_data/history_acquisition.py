@@ -248,6 +248,7 @@ class CompletedHistoryJob:
     page_count: int
     row_count: int
     quarantined_row_count: int
+    quarantined_source_keys: tuple[tuple[int, int], ...] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1136,6 +1137,7 @@ def _verify_completed_history_job(
     total_rows = 0
     total_source_rows = 0
     total_quarantined_rows = 0
+    quarantined_source_keys: list[tuple[int, int]] | None = [] if verify_page_semantics else None
     quarantine_bindings: list[dict[str, object]] = []
     quarantine_reason_counts = {reason: 0 for reason in QUARANTINE_REASONS}
     total_attempts = 0
@@ -1245,6 +1247,15 @@ def _verify_completed_history_job(
             batch_dataset_type = current_type if batch_dataset_type is None else batch_dataset_type
             if current_type is not batch_dataset_type:
                 raise HistoryAcquisitionError("completed history job mixes dataset types")
+        if quarantined_source_keys is not None:
+            assert payload is not None
+            raw_quarantined_rows = payload.get("quarantined_rows", [])
+            assert isinstance(raw_quarantined_rows, list)
+            for raw_entry in raw_quarantined_rows:
+                assert isinstance(raw_entry, dict)
+                raw_row = raw_entry["row"]
+                assert isinstance(raw_row, list)
+                quarantined_source_keys.append((task.instrument_id, int(cast(str, raw_row[0]))))
         if not has_source_quality and page_quality.quarantined_row_count:
             raise HistoryAcquisitionError(
                 "legacy history manifest cannot omit observed quarantine facts"
@@ -1376,6 +1387,11 @@ def _verify_completed_history_job(
     }
     if has_source_quality and manifest_source_quality != expected_source_quality:
         raise HistoryAcquisitionError("history manifest source-quality facts do not verify")
+    if (
+        quarantined_source_keys is not None
+        and len(quarantined_source_keys) != total_quarantined_rows
+    ):
+        raise HistoryAcquisitionError("history quarantine source-key accounting does not verify")
     if any(path.is_symlink() for path in root.rglob("*")):
         raise HistoryAcquisitionError("history job cannot contain symlinks")
     actual_files = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
@@ -1395,6 +1411,9 @@ def _verify_completed_history_job(
         page_count=len(raw_tasks),
         row_count=total_rows,
         quarantined_row_count=total_quarantined_rows,
+        quarantined_source_keys=(
+            tuple(quarantined_source_keys) if quarantined_source_keys is not None else None
+        ),
     )
 
     batch: CanonicalCandleBatch | None = None
