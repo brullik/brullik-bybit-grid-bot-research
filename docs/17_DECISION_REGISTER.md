@@ -59,6 +59,7 @@
 | D-053 | Coverage audits classify receipt-bound quarantined candle rows separately and ordinary gap repair rejects them | accepted | Exact runtime key matching, sanitized aggregate reasons, no double-counted missing minute, and ADR-0053 |
 | D-054 | Funding compaction creates one receipt-last child from an exact same-partition parent union and validates settlement intervals across parent boundaries | accepted | Deterministic parent/hash lineage, duplicate rejection, unchanged parents, sanitized proof, and ADR-0054 |
 | D-055 | Funding repair begins as private, bounded source discovery and does not accept an inferred settlement or cadence | accepted | Recomputed blocked audit, complete isolated `C, N*C, C` admission, ordinary funding requests, fixed limits, and ADR-0055 |
+| D-056 | Funding repair discovery executes only after whole-plan admission and passes only on exact source confirmation | accepted | Standard receipt-resumable funding jobs, strict candidate equality, private execution evidence, unchanged parent/audit, and ADR-0056 |
 
 ## Decisions requiring benchmark or owner evidence
 

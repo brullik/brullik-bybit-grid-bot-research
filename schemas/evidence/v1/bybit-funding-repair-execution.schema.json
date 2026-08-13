@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-funding-repair-execution.schema.json",
+  "title": "Bounded Bybit funding repair execution",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "content_sha256",
+    "contract",
+    "dataset_id",
+    "executor_software_identity",
+    "generated_at_utc",
+    "limitations",
+    "limits",
+    "mutation_policy",
+    "status",
+    "storage_policy",
+    "tasks"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_parent_manifest_sha256",
+        "capacity_evidence_sha256",
+        "chronology_anomaly_records_sha256",
+        "coverage_audit_artifact_sha256",
+        "coverage_audit_content_sha256",
+        "instrument_registry_sha256",
+        "original_funding_manifest_sha256",
+        "repair_plan_artifact_sha256",
+        "repair_plan_content_sha256"
+      ],
+      "properties": {
+        "canonical_parent_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "chronology_anomaly_records_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "original_funding_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.bybit-funding-repair-execution/v1"},
+    "dataset_id": {"type": "string", "pattern": "^funding-[0-9a-f]{24}$"},
+    "executor_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_http_requests",
+        "candidate_settlement_count",
+        "missing_candidate_count",
+        "observed_event_count",
+        "planned_max_http_requests",
+        "task_count",
+        "unexpected_event_count"
+      ],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "candidate_settlement_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "missing_candidate_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "observed_event_count": {"type": "integer", "minimum": 0},
+        "planned_max_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "task_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "unexpected_event_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "mutation_policy": {
+      "const": {
+        "canonical_parent_mutated": false,
+        "market_requests_receipt_verified": true,
+        "repair_child_published": false,
+        "schedule_change_accepted": false
+      }
+    },
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "credentials_included": false,
+        "github_commit_eligible": false,
+        "market_values_included": false,
+        "private_runtime_artifact": true,
+        "runtime_paths_included": false
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/task"}
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_http_requests",
+        "candidate_settlement_count",
+        "end_ms",
+        "exact_source_confirmation",
+        "funding_manifest_sha256",
+        "funding_plan_sha256",
+        "instrument_id",
+        "job_directory",
+        "missing_candidate_count",
+        "observed_event_count",
+        "page_count",
+        "request_sha256",
+        "sequence",
+        "start_ms",
+        "status",
+        "symbol",
+        "unexpected_event_count"
+      ],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "candidate_settlement_count": {"type": "integer", "minimum": 1, "maximum": 199},
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "exact_source_confirmation": {"type": "boolean"},
+        "funding_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "job_directory": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,159}$"},
+        "missing_candidate_count": {"type": "integer", "minimum": 0, "maximum": 199},
+        "observed_event_count": {"type": "integer", "minimum": 0, "maximum": 199},
+        "page_count": {"type": "integer", "minimum": 2},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 999},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "status": {"enum": ["passed", "blocked"]},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "unexpected_event_count": {"type": "integer", "minimum": 0, "maximum": 199}
+      }
+    }
+  }
+}

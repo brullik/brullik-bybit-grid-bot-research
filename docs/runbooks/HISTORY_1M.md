@@ -600,8 +600,33 @@ confirmation; the original audit remains blocked and no schedule is accepted.
 
 Keep the generated plan and receipt private because they contain exact instrument and settlement
 identities. Commit only the implementation, schema, ADR, tests, and a later sanitized aggregate
-proof. Funding repair execution and immutable child publication are separate transitions and are
-not yet authorized by a successful plan.
+proof. A successful plan authorizes neither execution nor immutable child publication by itself.
+
+Preflight the complete execution with the exact executor merge identity:
+
+```powershell
+.venv\Scripts\grid-data.exe execute-funding-repair `
+  --repair-plan reports\private\funding-repair-plan.json `
+  --coverage-audit reports\private\funding-coverage-audit.json `
+  --job-root data\history\.funding-landing\funding-<job>--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --repair-staging-root data\funding-repair-history `
+  --executor-software-identity git:<full-executor-merge-commit-sha> `
+  --output reports\private\funding-repair-execution.json
+```
+
+Review the printed task/request count, complete remaining free-space bound, peak memory, staging
+root, and existing receipt count. Repeat the exact command with `--execute` only after preflight
+passes. Tasks use the public funding endpoint sequentially and retain the standard predecessor,
+page, manifest, completion-receipt, resume, and unsaturated-response checks.
+
+Exit code `0` means every exact candidate settlement was returned once. Exit code `2` means the
+private receipt-bound result was preserved as blocked because at least one candidate was missing
+or unexpected. Neither outcome changes the original audit or parent. Do not commit the execution
+JSON: it omits rates and credentials but contains exact runtime instrument and settlement
+identities. Immutable funding repair-child publication remains a separate transition.
 
 ## 18. Run a resumable multi-month campaign
 

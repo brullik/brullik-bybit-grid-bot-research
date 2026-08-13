@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0056 bounded funding repair discovery execution: no-mutation whole-plan preflight,
+  sequential standard public funding Landing jobs, exact candidate confirmation, receipt-based
+  resume, private rate-free execution evidence, and unchanged canonical parent/audit.
 - ADR-0055 fail-closed funding repair discovery planning: a receipt-verified blocked audit may
   produce bounded ordinary public funding requests only when every interval change is an isolated
   integer-multiple `C, N*C, C` sandwich; candidates remain private, unaccepted, and unexecuted.
