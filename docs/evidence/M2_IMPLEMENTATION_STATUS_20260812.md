@@ -566,6 +566,13 @@ bounded fault-injection tests cover disconnect-then-success, exhausted disconnec
 unchanged immediate failure for non-retryable HTTP responses. The unchanged campaign can resume
 without refetching its verified children.
 
+The five-instrument candle-only full-history resume later exposed the corresponding TLS record
+read boundary: Python raised `ssl.SSLError` for a bad-record-MAC/decryption failure after 853 of
+978 child jobs had committed. Existing receipts remained reusable and no canonical data was
+involved. TLS read failures are now classified through the same bounded `TransportError` path;
+the acquisition layer still owns the fixed per-page attempt ceiling and non-retryable HTTP
+responses remain immediate.
+
 The resumed execution completed all 72 children and the independent no-network verifier passed.
 The aggregate contains 11,365 pages, 10,537,365 returned rows, and 11,367 recorded HTTP attempts,
 so the entire run required two explicit retries. The completed manifest SHA-256 is

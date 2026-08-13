@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import random
+import ssl
 import time
 import urllib.error
 import urllib.parse
@@ -144,6 +145,7 @@ class UrllibJsonTransport:
             except (
                 urllib.error.URLError,
                 http.client.HTTPException,
+                ssl.SSLError,
                 ConnectionError,
                 TimeoutError,
                 json.JSONDecodeError,

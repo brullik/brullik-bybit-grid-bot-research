@@ -88,6 +88,8 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Public REST transport now classifies TLS record/read failures (`ssl.SSLError`) as bounded
+  retryable transport failures, preserving page-level attempt ceilings and campaign resume.
 - Long-run throttling qualification now distinguishes receipt-verified transport attempts from
   actual HTTP responses: every completed page response must be classified, while bounded
   connection/protocol attempts without a response remain separately visible instead of causing a
