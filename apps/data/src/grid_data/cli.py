@@ -19,12 +19,25 @@ from grid_bybit_public import (
 )
 from grid_contracts.canonical import sha256_file
 from grid_market_store import verify_committed_candle_dataset, verify_compacted_candle_dataset
+from grid_market_store.catalog import (
+    load_catalog_selection_request,
+    preflight_catalog_registration,
+    register_catalog_datasets,
+    select_catalog_range,
+    verify_catalog,
+)
 
 from grid_data import __version__
 from grid_data.archive_inventory import (
     build_archive_coverage_matrix,
     build_archive_inventory,
     load_verified_public_inventory,
+)
+from grid_data.dataset_catalog import (
+    build_catalog_registration_evidence,
+    build_catalog_selection_evidence,
+    verify_catalog_registration_evidence,
+    verify_catalog_selection_evidence,
 )
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
 from grid_data.history_acquisition import (
@@ -321,6 +334,37 @@ def parser() -> argparse.ArgumentParser:
         help="publish compacted Parquet and evidence; omitted is no-mutation preflight",
     )
     compact.set_defaults(handler=_compact_history)
+
+    catalog_register = commands.add_parser(
+        "catalog-register",
+        help="preflight or atomically register receipt-verified canonical datasets",
+    )
+    catalog_register.add_argument(
+        "--dataset",
+        action="append",
+        required=True,
+        help="dataset ID; repeat and include any unregistered lineage parents",
+    )
+    catalog_register.add_argument("--store-root", type=Path, required=True)
+    catalog_register.add_argument("--catalog", type=Path, required=True)
+    catalog_register.add_argument("--software-identity", required=True)
+    catalog_register.add_argument("--output", type=Path, required=True)
+    catalog_register.add_argument(
+        "--execute",
+        action="store_true",
+        help="atomically update catalog and publish evidence; omitted is no-mutation preflight",
+    )
+    catalog_register.set_defaults(handler=_catalog_register)
+
+    catalog_select = commands.add_parser(
+        "catalog-select",
+        help="select hash-bound canonical objects from one explicitly bound catalog snapshot",
+    )
+    catalog_select.add_argument("--request", type=Path, required=True)
+    catalog_select.add_argument("--store-root", type=Path, required=True)
+    catalog_select.add_argument("--catalog", type=Path, required=True)
+    catalog_select.add_argument("--output", type=Path, required=True)
+    catalog_select.set_defaults(handler=_catalog_select)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -811,6 +855,101 @@ def _compact_history(args: argparse.Namespace) -> int:
         }
     )
     print(json.dumps(summary))
+    return 0
+
+
+def _catalog_register(args: argparse.Namespace) -> int:
+    plan = preflight_catalog_registration(
+        tuple(args.dataset),
+        args.store_root,
+        args.catalog,
+        software_identity=args.software_identity,
+    )
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    if existing_evidence:
+        if not plan.existing_registration or not verify_evidence(output):
+            raise ValueError("catalog evidence conflicts with an incomplete registration")
+    else:
+        preflight_evidence(output)
+    summary = {
+        "catalog": str(plan.catalog_path),
+        "catalog_content_sha256_before": plan.before.content_sha256,
+        "catalog_revision_before": plan.before.revision,
+        "execute": bool(args.execute),
+        "existing_evidence": existing_evidence,
+        "existing_registration": plan.existing_registration,
+        "new_dataset_ids": list(plan.new_dataset_ids),
+        "requested_dataset_ids": list(plan.requested_dataset_ids),
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    snapshot = register_catalog_datasets(
+        plan,
+        registered_at_ms=time.time_ns() // 1_000_000,
+    )
+    if existing_evidence:
+        evidence = verify_catalog_registration_evidence(output, plan, snapshot)
+        artifact = output
+    else:
+        evidence = build_catalog_registration_evidence(
+            plan,
+            snapshot,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "catalog_content_sha256": snapshot.content_sha256,
+            "catalog_dataset_count": snapshot.dataset_count,
+            "catalog_file_count": snapshot.file_count,
+            "catalog_revision": snapshot.revision,
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "status": evidence["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _catalog_select(args: argparse.Namespace) -> int:
+    request = load_catalog_selection_request(args.request)
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    if existing_evidence:
+        if not verify_evidence(output):
+            raise ValueError("catalog selection evidence receipt does not verify")
+    else:
+        preflight_evidence(output)
+    selection = select_catalog_range(request, args.store_root, args.catalog)
+    if existing_evidence:
+        evidence = verify_catalog_selection_evidence(output, selection)
+        artifact = output
+    else:
+        evidence = build_catalog_selection_evidence(
+            selection,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    snapshot = verify_catalog(args.store_root, args.catalog)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "catalog_content_sha256": snapshot.content_sha256,
+                "catalog_revision": snapshot.revision,
+                "object_count": len(selection.objects),
+                "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+                "request_sha256": request.request_sha256,
+                "status": evidence["status"],
+            }
+        )
+    )
     return 0
 
 

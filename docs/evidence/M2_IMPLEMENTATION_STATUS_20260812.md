@@ -29,6 +29,8 @@ The authoritative implementation and review history is:
   repair execution and immutable parent-to-child replacement lineage.
 - PR [#26](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/26): target-size
   immutable compaction, multi-file/tail verification, and complete parent lineage.
+- PR [#27](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/27): receipt-verified
+  DuckDB catalog registration and snapshot-bound reproducible range selection.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
@@ -105,12 +107,30 @@ lineage, unchanged parents, idempotent rerun, insufficient-resource blocking, an
 detection. `grid.canonical-1m-compaction/v1` provides the value-free receipt-bound proof. A
 representative measured runtime artifact is still required before Gate 2.
 
+## Dataset catalog and reproducible selection implementation
+
+`grid-data catalog-register` preflights and atomically registers only receipt-verified canonical
+candle datasets in a DuckDB metadata index. It binds complete parent lineage, manifest/evidence/
+build/software hashes, file counts/hashes/key bounds, canonical month/bucket, honest gap/conflict
+summary, and logical receipt/object identity. Catalog state uses a monotonic revision and canonical
+logical SHA-256 rather than unstable DuckDB file bytes; a lock, same-directory building file,
+transaction, fsync, and atomic replace protect mutation. Identical registration is idempotent.
+
+`grid-data catalog-select` accepts a closed request containing the exact catalog revision/hash,
+explicit dataset IDs, minute range, instrument filter, and consumer Git identity. It re-verifies
+every selected manifest and file, rejects mutable-latest behavior, missing month/bucket partitions,
+ancestor-plus-child inputs, and overlapping key ranges, and publishes receipt-bound store-relative
+object keys. The result proves deterministic pruning, not historical completeness. Runtime DuckDB
+and market data remain outside Git; schemas, tests, ADR-0030, and sanitized evidence contracts are
+authoritative in GitHub. Representative runtime registration/selection evidence is still required
+before Gate 2.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
 - measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
-- catalog registration and reproducible range selection;
+- representative receipt-verified catalog registration/selection evidence;
 - long-run adaptive throttling evidence and controlled scale-up; and
 - funding ingestion plus the remaining PM-owned Gate 2 acceptance checklist.

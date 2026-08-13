@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grid.canonical-dataset-catalog-registration/v1",
+  "title": "Canonical dataset catalog registration evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "catalog",
+    "content_sha256",
+    "datasets",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "registration",
+    "safety",
+    "status"
+  ],
+  "properties": {
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "content_sha256", "dataset_count", "file_count", "revision", "schema_version"],
+      "properties": {
+        "backend": {"const": "duckdb"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "file_count": {"type": "integer", "minimum": 1},
+        "revision": {"type": "integer", "minimum": 1},
+        "schema_version": {"const": 1}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/dataset"}
+    },
+    "evidence_schema": {"const": "grid.canonical-dataset-catalog-registration/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "limitations": {"type": "array", "minItems": 3, "items": {"type": "string", "minLength": 1}},
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_dataset_ids", "software_identity"],
+      "properties": {
+        "requested_dataset_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/datasetId"}
+        },
+        "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+      }
+    },
+    "safety": {"$ref": "#/$defs/safety"},
+    "status": {"const": "passed"}
+  },
+  "$defs": {
+    "datasetId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_report_count", "conflict_count", "dataset_id", "dataset_type", "file_count",
+        "gap_count", "gap_status", "instrument_count", "manifest_sha256", "max_time_ms",
+        "min_time_ms", "parent_dataset_ids", "partition", "registered_revision", "row_count",
+        "schema_version", "semantic_version", "status", "total_size_bytes"
+      ],
+      "properties": {
+        "audit_report_count": {"type": "integer", "minimum": 1},
+        "conflict_count": {"const": 0},
+        "dataset_id": {"$ref": "#/$defs/datasetId"},
+        "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m"]},
+        "file_count": {"type": "integer", "minimum": 1},
+        "gap_count": {"type": "null"},
+        "gap_status": {"const": "not-assessed-by-dataset-receipt"},
+        "instrument_count": {"type": "integer", "minimum": 1},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "max_time_ms": {"type": "integer", "minimum": 0},
+        "min_time_ms": {"type": "integer", "minimum": 0},
+        "parent_dataset_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/datasetId"}},
+        "partition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bucket", "month", "year"],
+          "properties": {
+            "bucket": {"type": "integer", "minimum": 0, "maximum": 7},
+            "month": {"type": "integer", "minimum": 1, "maximum": 12},
+            "year": {"type": "integer", "minimum": 1970, "maximum": 9999}
+          }
+        },
+        "registered_revision": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1},
+        "schema_version": {"const": "v1"},
+        "semantic_version": {"type": "string", "minLength": 1},
+        "status": {"const": "complete"},
+        "total_size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absolute_paths_included", "account_data_included", "credentials_included", "market_values_included", "receipt_verified_inputs"],
+      "properties": {
+        "absolute_paths_included": {"const": false},
+        "account_data_included": {"const": false},
+        "credentials_included": {"const": false},
+        "market_values_included": {"const": false},
+        "receipt_verified_inputs": {"const": true}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

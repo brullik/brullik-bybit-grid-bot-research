@@ -131,6 +131,25 @@ output bytes, 16 MiB target facts, at most one tail, complete lineage, and immut
 identity. It contains no market values, runtime paths, host identity, account data, or credentials.
 It does not register a catalog entry, delete a parent, or close Gate 2.
 
+`grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
+complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
+month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically
+increasing revision plus canonical logical content SHA-256 identifies a snapshot independently of
+DuckDB bytes. The catalog is rebuildable metadata; manifests and completion receipts remain
+authoritative.
+
+`grid.canonical-dataset-catalog-registration/v1` is the GitHub-safe proof that explicitly named
+datasets are present in one verified catalog snapshot. It contains hashes, counts, lineage,
+partition facts, and limitations but no candle values, credentials, account/host identity, or
+absolute path. `not-assessed-by-dataset-receipt` must not be treated as complete coverage.
+
+`grid.canonical-dataset-selection-request/v1` binds the exact catalog revision/content hash,
+sorted explicit dataset IDs, one candle type, inclusive minute-aligned range, explicit all/include
+instrument filter, and consumer Git SHA. `grid.canonical-dataset-selection/v1` re-verifies the
+selected datasets and produces hash-bound store-relative object keys. It rejects implicit latest,
+missing month/bucket partitions, ancestor-plus-child inputs, and overlapping key ranges. It proves
+deterministic range pruning only; separate coverage acceptance remains mandatory.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

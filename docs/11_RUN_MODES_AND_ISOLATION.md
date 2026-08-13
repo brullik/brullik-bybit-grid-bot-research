@@ -17,7 +17,8 @@ The package boundaries are implemented. Phase 2 currently exposes stable-registr
 no-mutation history preflight, bounded public 1m acquisition, completed-Landing verification, and
 receipt-last canonical publication, fail-closed coverage audit, and no-network gap-repair
 planning, receipt-resumable repair execution, immutable replacement lineage, and target-size
-immutable compaction; catalog commands remain in progress.
+immutable compaction plus receipt-verified DuckDB catalog registration and snapshot-bound range
+selection.
 
 ## Separate startup examples
 
@@ -66,6 +67,13 @@ grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
   --capacity-evidence <capacity.json> --store-root <local-path> \
   --software-identity git:<full-commit-sha> --output <compaction-evidence.json>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data catalog-register --dataset <dataset-id> [--dataset <lineage-parent-id> ...] \
+  --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \
+  --software-identity git:<full-commit-sha> --output <registration-evidence.json>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data catalog-select --request <snapshot-bound-selection-request.json> \
+  --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \
+  --output <selection-evidence.json>
 
 # Research/parameter selection only
 grid-research build-features --market-dataset <dataset-id>

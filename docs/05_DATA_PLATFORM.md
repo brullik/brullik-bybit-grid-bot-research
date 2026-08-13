@@ -283,3 +283,16 @@ A lightweight metadata catalog—initially SQLite or DuckDB—stores:
 - completion receipt location.
 
 The catalog contains metadata, not the full candle corpus.
+
+ADR-0030 implements the first catalog boundary with DuckDB. Registration accepts only complete,
+receipt-verified canonical trade/mark 1m datasets, requires complete registered parent lineage,
+and stores a logical receipt/object identity rather than an absolute host path. Conflict count is
+zero only because canonical verification proves sorted unique keys; gap status remains explicitly
+`not-assessed-by-dataset-receipt` until separate coverage evidence is admitted.
+
+The DuckDB file is a rebuildable runtime index, not a dataset commit marker. Each atomic
+registration increments a revision and hashes the canonical logical catalog rows independently of
+DuckDB file bytes. Range-selection requests bind that exact revision/hash and explicit dataset IDs;
+there is no implicit `latest`. Selection re-verifies manifests/files, requires the requested
+month/bucket set, rejects ancestor-plus-child and overlapping key ranges, and returns only
+store-relative object keys. Selection proves pruning, not gap-free coverage.
