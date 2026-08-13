@@ -509,6 +509,79 @@ def test_owner_storage_review_evidence_chain_is_complete_and_bound() -> None:
     assert verify_evidence(projection)
 
 
+def test_public_funding_pilot_matches_schema_hash_receipt_and_safety_boundary() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-public-funding-canonical-pilot-20260813.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-public-funding-pilot.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    content = dict(payload)
+    embedded_hash = content.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(content)
+    assert verify_evidence(artifact)
+    assert payload["status"] == "verified-canonical-funding-publication"
+    assert payload["scope"]["observed_event_count"] == 42
+    assert payload["scope"]["requested_window_minutes"] == 20_160
+    assert [item["observed_event_count"] for item in payload["scope"]["series"]] == [21, 21]
+    assert payload["source"] == {
+        "actual_http_requests": 4,
+        "authentication": "none",
+        "base_url": "https://api.bybit.com",
+        "boundary_page_count": 2,
+        "endpoint": "/v5/market/funding/history",
+        "max_attempt_count_observed": 1,
+        "max_attempts_per_page": 3,
+        "page_count": 4,
+        "page_limit": 200,
+        "page_span_minutes": 10_080,
+        "private_endpoints_called": False,
+        "range_page_count": 2,
+        "saturated_range_pages_accepted": False,
+        "target_rps": 4,
+        "workers": 4,
+    }
+    assert payload["canonical"]["row_count"] == 42
+    assert payload["canonical"]["parquet_bytes"] == 5_050
+    assert payload["canonical"]["single_file_classification"] == "tail-below-target"
+    assert payload["publication"]["software_identity"] == (
+        "git:cbe8391db0b9d5b9bdeb9ebae5af4035e570a7e2"
+    )
+    assert payload["quality"] == {
+        "canonical_receipt_verified": True,
+        "exact_landing_canonical_table_equality": True,
+        "funding_rates_exact_decimal128": True,
+        "internal_intervals_recomputed": True,
+        "predecessor_intervals_recomputed": True,
+        "sorted_unique_keys_verified": True,
+    }
+
+    forbidden_keys = {
+        "device_identity_sha256",
+        "fundingRate",
+        "funding_rate",
+        "funding_time_ms",
+        "host_preflight",
+        "rows",
+        "settlement_time_ms",
+    }
+
+    def assert_sanitized(value: Any) -> None:
+        if isinstance(value, Mapping):
+            assert forbidden_keys.isdisjoint(value)
+            for nested in value.values():
+                assert_sanitized(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_sanitized(nested)
+
+    assert_sanitized(payload)
+    rendered = json.dumps(payload)
+    assert "C:\\" not in rendered
+    assert "/home/" not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 

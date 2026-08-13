@@ -10,6 +10,9 @@ All notable project-governance and architecture changes are recorded here.
   internal interval recomputation, sparse event/window accounting, transitive receipts/hashes,
   immutable publisher identity, and no rates, observed settlement times, paths, host/account data,
   credentials, or Gate 2 implication.
+- Receipt-verified measured funding pilot evidence for BTCUSDT and UNIUSDT: 42 exact events from
+  four unauthenticated public requests, predecessor-derived intervals, a verified 5,050-byte
+  canonical tail file, and explicit non-coverage/non-scale limitations.
 - Public-only funding acquisition with one receipted predecessor per series, fixed unsaturated
   range pages, bounded retries/concurrency/capacity, durable resume, exact normalization, boundary
   aggregate evidence, and a verified Landing-to-canonical adapter.
