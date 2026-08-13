@@ -43,6 +43,8 @@ The authoritative implementation and review history is:
   measured public funding pilot evidence and its sanitized acceptance assertions.
 - PR [#33](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/33): fail-closed funding
   source-parity and stable observed-chronology audit.
+- PR [#34](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/34): receipt-verified
+  measured funding source-parity/chronology evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -82,8 +84,19 @@ internal interval derivation, range-page tiling, lifecycle bounds, and stable ob
 Empty source windows and cadence changes are unaccepted blockers; current undated
 `fundingInterval` is never historical evidence. The audit publishes counts, interval histograms,
 transitive hashes, and a complete private-anomaly hash without rates or observed settlement
-timestamps. Measured audit evidence remains pending until this implementation is merged; Gate 2
-remains closed.
+timestamps. Gate 2 remains closed.
+
+The receipt-verified measured audit is
+[`m2-canonical-funding-coverage-audit-20260813.json`](../../benchmarks/results/m2-canonical-funding-coverage-audit-20260813.json).
+It ran with auditor merge identity `git:97bce032b351f95e11d78352b74fe5f2098f8834`
+against publisher identity `git:cbe8391db0b9d5b9bdeb9ebae5af4035e570a7e2`. Exact
+Landing/canonical equality passed for all 42 events and both 10,080-minute source windows. Each
+series had one predecessor and one unsaturated range page, 21 events, and one stable observed
+480-minute cadence. Empty windows, predecessor/internal mismatches, cadence changes, duplicates,
+conflicts, unexpected/unrequested rows, and lifecycle failures were all zero; the complete
+anomaly inventory was empty and hash-bound. No absence or cadence-change reason was accepted.
+This establishes only the retained bounded Bybit source response, not an independent venue ledger,
+complete funding history, scale behavior, or Gate 2.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
