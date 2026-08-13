@@ -172,6 +172,57 @@ def test_instrument_timeline_summary_matches_schema_hash_receipt_and_redaction()
         assert forbidden not in rendered
 
 
+def test_current_status_policy_timeline_results_preserve_positive_and_negative_evidence() -> None:
+    results = ROOT / "benchmarks" / "results"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "instrument-timeline-summary.schema.json"
+    )
+    combined_artifact = results / "m2-instrument-timeline-current-policy-20260813.json"
+    current_artifact = results / "m2-instrument-timeline-complete-current-20260813.json"
+    combined = load_json(combined_artifact)
+    current = load_json(current_artifact)
+
+    for artifact, payload in ((combined_artifact, combined), (current_artifact, current)):
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+        hash_input = dict(payload)
+        embedded_hash = hash_input.pop("content_sha256")
+        assert embedded_hash == canonical_sha256(hash_input)
+        assert verify_evidence(artifact)
+        assert payload["software_identity"] == ("git:c558a056337915ed83d9d3ce598d463f8af56cac")
+        rendered = artifact.read_text(encoding="utf-8").lower()
+        for forbidden in (
+            "c:\\",
+            "api_key",
+            "api_secret",
+            "authorization",
+            "device_identity",
+            '"records"',
+            '"symbol"',
+        ):
+            assert forbidden not in rendered
+
+    assert current["status"] == "passed"
+    assert current["blocker_codes"] == []
+    assert current["timeline"]["snapshot_count"] == 1
+    assert current["universe"] == {
+        "coverage_blocked_instrument_count": 0,
+        "coverage_instrument_count": 1015,
+        "delivery_bounded_instrument_count": 303,
+        "latest_inventory_status": "complete",
+        "latest_status_counts": {"Closed": 303, "PreLaunch": 5, "Trading": 707},
+        "latest_usdt_linear_perpetual_count": 1015,
+        "open_ended_instrument_count": 712,
+        "partial_snapshot_count": 0,
+    }
+
+    assert combined["status"] == "blocked"
+    assert combined["blocker_codes"] == ["partial_source_inventory"]
+    assert combined["timeline"]["snapshot_count"] == 3
+    assert combined["universe"]["latest_inventory_status"] == "complete"
+    assert combined["universe"]["partial_snapshot_count"] == 2
+    assert combined["universe"]["coverage_blocked_instrument_count"] == 0
+
+
 def test_representative_multi_year_campaign_request_is_bounded_and_sanitized() -> None:
     artifact = (
         ROOT

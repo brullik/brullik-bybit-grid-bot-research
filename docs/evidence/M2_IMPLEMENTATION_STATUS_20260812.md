@@ -438,10 +438,24 @@ normative Bybit V5 enum contains `PreLaunch`, `Trading`, `Delivering`, and `Clos
 contain the rejected `Settling` filter. New observations bind the dated
 `bybit-v5-linear-status-enum-2026-08-13` policy, require every one of those four independently
 paginated queries to succeed, and reject any row whose returned status differs from its requested
-partition. Older partial artifacts remain immutable. A fresh measured snapshot/timeline result
-must still be generated after the policy implementation is merged; historical metadata before
-2026-08-12 remains unresolved. The implementation and decision are tracked in
+partition. Older partial artifacts remain immutable. The implementation and decision are tracked in
 [PR #50](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/50).
+
+The fresh mainnet observation built from merge identity
+`git:c558a056337915ed83d9d3ce598d463f8af56cac` accepted all four policy queries:
+`PreLaunch=5`, `Trading=815`, `Delivering=0`, and `Closed=937` across all linear products. It
+contains 1,015 USDT linear perpetuals and is `complete`. The receipt-verified
+[complete-current summary](../../benchmarks/results/m2-instrument-timeline-complete-current-20260813.json)
+passes with 1,015 stable lifecycle IDs, 303 delivery-bounded and 712 open-ended instruments, zero
+lifecycle conflicts, zero partial snapshots, and no blocker code.
+
+The separate
+[three-snapshot summary](../../benchmarks/results/m2-instrument-timeline-current-policy-20260813.json)
+proves that evidence immutability was not weakened: its latest inventory is complete and its
+lifecycle conflict count is zero, but it remains `blocked` because it includes the two earlier
+partial snapshots. This is intentional negative-evidence preservation. The new observation
+resolves the false complete-current blocker only; it does not reconstruct point-in-time metadata
+before 2026-08-12, infer suspensions, or close Gate 2.
 
 ## Resumable multi-year campaign implementation
 
@@ -598,9 +612,8 @@ campaign belongs in a subsequent evidence commit using the immutable merged publ
 
 ## Still required before Gate 2
 
-- broader dated lifecycle evidence covering representative historical decision periods and a
-  fresh post-ADR-0042 complete-current snapshot; the current timeline begins on 2026-08-12 and
-  does not reconstruct earlier point-in-time metadata;
+- broader dated lifecycle evidence covering representative historical decision periods; the
+  timeline begins on 2026-08-12 and does not reconstruct earlier point-in-time metadata;
 - canonical publication and coverage-audit evidence for the full-history controlled scale;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;

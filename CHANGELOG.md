@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified current-inventory policy evidence from public mainnet: all four normative
+  status partitions accepted, a passed 1,015-instrument complete-current summary, and a separate
+  blocked three-snapshot summary proving that two older partial observations remain immutable.
 - Receipt-bound aggregate coverage auditing for canonical history campaigns: sequential unchanged
   candle/funding child audits, complete child content-hash membership, summed quality/reason
   counters, strict blocker propagation, and a GitHub-safe identity/value-free result.
