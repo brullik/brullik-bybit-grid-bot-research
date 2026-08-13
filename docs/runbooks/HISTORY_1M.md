@@ -552,6 +552,21 @@ aggregate counts, measured bytes, public endpoint policy, process facts, and lim
 commit the campaign plan/manifests or Landing pages: they contain runtime relative paths, symbols,
 instrument identities, and market values.
 
+Use `--require-complete-throttling-evidence` for every long-run qualification. It fails if a child
+lacks receipt-bound execution timing, mixes legacy/current summaries, or has fewer sanitized
+response observations than verified HTTP attempts. Ordinary projection without this flag remains
+available only to reproduce immutable legacy campaigns.
+
+For a campaign executed entirely by an ADR-0044 implementation, qualify it explicitly:
+
+```powershell
+.venv\Scripts\grid-data.exe history-campaign-evidence `
+  --campaign-root data\history\.campaigns\<long-run-campaign> `
+  --software-identity git:<full-commit-sha> `
+  --require-complete-throttling-evidence `
+  --output benchmarks\results\m2-public-history-long-run-<date>.json
+```
+
 ## 19. Publish a completed campaign as canonical datasets
 
 Use the exact publisher merge commit containing ADR-0039. First run the aggregate no-mutation

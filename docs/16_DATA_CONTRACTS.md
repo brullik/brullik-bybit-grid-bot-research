@@ -93,11 +93,12 @@ capacity budget, and deterministic pages. Each `grid.bybit-1m-history-page/v1` s
 strings, request identity, row hash/count, and attempt count. The
 `grid.bybit-1m-history-acquisition/v1` manifest inventories every page and is committed by a
 separate `grid.history-acquisition-receipt/v1` written last. A valid Landing receipt is input
-evidence for canonical publication, not a canonical dataset completion marker. Canonical candle
-and funding manifests may additionally carry the backward-compatible ADR-0043
+evidence for canonical publication, not a canonical dataset completion marker. Candle and funding
+Landing manifests may additionally carry the backward-compatible ADR-0043
 `adaptive_throttling` summary under `request_bound`. It binds classified response-header counts,
 the configured/final/minimum global rate, reductions, cooldowns, and zero automatic increases.
-Legacy v1 manifests without that optional object remain valid; new executions always write it.
+Legacy v1 manifests without that optional object or ADR-0044 `started_at_ms` remain valid; new
+executions always write both.
 Canonical candle rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance
 cannot collide between otherwise similar jobs.
 
@@ -114,6 +115,11 @@ execution is sequential so per-child pacers do not multiply the configured RPS.
 `grid.history-campaign-receipt/v1` only after every child completion receipt verifies. It records
 only aggregate job/page/row/HTTP counts and child hashes/relative roots; it is runtime acquisition
 evidence, not canonical publication, accepted coverage, or Gate 2 evidence. See ADR-0038.
+
+`grid.phase2-public-history-campaign/v1` may carry the ADR-0044 `timing` and
+`adaptive_throttling` projections. They are optional so immutable legacy evidence still validates.
+The strict builder mode requires every child to contain both inputs and proves that classified
+observations exactly cover the campaign's verified HTTP-attempt total.
 
 `grid.phase2-public-history-campaign/v1` is the GitHub-safe projection of one fully re-verified
 campaign. It binds campaign/request/registry/capacity hashes, immutable implementation identity,

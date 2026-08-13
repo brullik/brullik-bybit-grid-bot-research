@@ -55,6 +55,7 @@
         "tick_rows_requested": {"const": false}
       }
     },
+    "started_at_ms": {"type": "integer", "minimum": 0},
     "status": {"const": "complete"}
   },
   "$defs": {

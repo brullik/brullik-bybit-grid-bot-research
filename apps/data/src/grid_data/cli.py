@@ -300,6 +300,14 @@ def parser() -> argparse.ArgumentParser:
     campaign_evidence.add_argument("--campaign-root", type=Path, required=True)
     campaign_evidence.add_argument("--software-identity", required=True)
     campaign_evidence.add_argument("--output", type=Path, required=True)
+    campaign_evidence.add_argument(
+        "--require-complete-throttling-evidence",
+        action="store_true",
+        help=(
+            "fail unless every child has execution timing and one sanitized adaptive "
+            "observation per HTTP response"
+        ),
+    )
     campaign_evidence.set_defaults(handler=_history_campaign_evidence)
 
     campaign_publish = commands.add_parser(
@@ -836,6 +844,7 @@ def _history_campaign_evidence(args: argparse.Namespace) -> int:
         args.campaign_root,
         generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         software_identity=args.software_identity,
+        require_complete_throttling_evidence=args.require_complete_throttling_evidence,
     )
     artifact, receipt = publish_evidence(output, payload)
     print(

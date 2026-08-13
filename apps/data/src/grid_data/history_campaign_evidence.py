@@ -17,6 +17,11 @@ from grid_data.history_campaign import (
     HistoryCampaignError,
     verify_completed_history_campaign,
 )
+from grid_data.public_rate_limit import (
+    ADAPTIVE_RATE_POLICY,
+    AdaptiveRateLimitError,
+    verify_adaptive_rate_summary,
+)
 
 CAMPAIGN_EVIDENCE_CONTRACT: Final = "grid.phase2-public-history-campaign/v1"
 SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
@@ -56,11 +61,146 @@ def _artifact_bytes(campaign_root: Path, plan: dict[str, object]) -> int:
     return total
 
 
+def _child_manifests(campaign_root: Path, plan: dict[str, object]) -> list[dict[str, object]]:
+    raw_jobs = plan.get("jobs")
+    if not isinstance(raw_jobs, list):
+        raise HistoryCampaignError("verified campaign plan has no job inventory")
+    staging_root = campaign_root.parent.parent
+    manifests: list[dict[str, object]] = []
+    for raw_job in raw_jobs:
+        if not isinstance(raw_job, dict) or not isinstance(raw_job.get("job_root"), str):
+            raise HistoryCampaignError("verified campaign job root is invalid")
+        relative = PurePosixPath(raw_job["job_root"])
+        manifests.append(_object(staging_root.joinpath(*relative.parts) / "manifest.json"))
+    return manifests
+
+
+def _adaptive_summary(
+    child_manifests: list[dict[str, object]],
+    *,
+    configured_target_rps: int,
+    total_http_requests: int,
+    require_complete: bool,
+) -> dict[str, object] | None:
+    verified: list[dict[str, object]] = []
+    missing_count = 0
+    for manifest in child_manifests:
+        request_bound = manifest.get("request_bound")
+        if not isinstance(request_bound, dict):
+            raise HistoryCampaignError("verified child manifest has no request bound")
+        raw = request_bound.get("adaptive_throttling")
+        if raw is None:
+            missing_count += 1
+            continue
+        actual_http_requests = _integer(request_bound, "actual_http_requests")
+        try:
+            summary = verify_adaptive_rate_summary(
+                raw,
+                configured_target_rps=configured_target_rps,
+                maximum_response_count=actual_http_requests,
+            )
+        except AdaptiveRateLimitError as error:
+            raise HistoryCampaignError(
+                "verified child adaptive throttling summary is invalid"
+            ) from error
+        verified.append(summary)
+    if missing_count == len(child_manifests):
+        if require_complete:
+            raise HistoryCampaignError("complete throttling evidence requires every child summary")
+        return None
+    if missing_count:
+        raise HistoryCampaignError("campaign mixes legacy and adaptive child summaries")
+
+    counter_fields = (
+        "automatic_increase_count",
+        "complete_header_observation_count",
+        "cooldown_event_count",
+        "header_absent_observation_count",
+        "invalid_header_observation_count",
+        "low_headroom_event_count",
+        "rate_limit_event_count",
+        "rate_reduction_count",
+        "response_observation_count",
+    )
+    totals = {
+        name: sum(cast(int, summary[name]) for summary in verified) for name in counter_fields
+    }
+    observed = totals["response_observation_count"]
+    if observed > total_http_requests:
+        raise HistoryCampaignError("adaptive observations exceed verified HTTP requests")
+    unobserved = total_http_requests - observed
+    if require_complete and unobserved:
+        raise HistoryCampaignError(
+            "complete throttling evidence requires one observation per HTTP request"
+        )
+    return {
+        **totals,
+        "child_job_count": len(verified),
+        "configured_target_rps": configured_target_rps,
+        "maximum_child_final_effective_rps": max(
+            cast(int, summary["final_effective_rps"]) for summary in verified
+        ),
+        "maximum_cooldown_ms": max(
+            cast(int, summary["maximum_cooldown_ms"]) for summary in verified
+        ),
+        "minimum_child_effective_rps": min(
+            cast(int, summary["minimum_effective_rps"]) for summary in verified
+        ),
+        "minimum_child_final_effective_rps": min(
+            cast(int, summary["final_effective_rps"]) for summary in verified
+        ),
+        "policy": ADAPTIVE_RATE_POLICY,
+        "response_observation_coverage_complete": unobserved == 0,
+        "unobserved_http_response_count": unobserved,
+    }
+
+
+def _timing_summary(
+    child_manifests: list[dict[str, object]], *, require_complete: bool
+) -> dict[str, object] | None:
+    starts: list[int] = []
+    completions: list[int] = []
+    elapsed: list[int] = []
+    missing_count = 0
+    for manifest in child_manifests:
+        started = manifest.get("started_at_ms")
+        completed = manifest.get("completed_at_ms")
+        if started is None:
+            missing_count += 1
+            continue
+        if (
+            isinstance(started, bool)
+            or not isinstance(started, int)
+            or started < 0
+            or isinstance(completed, bool)
+            or not isinstance(completed, int)
+            or completed < started
+        ):
+            raise HistoryCampaignError("verified child execution timestamps are invalid")
+        starts.append(started)
+        completions.append(completed)
+        elapsed.append(completed - started)
+    if missing_count == len(child_manifests):
+        if require_complete:
+            raise HistoryCampaignError("complete throttling evidence requires every child timing")
+        return None
+    if missing_count:
+        raise HistoryCampaignError("campaign mixes timed and legacy child manifests")
+    return {
+        "campaign_completed_at_ms": max(completions),
+        "campaign_elapsed_ms": max(completions) - min(starts),
+        "campaign_started_at_ms": min(starts),
+        "summed_child_elapsed_ms": sum(elapsed),
+        "timed_child_count": len(starts),
+    }
+
+
 def build_history_campaign_evidence(
     campaign_root: Path,
     *,
     generated_at_utc: str,
     software_identity: str,
+    require_complete_throttling_evidence: bool = False,
 ) -> dict[str, object]:
     """Re-verify a campaign and project only public hashes, counts, and process facts."""
 
@@ -123,6 +263,18 @@ def build_history_campaign_evidence(
     kind_counts = Counter(cast(list[str], raw_kinds))
     if set(kind_counts) != set(by_kind) or any(count != 1 for count in kind_counts.values()):
         raise HistoryCampaignError("campaign request and completed kind inventories differ")
+    configured_target_rps = _integer(request, "target_rps")
+    child_manifests = _child_manifests(completed.campaign_root, plan)
+    adaptive = _adaptive_summary(
+        child_manifests,
+        configured_target_rps=configured_target_rps,
+        total_http_requests=attempt_count,
+        require_complete=require_complete_throttling_evidence,
+    )
+    timing = _timing_summary(
+        child_manifests,
+        require_complete=require_complete_throttling_evidence,
+    )
 
     payload: dict[str, object] = {
         "bindings": {
@@ -183,5 +335,9 @@ def build_history_campaign_evidence(
             "runtime_market_artifacts_committed_to_git": False,
         },
     }
+    if adaptive is not None:
+        payload["adaptive_throttling"] = adaptive
+    if timing is not None:
+        payload["timing"] = timing
     payload["content_sha256"] = canonical_sha256(payload)
     return payload

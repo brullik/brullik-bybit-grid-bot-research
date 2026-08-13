@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-bound long-run campaign qualification with child execution timing, exact aggregate
+  adaptive-throttling counters, full HTTP-response observation coverage, strict fail-closed CLI
+  mode, backward-compatible v1 schemas, and GitHub-safe disclosure.
 - Decrease-only global public REST throttling for candle/funding acquisition: sanitized Bybit
   response-header observations, 20% headroom adaptation, 429/10006 cooldown and rate reduction,
   HTTP-403 run abort, no automatic increase, and backward-compatible receipt-bound manifest facts.
