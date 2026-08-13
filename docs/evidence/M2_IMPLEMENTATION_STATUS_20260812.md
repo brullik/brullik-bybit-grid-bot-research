@@ -467,6 +467,14 @@ bounded fault-injection tests cover disconnect-then-success, exhausted disconnec
 unchanged immediate failure for non-retryable HTTP responses. The unchanged campaign can resume
 without refetching its verified children.
 
+The resumed execution completed all 72 children and the independent no-network verifier passed.
+The aggregate contains 11,365 pages, 10,537,365 returned rows, and 11,367 recorded HTTP attempts,
+so the entire run required two explicit retries. The completed manifest SHA-256 is
+`cef361cb5eb04cee9f2c645a5281b06f50b050eaaf327c58d170b725f558485a`. Runtime campaign files
+measure 693,425,484 bytes and remain under ignored `data/` storage. A separate schema-bound
+summary publishes only those safe aggregate facts and transitive hashes; no price, volume,
+funding rate, symbol/instrument identity, path, host/account data, or credential enters Git.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a

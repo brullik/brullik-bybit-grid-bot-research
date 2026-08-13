@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-public-history-campaign.schema.json",
+  "title": "Sanitized Phase 2 public history Landing campaign evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "landing",
+    "limitations",
+    "process",
+    "scope",
+    "source_policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_manifest_sha256",
+        "campaign_plan_sha256",
+        "campaign_request_sha256",
+        "capacity_evidence_sha256",
+        "instrument_registry_sha256"
+      ],
+      "properties": {
+        "campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "campaign_request_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-public-history-campaign/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "landing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_bytes",
+        "by_kind",
+        "http_request_count",
+        "job_count",
+        "page_count",
+        "retry_count",
+        "row_count"
+      ],
+      "properties": {
+        "artifact_bytes": {"type": "integer", "minimum": 1},
+        "by_kind": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/kindSummary"}
+        },
+        "http_request_count": {"type": "integer", "minimum": 1},
+        "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "page_count": {"type": "integer", "minimum": 1},
+        "retry_count": {"type": "integer", "minimum": 0},
+        "row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_receipt_verified",
+        "child_receipts_verified",
+        "deterministic_resume_supported",
+        "software_identity"
+      ],
+      "properties": {
+        "aggregate_receipt_verified": {"const": true},
+        "child_receipts_verified": {"const": true},
+        "deterministic_resume_supported": {"const": true},
+        "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket_count", "end_ms", "kind_count", "month_count", "start_ms", "symbol_count"],
+      "properties": {
+        "bucket_count": {"type": "integer", "minimum": 1, "maximum": 8},
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "kind_count": {"const": 3},
+        "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "source_policy": {
+      "const": {
+        "authentication": "none",
+        "base_url": "https://api.bybit.com",
+        "funding_endpoint": "/v5/market/funding/history",
+        "mark_endpoint": "/v5/market/mark-price-kline",
+        "private_endpoints_called": false,
+        "tick_rows_requested": false,
+        "trade_endpoint": "/v5/market/kline"
+      }
+    },
+    "status": {"const": "verified-public-landing-campaign"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "kindSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["http_request_count", "job_count", "kind", "page_count", "row_count"],
+      "properties": {
+        "http_request_count": {"type": "integer", "minimum": 1},
+        "job_count": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["trade", "mark", "funding"]},
+        "page_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -105,6 +105,12 @@ execution is sequential so per-child pacers do not multiply the configured RPS.
 only aggregate job/page/row/HTTP counts and child hashes/relative roots; it is runtime acquisition
 evidence, not canonical publication, accepted coverage, or Gate 2 evidence. See ADR-0038.
 
+`grid.phase2-public-history-campaign/v1` is the GitHub-safe projection of one fully re-verified
+campaign. It binds campaign/request/registry/capacity hashes, immutable implementation identity,
+scope counts, measured runtime bytes, and aggregate plus per-kind job/page/row/HTTP/retry counts.
+Its schema contains no symbols, instrument IDs, market values, runtime paths, device/account data,
+or credentials. It proves public Landing acquisition and resume integrity only.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle

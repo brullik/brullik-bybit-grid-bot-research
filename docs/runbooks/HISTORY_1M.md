@@ -536,3 +536,18 @@ only ex-post acquisition scoping: do not expose present-day lifecycle/status/tic
 historical decision. Campaign completion is Landing evidence only. Publish and audit each child
 through the existing canonical boundaries before claiming coverage; partial inventory, missing
 candles, funding cadence changes, and Gate 2 remain fail-closed.
+
+After independent verification, publish the bounded summary using the full Git SHA that contains
+the evidence builder:
+
+```powershell
+.venv\Scripts\grid-data.exe history-campaign-evidence `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<plan-prefix> `
+  --software-identity git:<full-commit-sha> `
+  --output benchmarks\results\m2-public-history-campaign-<date>.json
+```
+
+The command re-verifies every child again and can take minutes. It writes only hashes, scope and
+aggregate counts, measured bytes, public endpoint policy, process facts, and limitations. Never
+commit the campaign plan/manifests or Landing pages: they contain runtime relative paths, symbols,
+instrument identities, and market values.

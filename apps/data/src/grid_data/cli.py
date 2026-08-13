@@ -66,6 +66,7 @@ from grid_data.history_campaign import (
     preflight_history_campaign,
     verify_completed_history_campaign,
 )
+from grid_data.history_campaign_evidence import build_history_campaign_evidence
 from grid_data.history_compaction import (
     build_compaction_evidence,
     preflight_history_compaction,
@@ -282,6 +283,15 @@ def parser() -> argparse.ArgumentParser:
     )
     campaign_verify.add_argument("campaign_root", type=Path)
     campaign_verify.set_defaults(handler=_verify_history_campaign)
+
+    campaign_evidence = commands.add_parser(
+        "history-campaign-evidence",
+        help="publish a receipt-verified GitHub-safe summary of one completed campaign",
+    )
+    campaign_evidence.add_argument("--campaign-root", type=Path, required=True)
+    campaign_evidence.add_argument("--software-identity", required=True)
+    campaign_evidence.add_argument("--output", type=Path, required=True)
+    campaign_evidence.set_defaults(handler=_history_campaign_evidence)
 
     funding = commands.add_parser(
         "funding-history",
@@ -757,6 +767,27 @@ def _verify_history_campaign(args: argparse.Namespace) -> int:
                 "page_count": completed.page_count,
                 "row_count": completed.row_count,
                 "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _history_campaign_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_history_campaign_evidence(
+        args.campaign_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
             }
         )
     )
