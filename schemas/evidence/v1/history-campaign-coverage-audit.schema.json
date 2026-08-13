@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/history-campaign-coverage-audit.schema.json",
+  "title": "Sanitized aggregate history campaign coverage audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["audit_software_identity", "bindings", "child_results", "content_sha256", "contract", "generated_at_utc", "inventory", "limitations", "quality", "reason_policy", "status", "storage_policy"],
+  "properties": {
+    "audit_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity_evidence_sha256", "instrument_registry_sha256", "publication_manifest_sha256", "publication_plan_sha256", "publisher_software_identity", "source_campaign_manifest_sha256", "source_campaign_plan_sha256"],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "child_results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2880,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["audit_content_sha256", "kind", "sequence", "status"],
+        "properties": {
+          "audit_content_sha256": {"$ref": "#/$defs/sha256"},
+          "kind": {"$ref": "#/$defs/kind"},
+          "sequence": {"type": "integer", "minimum": 0, "maximum": 2879},
+          "status": {"enum": ["passed", "blocked"]}
+        }
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.history-campaign-coverage-audit/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocked_count", "by_kind", "dataset_count", "passed_count", "row_count"],
+      "properties": {
+        "blocked_count": {"type": "integer", "minimum": 0, "maximum": 2880},
+        "by_kind": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/$defs/kindSummary"}},
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "passed_count": {"type": "integer", "minimum": 0, "maximum": 2880},
+        "row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "limitations": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candle", "funding"],
+      "properties": {
+        "candle": {"$ref": "#/$defs/candleQuality"},
+        "funding": {"$ref": "#/$defs/fundingQuality"}
+      }
+    },
+    "reason_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_reason_codes", "observed_reason_counts", "unaccepted_reason_codes", "unknown_reason_count"],
+      "properties": {
+        "accepted_reason_codes": {"type": "array", "maxItems": 0},
+        "observed_reason_counts": {"$ref": "#/$defs/reasonCounts"},
+        "unaccepted_reason_codes": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"$ref": "#/$defs/reason"}},
+        "unknown_reason_count": {"const": 0}
+      }
+    },
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "dataset_or_instrument_identities_included": false,
+        "market_values_included": false,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "candleQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "conflicting_key_count": {"type": "integer", "minimum": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "expected_minute_count": {"type": "integer", "minimum": 0},
+        "gap_range_count": {"type": "integer", "minimum": 0},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "observed_row_count": {"type": "integer", "minimum": 0},
+        "unrequested_row_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "fundingQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "boundary_page_count": {"type": "integer", "minimum": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "empty_range_page_count": {"type": "integer", "minimum": 0},
+        "internal_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "observed_event_count": {"type": "integer", "minimum": 0},
+        "predecessor_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "range_page_count": {"type": "integer", "minimum": 0},
+        "unrequested_row_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "kind": {"enum": ["trade", "mark", "funding"]},
+    "kindSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocked_count", "dataset_count", "kind", "passed_count", "row_count"],
+      "properties": {
+        "blocked_count": {"type": "integer", "minimum": 0},
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "kind": {"$ref": "#/$defs/kind"},
+        "passed_count": {"type": "integer", "minimum": 0},
+        "row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "reason": {"enum": ["canonical_source_mismatch", "duplicate_canonical_key", "internal_interval_mismatch", "predecessor_interval_mismatch", "registry_lifecycle_failure", "rest_returned_no_data", "source_window_returned_no_event", "unexpected_settlement_timestamp", "unrequested_instrument_row", "unexplained_interval_change"]},
+    "reasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "canonical_source_mismatch": {"type": "integer", "minimum": 1},
+        "duplicate_canonical_key": {"type": "integer", "minimum": 1},
+        "internal_interval_mismatch": {"type": "integer", "minimum": 1},
+        "predecessor_interval_mismatch": {"type": "integer", "minimum": 1},
+        "registry_lifecycle_failure": {"type": "integer", "minimum": 1},
+        "rest_returned_no_data": {"type": "integer", "minimum": 1},
+        "source_window_returned_no_event": {"type": "integer", "minimum": 1},
+        "unexpected_settlement_timestamp": {"type": "integer", "minimum": 1},
+        "unrequested_instrument_row": {"type": "integer", "minimum": 1},
+        "unexplained_interval_change": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

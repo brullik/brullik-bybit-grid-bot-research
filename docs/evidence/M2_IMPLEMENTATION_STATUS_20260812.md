@@ -548,6 +548,13 @@ instrument/dataset identity, account data, or credential.
 The measured artifact and its contract-level redaction assertions are tracked in
 [PR #47](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/47).
 
+ADR-0041 and `grid-data audit-history-campaign` now compose the unchanged ADR-0026 candle and
+ADR-0034 funding audits over all 72 publication children. The read-only coordinator verifies
+aggregate membership, runs one child at a time, retains detailed child payloads only in memory,
+and publishes their content hashes plus aggregate per-kind quality and reason counts. Any child
+blocker produces aggregate `blocked`; no gap, empty-window, lifecycle, or cadence reason is newly
+accepted. Measured execution belongs in a subsequent evidence PR using the merged auditor identity.
+
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime
