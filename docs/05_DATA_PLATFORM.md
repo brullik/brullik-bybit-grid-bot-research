@@ -258,6 +258,11 @@ then emits only aggregate and per-kind counts/bytes, maximum sequential-child re
 immutable Git identities, and transitive hashes. Dataset, symbol, and instrument identities,
 runtime paths, market values, account data, and credentials are excluded by the exact schema.
 
+ADR-0041 composes the candle and funding coverage auditors over a completed publication without
+changing their reason policies. It audits one child at a time, publishes each child content hash
+and aggregate quality/reason counters, and propagates any blocked child to the aggregate result.
+Detailed child identities and diagnostics remain outside the GitHub-safe aggregate.
+
 ## Quality checks
 
 Required checks include:

@@ -135,6 +135,13 @@ identities, runtime paths, market values, account data, and credentials. It prov
 canonical publication lineage only; coverage audits, catalog registration, and Gate 2 remain
 separate. See ADR-0040.
 
+`grid.history-campaign-coverage-audit/v1` binds one verified aggregate publication and the
+canonical content hash/status of every ADR-0026/ADR-0034 child audit in campaign sequence. It sums
+per-kind inventory, candle/funding quality counters, and unchanged unaccepted reason counts while
+excluding symbols, instrument/dataset IDs, market values, event timestamps, runtime paths, account
+data, and credentials. The aggregate passes only when every child passes; it never changes gap or
+funding-cadence acceptance policy. See ADR-0041.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle

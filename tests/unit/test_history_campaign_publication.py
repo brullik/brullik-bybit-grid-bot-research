@@ -6,9 +6,12 @@ from pathlib import Path
 import grid_data.funding_acquisition as funding_acquisition
 import grid_data.history_acquisition as history_acquisition
 import grid_data.history_campaign as history_campaign
+import grid_data.history_campaign_coverage_audit as campaign_coverage
 import pytest
 from grid_contracts.canonical import canonical_sha256, sha256_file
+from grid_data.funding_coverage_audit import FundingCoverageAudit
 from grid_data.history_campaign import HistoryCampaignError
+from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_publication import (
     HistoryCampaignPublicationError,
     execute_history_campaign_publication,
@@ -388,3 +391,144 @@ def test_publication_campaign_evidence_rejects_mutable_identity(tmp_path: Path) 
             generated_at_utc="2026-08-13T14:00:00Z",
             software_identity="working-tree",
         )
+
+
+def test_campaign_coverage_audit_is_schema_valid_aggregate_only_and_redacted(
+    tmp_path: Path,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = preflight_publication(tmp_path, source.campaign_root)
+    completed = execute_publication(plan)
+    audit = build_history_campaign_coverage_audit(
+        completed.publication_root,
+        source.campaign_root,
+        tmp_path / "registry.json",
+        tmp_path / "capacity.json",
+        plan.store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity="git:" + "9" * 40,
+        generated_at_utc="2026-08-13T15:00:00Z",
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(audit.payload)
+    hash_input = dict(audit.payload)
+    embedded = hash_input.pop("content_sha256")
+    assert embedded == canonical_sha256(hash_input)
+    assert audit.passed is True
+    assert audit.payload["status"] == "passed"
+    assert audit.payload["inventory"] == {
+        "blocked_count": 0,
+        "by_kind": [
+            {
+                "blocked_count": 0,
+                "dataset_count": 1,
+                "kind": "trade",
+                "passed_count": 1,
+                "row_count": 1,
+            },
+            {
+                "blocked_count": 0,
+                "dataset_count": 1,
+                "kind": "funding",
+                "passed_count": 1,
+                "row_count": 1,
+            },
+        ],
+        "dataset_count": 2,
+        "passed_count": 2,
+        "row_count": 2,
+    }
+    assert [item["sequence"] for item in audit.payload["child_results"]] == [0, 1]  # type: ignore[index]
+    assert all(
+        len(item["audit_content_sha256"]) == 64
+        for item in audit.payload["child_results"]  # type: ignore[index]
+    )
+    rendered = json.dumps(audit.payload).lower()
+    for forbidden in (
+        "aaausdt",
+        "c:\\",
+        "/home/",
+        '"dataset_id"',
+        '"instrument_id"',
+        '"source_job_root"',
+        '"symbol"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+        "api_key",
+        "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
+def test_campaign_coverage_audit_rejects_other_publisher_identity(tmp_path: Path) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = preflight_publication(tmp_path, source.campaign_root)
+    completed = execute_publication(plan)
+    with pytest.raises(HistoryCampaignPublicationError, match="publisher identity differs"):
+        build_history_campaign_coverage_audit(
+            completed.publication_root,
+            source.campaign_root,
+            tmp_path / "registry.json",
+            tmp_path / "capacity.json",
+            plan.store_root,
+            publisher_software_identity="git:" + "6" * 40,
+            audit_software_identity="git:" + "9" * 40,
+            generated_at_utc="2026-08-13T15:00:00Z",
+        )
+
+
+def test_campaign_coverage_audit_propagates_child_blocker(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = preflight_publication(tmp_path, source.campaign_root)
+    completed = execute_publication(plan)
+    original = campaign_coverage.build_completed_funding_coverage_audit
+
+    def blocked_funding(*args, **kwargs):  # type: ignore[no-untyped-def]
+        result = original(*args, **kwargs)
+        payload = dict(result.payload)
+        payload["status"] = "blocked"
+        payload["reason_policy"] = {
+            "accepted_reason_codes": [],
+            "observed_reason_counts": {"unexplained_interval_change": 1},
+            "unaccepted_reason_codes": ["unexplained_interval_change"],
+            "unknown_reason_count": 0,
+        }
+        payload["content_sha256"] = canonical_sha256(
+            {key: value for key, value in payload.items() if key != "content_sha256"}
+        )
+        return FundingCoverageAudit(
+            payload=payload,
+            passed=False,
+            anomaly_records=result.anomaly_records,
+        )
+
+    monkeypatch.setattr(
+        campaign_coverage,
+        "build_completed_funding_coverage_audit",
+        blocked_funding,
+    )
+    audit = build_history_campaign_coverage_audit(
+        completed.publication_root,
+        source.campaign_root,
+        tmp_path / "registry.json",
+        tmp_path / "capacity.json",
+        plan.store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity="git:" + "9" * 40,
+        generated_at_utc="2026-08-13T15:00:00Z",
+    )
+
+    assert audit.passed is False
+    assert audit.payload["status"] == "blocked"
+    assert audit.payload["inventory"]["blocked_count"] == 1  # type: ignore[index]
+    assert audit.payload["reason_policy"]["observed_reason_counts"] == {  # type: ignore[index]
+        "unexplained_interval_change": 1
+    }

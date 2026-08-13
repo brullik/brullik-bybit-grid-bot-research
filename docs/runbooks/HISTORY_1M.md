@@ -606,3 +606,24 @@ therefore can take minutes:
 Commit only the resulting evidence JSON and receipt. The exact schema excludes runtime paths,
 symbols, instrument/dataset identities, market values, account data, and credentials. Do not use
 publication evidence as a substitute for the subsequent candle/funding coverage audits.
+
+After the aggregate audit implementation is merged, use that exact merge SHA as the auditor
+identity. The command is read-only for Landing/canonical storage and writes only the sanitized
+evidence/receipt target:
+
+```powershell
+.venv\Scripts\grid-data.exe audit-history-campaign `
+  --publication-root data\market-store\.publication-campaigns\m2-representative-5x24--<plan-prefix> `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<source-plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --publisher-software-identity git:<publication-merge-commit-sha> `
+  --audit-software-identity git:<aggregate-auditor-merge-commit-sha> `
+  --output benchmarks\results\m2-history-campaign-coverage-audit-<date>.json
+```
+
+Exit code 2 means the receipt-bound negative evidence was written successfully but one or more
+children remain blocked. Inspect aggregate reason counts, then reproduce only the corresponding
+private child audits when detailed repair or dated cadence evidence is needed. Never convert a
+blocked aggregate to passed by editing the output or weakening ADR-0026/ADR-0034.

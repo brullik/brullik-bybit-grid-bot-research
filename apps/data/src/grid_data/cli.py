@@ -66,6 +66,7 @@ from grid_data.history_campaign import (
     preflight_history_campaign,
     verify_completed_history_campaign,
 )
+from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_evidence import build_history_campaign_evidence
 from grid_data.history_campaign_publication import (
     execute_history_campaign_publication,
@@ -334,6 +335,20 @@ def parser() -> argparse.ArgumentParser:
     campaign_publication_evidence.add_argument("--software-identity", required=True)
     campaign_publication_evidence.add_argument("--output", type=Path, required=True)
     campaign_publication_evidence.set_defaults(handler=_history_campaign_publication_evidence)
+
+    campaign_coverage_audit = commands.add_parser(
+        "audit-history-campaign",
+        help="audit every canonical campaign child under unchanged candle/funding policy",
+    )
+    campaign_coverage_audit.add_argument("--publication-root", type=Path, required=True)
+    campaign_coverage_audit.add_argument("--campaign-root", type=Path, required=True)
+    campaign_coverage_audit.add_argument("--instrument-registry", type=Path, required=True)
+    campaign_coverage_audit.add_argument("--capacity-evidence", type=Path, required=True)
+    campaign_coverage_audit.add_argument("--store-root", type=Path, required=True)
+    campaign_coverage_audit.add_argument("--publisher-software-identity", required=True)
+    campaign_coverage_audit.add_argument("--audit-software-identity", required=True)
+    campaign_coverage_audit.add_argument("--output", type=Path, required=True)
+    campaign_coverage_audit.set_defaults(handler=_audit_history_campaign)
 
     funding = commands.add_parser(
         "funding-history",
@@ -937,6 +952,33 @@ def _history_campaign_publication_evidence(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _audit_history_campaign(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    audit = build_history_campaign_coverage_audit(
+        args.publication_root,
+        args.campaign_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        publisher_software_identity=args.publisher_software_identity,
+        audit_software_identity=args.audit_software_identity,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, audit.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": audit.payload["content_sha256"],
+                "inventory": audit.payload["inventory"],
+                "receipt": str(receipt),
+                "status": audit.payload["status"],
+            }
+        )
+    )
+    return 0 if audit.passed else 2
 
 
 def _verify_history_1m(args: argparse.Namespace) -> int:
