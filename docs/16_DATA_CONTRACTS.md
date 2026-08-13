@@ -126,6 +126,12 @@ observations cover every completed page response. ADR-0045 separately exposes th
 transport-attempt total and the count of bounded attempts that produced no response observation;
 it never invents response headers for a connection/protocol failure.
 
+The same evidence may carry ADR-0051 `source_quality`: aggregate candle source/admitted/quarantine
+counts, fixed reason counts, a receipt-derived quarantine binding hash, and an explicit canonical
+coverage-complete flag. Exact source rows and their identities remain local. The `by_kind` array
+contains exactly the one-to-three kinds requested by the campaign; older three-kind evidence
+remains valid.
+
 `grid.phase2-public-history-campaign/v1` is the GitHub-safe projection of one fully re-verified
 campaign. It binds campaign/request/registry/capacity hashes, immutable implementation identity,
 scope counts, measured runtime bytes, and aggregate plus per-kind job/page/row/HTTP/retry counts.

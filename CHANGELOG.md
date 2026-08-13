@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0051 sanitized candle source-quality evidence: candle-only campaigns validate, requested
+  kinds are projected exactly, and receipt-verified aggregate quarantine counts/reasons/hashes
+  disclose an intentional canonical gap without publishing source identities or market values.
 - ADR-0050 receipt-bound candle source-row quarantine: exact source strings and source order are
   retained for the three recognized OHLC-envelope failures, receipts bind per-page and aggregate
   hashes/counts, canonical publication excludes the row, and coverage remains fail-closed without

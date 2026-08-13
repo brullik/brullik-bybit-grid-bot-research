@@ -25,6 +25,14 @@ from grid_data.public_rate_limit import (
 
 CAMPAIGN_EVIDENCE_CONTRACT: Final = "grid.phase2-public-history-campaign/v1"
 SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
+SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
+KIND_ORDER: Final = ("trade", "mark", "funding")
+QUARANTINE_POLICY: Final = "exact-source-row-quarantine-v1"
+QUARANTINE_REASONS: Final = (
+    "close_outside_low_high",
+    "low_exceeds_high",
+    "open_outside_low_high",
+)
 
 
 def _object(path: Path) -> dict[str, object]:
@@ -203,6 +211,96 @@ def _timing_summary(
     }
 
 
+def _source_quality_summary(
+    plan: dict[str, object],
+    raw_jobs: list[dict[str, object]],
+    child_manifests: list[dict[str, object]],
+) -> dict[str, object]:
+    raw_plan_jobs = plan.get("jobs")
+    if not isinstance(raw_plan_jobs, list) or not (
+        len(raw_plan_jobs) == len(raw_jobs) == len(child_manifests)
+    ):
+        raise HistoryCampaignError("campaign source-quality inventories differ")
+    admitted_rows = 0
+    source_rows = 0
+    quarantined_rows = 0
+    candle_job_count = 0
+    reason_counts = {reason: 0 for reason in QUARANTINE_REASONS}
+    quarantine_bindings: list[dict[str, object]] = []
+    for raw_plan_job, raw_job, child in zip(raw_plan_jobs, raw_jobs, child_manifests, strict=True):
+        if not isinstance(raw_plan_job, dict):
+            raise HistoryCampaignError("campaign source-quality plan job is invalid")
+        kind = raw_plan_job.get("kind")
+        if kind == "funding":
+            continue
+        if kind not in ("trade", "mark") or raw_job.get("kind") != kind:
+            raise HistoryCampaignError("campaign source-quality kind binding is invalid")
+        candle_job_count += 1
+        admitted = _integer(child, "row_count")
+        raw_quality = child.get("source_quality")
+        if raw_quality is None:
+            admitted_rows += admitted
+            source_rows += admitted
+            continue
+        expected_keys = {
+            "admitted_row_count",
+            "policy",
+            "quarantined_row_count",
+            "quarantined_rows_sha256",
+            "reason_counts",
+            "source_row_count",
+        }
+        if not isinstance(raw_quality, dict) or set(raw_quality) != expected_keys:
+            raise HistoryCampaignError("campaign child source-quality fields are invalid")
+        quarantined = _integer(raw_quality, "quarantined_row_count")
+        source = _integer(raw_quality, "source_row_count")
+        quality_admitted = _integer(raw_quality, "admitted_row_count")
+        raw_reasons = raw_quality.get("reason_counts")
+        quarantine_sha = raw_quality.get("quarantined_rows_sha256")
+        if (
+            raw_quality.get("policy") != QUARANTINE_POLICY
+            or quality_admitted != admitted
+            or source != admitted + quarantined
+            or not isinstance(raw_reasons, dict)
+            or set(raw_reasons) != set(QUARANTINE_REASONS)
+            or not isinstance(quarantine_sha, str)
+            or SHA256_RE.fullmatch(quarantine_sha) is None
+        ):
+            raise HistoryCampaignError("campaign child source-quality facts are invalid")
+        verified_reasons = {reason: _integer(raw_reasons, reason) for reason in QUARANTINE_REASONS}
+        if sum(verified_reasons.values()) != quarantined:
+            raise HistoryCampaignError("campaign child quarantine reasons do not sum")
+        admitted_rows += admitted
+        source_rows += source
+        quarantined_rows += quarantined
+        for reason, count in verified_reasons.items():
+            reason_counts[reason] += count
+        if quarantined:
+            job_manifest_sha = raw_job.get("job_manifest_sha256")
+            if (
+                not isinstance(job_manifest_sha, str)
+                or SHA256_RE.fullmatch(job_manifest_sha) is None
+            ):
+                raise HistoryCampaignError("campaign child manifest binding is invalid")
+            quarantine_bindings.append(
+                {
+                    "job_manifest_sha256": job_manifest_sha,
+                    "quarantined_row_count": quarantined,
+                    "quarantined_rows_sha256": quarantine_sha,
+                }
+            )
+    return {
+        "admitted_candle_row_count": admitted_rows,
+        "candle_job_count": candle_job_count,
+        "canonical_coverage_complete": quarantined_rows == 0,
+        "policy": QUARANTINE_POLICY,
+        "quarantine_binding_sha256": canonical_sha256(quarantine_bindings),
+        "quarantined_row_count": quarantined_rows,
+        "reason_counts": reason_counts,
+        "source_candle_row_count": source_rows,
+    }
+
+
 def build_history_campaign_evidence(
     campaign_root: Path,
     *,
@@ -284,6 +382,7 @@ def build_history_campaign_evidence(
         require_complete=require_complete_throttling_evidence,
     )
 
+    requested_kinds = [kind for kind in KIND_ORDER if kind in kind_counts]
     payload: dict[str, object] = {
         "bindings": {
             "campaign_manifest_sha256": completed.manifest_sha256,
@@ -296,7 +395,7 @@ def build_history_campaign_evidence(
         "generated_at_utc": generated_at_utc,
         "landing": {
             "artifact_bytes": _artifact_bytes(completed.campaign_root, plan),
-            "by_kind": [{"kind": kind, **by_kind[kind]} for kind in ("trade", "mark", "funding")],
+            "by_kind": [{"kind": kind, **by_kind[kind]} for kind in requested_kinds],
             "http_request_count": attempt_count,
             "job_count": completed.job_count,
             "page_count": page_count,
@@ -309,6 +408,8 @@ def build_history_campaign_evidence(
             "point-in-time strategy metadata.",
             "Source return does not independently prove that every venue candle or funding "
             "event exists.",
+            "Quarantined source rows remain absent from canonical history and block complete "
+            "coverage until separately reconciled.",
             "This evidence does not accept gaps or cadence changes, close Gate 2, or authorize "
             "private/live operations.",
         ],
@@ -335,6 +436,11 @@ def build_history_campaign_evidence(
             "tick_rows_requested": False,
             "trade_endpoint": source_policy["trade"],
         },
+        "source_quality": _source_quality_summary(
+            plan,
+            cast(list[dict[str, object]], raw_jobs),
+            child_manifests,
+        ),
         "status": "verified-public-landing-campaign",
         "storage_policy": {
             "evidence_contains_account_data": False,

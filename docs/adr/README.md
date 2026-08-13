@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0051 - Sanitized candle source-quality evidence](ADR-0051-sanitized-candle-source-quality-evidence.md)
 - [ADR-0050 - Receipt-bound candle source-row quarantine](ADR-0050-receipt-bound-candle-source-row-quarantine.md)
 - [ADR-0049 - Sanitized funding source-boundary evidence](ADR-0049-sanitized-funding-source-boundary-evidence.md)
 - [ADR-0048 - Receipt-resumable funding source-boundary discovery](ADR-0048-receipt-resumable-funding-source-boundary-discovery.md)
