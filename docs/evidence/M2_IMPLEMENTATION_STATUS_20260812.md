@@ -819,6 +819,16 @@ credential. The original blocked audit remains unchanged and a post-publication 
 required. The implementation and synthetic proofs are tracked in
 [PR #72](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/72).
 
+ADR-0058 adds the mandatory post-publication coverage boundary. It re-verifies the complete
+private repair chain and immutable parent/child lineage, reconstructs the exact
+original-plus-repair source union, and re-runs the unchanged ADR-0034 source-parity and chronology
+rules. The receipt-last detailed result is private because it contains exact series identities and
+observed time bounds. Read-only verification is independent of current free-space/memory write
+gates. A synthetic repaired child passes with zero chronology blockers while the original blocked
+audit remains byte-identical. Catalog transition, a public sanitized measured projection, and
+Gate 2 acceptance remain separate. The implementation, ADR, schema, and synthetic proof are
+tracked in [PR #73](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/73).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

@@ -61,6 +61,10 @@ from grid_data.funding_publication import (
     preflight_completed_funding_publication,
     publish_preflighted_funding,
 )
+from grid_data.funding_repair_coverage_audit import (
+    build_funding_repair_coverage_audit,
+    verify_funding_repair_coverage_audit,
+)
 from grid_data.funding_repair_execution import (
     execute_funding_repair,
     preflight_funding_repair_execution,
@@ -571,6 +575,24 @@ def parser() -> argparse.ArgumentParser:
         help="publish repair child and lineage evidence; omitted is no-mutation preflight",
     )
     funding_repair_publish.set_defaults(handler=_publish_funding_repair)
+
+    funding_repair_audit = commands.add_parser(
+        "audit-funding-repair",
+        help="audit exact source parity and chronology of a committed funding repair child",
+    )
+    funding_repair_audit.add_argument("--repair-execution", type=Path, required=True)
+    funding_repair_audit.add_argument("--repair-plan", type=Path, required=True)
+    funding_repair_audit.add_argument("--original-coverage-audit", type=Path, required=True)
+    funding_repair_audit.add_argument("--job-root", type=Path, required=True)
+    funding_repair_audit.add_argument("--instrument-registry", type=Path, required=True)
+    funding_repair_audit.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_audit.add_argument("--store-root", type=Path, required=True)
+    funding_repair_audit.add_argument("--repair-staging-root", type=Path, required=True)
+    funding_repair_audit.add_argument("--replacement-evidence", type=Path, required=True)
+    funding_repair_audit.add_argument("--publisher-software-identity", required=True)
+    funding_repair_audit.add_argument("--audit-software-identity", required=True)
+    funding_repair_audit.add_argument("--output", type=Path, required=True)
+    funding_repair_audit.set_defaults(handler=_audit_funding_repair)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -1687,6 +1709,58 @@ def _publish_funding_repair(args: argparse.Namespace) -> int:
     )
     print(json.dumps(summary))
     return 0
+
+
+def _audit_funding_repair(args: argparse.Namespace) -> int:
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        audit = verify_funding_repair_coverage_audit(
+            output,
+            args.repair_execution,
+            args.repair_plan,
+            args.original_coverage_audit,
+            args.job_root,
+            args.instrument_registry,
+            args.capacity_evidence,
+            args.store_root,
+            args.repair_staging_root,
+            args.replacement_evidence,
+            expected_publisher_software_identity=args.publisher_software_identity,
+            expected_audit_software_identity=args.audit_software_identity,
+        )
+        artifact = output
+    else:
+        preflight_evidence(output)
+        audit = build_funding_repair_coverage_audit(
+            args.repair_execution,
+            args.repair_plan,
+            args.original_coverage_audit,
+            args.job_root,
+            args.instrument_registry,
+            args.capacity_evidence,
+            args.store_root,
+            args.repair_staging_root,
+            args.replacement_evidence,
+            publisher_software_identity=args.publisher_software_identity,
+            audit_software_identity=args.audit_software_identity,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, audit.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "dataset_id": audit.payload["dataset_id"],
+                "existing": existing,
+                "quality": audit.payload["quality"],
+                "receipt": str(receipt),
+                "status": audit.payload["status"],
+            }
+        )
+    )
+    return 0 if audit.passed else 2
 
 
 def _publish_history_1m(args: argparse.Namespace) -> int:

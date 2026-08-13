@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0058 - Post-publication funding repair coverage audit](ADR-0058-post-publication-funding-repair-coverage-audit.md)
 - [ADR-0057 - Immutable funding repair publication and sanitized execution evidence](ADR-0057-immutable-funding-repair-publication.md)
 - [ADR-0056 - Bounded funding repair discovery execution](ADR-0056-bounded-funding-repair-discovery-execution.md)
 - [ADR-0055 - Fail-closed funding repair discovery planning](ADR-0055-fail-closed-funding-repair-discovery-plan.md)

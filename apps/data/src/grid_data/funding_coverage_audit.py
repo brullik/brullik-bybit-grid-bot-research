@@ -10,6 +10,7 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Final, cast
 
+import pyarrow as pa  # type: ignore[import-untyped]
 import pyarrow.compute as pc  # type: ignore[import-untyped]
 from grid_contracts.canonical import canonical_sha256
 from grid_market_store import (
@@ -180,36 +181,26 @@ def _reason_policy(counts: dict[str, int]) -> dict[str, object]:
     }
 
 
-def build_completed_funding_coverage_audit(
-    job_root: Path,
-    instrument_registry_path: Path,
-    capacity_evidence_path: Path,
-    store_root: Path,
+def _build_funding_coverage_audit(
+    verified: VerifiedFundingPublicationInput,
+    committed: PublishedDataset,
+    source_table: pa.Table,
     *,
-    publisher_software_identity: str,
+    contract: str,
+    bindings: dict[str, object],
+    limitations: list[str],
+    storage_policy: dict[str, object],
     audit_software_identity: str,
     generated_at_utc: str,
 ) -> FundingCoverageAudit:
-    """Audit exact source parity and stable source chronology without current interval metadata."""
+    """Apply the shared exact chronology audit to one verified source-table projection."""
 
     if not SOFTWARE_IDENTITY_RE.fullmatch(audit_software_identity):
         raise FundingAcquisitionError(
             "audit_software_identity must be git:<40-character-lowercase-commit-sha>"
         )
-    verified = load_verified_funding_publication_input(
-        job_root,
-        instrument_registry_path,
-        capacity_evidence_path,
-    )
-    dataset_root = store_root.resolve() / "datasets" / verified.dataset_id
-    committed = verify_committed_funding_dataset(dataset_root)
-    _verify_publication_identity(
-        verified,
-        committed,
-        publisher_software_identity=publisher_software_identity,
-    )
     canonical = load_committed_funding_table(committed.dataset_root)
-    source_parity = canonical.equals(verified.batch.table, check_metadata=True)
+    source_parity = canonical.equals(source_table, check_metadata=True)
     plan = _object(verified.completed.plan_path, name="funding plan")
     manifest = _object(verified.completed.manifest_path, name="funding manifest")
     pages = _page_inventory(manifest)
@@ -394,19 +385,12 @@ def build_completed_funding_coverage_audit(
     )
     payload: dict[str, object] = {
         "audit_software_identity": audit_software_identity,
-        "bindings": {
-            "boundary_evidence_sha256": verified.completed.boundary_evidence_sha256,
-            "canonical_manifest_sha256": committed.receipt.manifest_sha256,
-            "capacity_evidence_sha256": verified.capacity_evidence_sha256,
-            "funding_manifest_sha256": verified.completed.manifest_sha256,
-            "instrument_registry_sha256": verified.registry.artifact_sha256,
-            "publisher_software_identity": committed.manifest.software_identity,
-        },
+        "bindings": bindings,
         "chronology_anomaly_evidence": {
             "anomaly_count": len(anomalies),
             "anomaly_records_sha256": canonical_sha256(anomalies),
         },
-        "contract": FUNDING_COVERAGE_AUDIT_CONTRACT,
+        "contract": contract,
         "coverage_basis": {
             "current_instrument_interval_used": False,
             "empty_range_windows_accepted": False,
@@ -419,16 +403,7 @@ def build_completed_funding_coverage_audit(
         "dataset_id": committed.manifest.dataset_id,
         "dataset_type": committed.manifest.dataset_type.value,
         "generated_at_utc": _generated_at(generated_at_utc),
-        "limitations": [
-            "Coverage is evaluated only inside explicitly requested source windows.",
-            "Unsaturated endpoint enumeration proves the retained Bybit source response, not an "
-            "independently sourced exchange ledger.",
-            "Any empty source window or observed cadence change remains blocked until dated "
-            "evidence or a separately accepted policy explains it.",
-            "Current instrument fundingInterval metadata is not used as historical evidence.",
-            "This audit does not repair, compact, catalog, accept Gate 2, or authorize private or "
-            "live operations.",
-        ],
+        "limitations": limitations,
         "quality": {
             "boundary_page_count": boundary_page_total,
             "canonical_source_table_equal": source_parity,
@@ -449,16 +424,96 @@ def build_completed_funding_coverage_audit(
         "reason_policy": _reason_policy(reason_counts),
         "series": summaries,
         "status": "passed" if passed else "blocked",
-        "storage_policy": {
-            "account_data_included": False,
-            "funding_rates_included": False,
-            "observed_settlement_timestamps_included": False,
-            "runtime_paths_included": False,
-        },
+        "storage_policy": storage_policy,
     }
     payload["content_sha256"] = canonical_sha256(payload)
     return FundingCoverageAudit(
         payload=payload,
         passed=passed,
         anomaly_records=tuple(anomalies),
+    )
+
+
+def build_verified_funding_coverage_audit(
+    verified: VerifiedFundingPublicationInput,
+    committed: PublishedDataset,
+    source_table: pa.Table,
+    *,
+    contract: str,
+    bindings: dict[str, object],
+    limitations: list[str],
+    storage_policy: dict[str, object],
+    audit_software_identity: str,
+    generated_at_utc: str,
+) -> FundingCoverageAudit:
+    """Audit a separately verified funding publication/source projection."""
+
+    return _build_funding_coverage_audit(
+        verified,
+        committed,
+        source_table,
+        contract=contract,
+        bindings=bindings,
+        limitations=limitations,
+        storage_policy=storage_policy,
+        audit_software_identity=audit_software_identity,
+        generated_at_utc=generated_at_utc,
+    )
+
+
+def build_completed_funding_coverage_audit(
+    job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+    *,
+    publisher_software_identity: str,
+    audit_software_identity: str,
+    generated_at_utc: str,
+) -> FundingCoverageAudit:
+    """Audit exact source parity and stable source chronology without current interval metadata."""
+
+    verified = load_verified_funding_publication_input(
+        job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+    )
+    dataset_root = store_root.resolve() / "datasets" / verified.dataset_id
+    committed = verify_committed_funding_dataset(dataset_root)
+    _verify_publication_identity(
+        verified,
+        committed,
+        publisher_software_identity=publisher_software_identity,
+    )
+    return _build_funding_coverage_audit(
+        verified,
+        committed,
+        verified.batch.table,
+        contract=FUNDING_COVERAGE_AUDIT_CONTRACT,
+        bindings={
+            "boundary_evidence_sha256": verified.completed.boundary_evidence_sha256,
+            "canonical_manifest_sha256": committed.receipt.manifest_sha256,
+            "capacity_evidence_sha256": verified.capacity_evidence_sha256,
+            "funding_manifest_sha256": verified.completed.manifest_sha256,
+            "instrument_registry_sha256": verified.registry.artifact_sha256,
+            "publisher_software_identity": committed.manifest.software_identity,
+        },
+        limitations=[
+            "Coverage is evaluated only inside explicitly requested source windows.",
+            "Unsaturated endpoint enumeration proves the retained Bybit source response, not an "
+            "independently sourced exchange ledger.",
+            "Any empty source window or observed cadence change remains blocked until dated "
+            "evidence or a separately accepted policy explains it.",
+            "Current instrument fundingInterval metadata is not used as historical evidence.",
+            "This audit does not repair, compact, catalog, accept Gate 2, or authorize private or "
+            "live operations.",
+        ],
+        storage_policy={
+            "account_data_included": False,
+            "funding_rates_included": False,
+            "observed_settlement_timestamps_included": False,
+            "runtime_paths_included": False,
+        },
+        audit_software_identity=audit_software_identity,
+        generated_at_utc=generated_at_utc,
     )

@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/canonical-funding-repair-coverage-audit.schema.json",
+  "title": "Post-publication canonical funding repair coverage audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audit_software_identity",
+    "bindings",
+    "chronology_anomaly_evidence",
+    "content_sha256",
+    "contract",
+    "coverage_basis",
+    "dataset_id",
+    "dataset_type",
+    "generated_at_utc",
+    "limitations",
+    "quality",
+    "reason_policy",
+    "series",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "audit_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_evidence_sha256",
+        "canonical_manifest_sha256",
+        "capacity_evidence_sha256",
+        "instrument_registry_sha256",
+        "original_coverage_audit_artifact_sha256",
+        "original_funding_manifest_sha256",
+        "parent_manifest_sha256",
+        "publisher_software_identity",
+        "repair_execution_artifact_sha256",
+        "repair_plan_artifact_sha256",
+        "replacement_evidence_artifact_sha256",
+        "replacement_evidence_content_sha256"
+      ],
+      "properties": {
+        "boundary_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "original_coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "original_funding_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "parent_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "repair_execution_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "replacement_evidence_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "replacement_evidence_content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "chronology_anomaly_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anomaly_count", "anomaly_records_sha256"],
+      "properties": {
+        "anomaly_count": {"type": "integer", "minimum": 0},
+        "anomaly_records_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.canonical-funding-repair-coverage-audit/v1"},
+    "coverage_basis": {
+      "const": {
+        "current_instrument_interval_used": false,
+        "empty_range_windows_accepted": false,
+        "endpoint": "/v5/market/funding/history",
+        "historical_interval_evidence": "predecessor-and-adjacent-settlements",
+        "interval_changes_accepted_without_dated_evidence": false,
+        "range_pages_have_explicit_bounds": true,
+        "saturated_range_pages_accepted": false
+      }
+    },
+    "dataset_id": {"type": "string", "pattern": "^funding-repair-[0-9a-f]{24}$"},
+    "dataset_type": {"const": "funding_event"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_page_count",
+        "canonical_source_table_equal",
+        "conflicting_key_count",
+        "duplicate_key_count",
+        "empty_range_page_count",
+        "internal_interval_mismatch_count",
+        "interval_change_count",
+        "lifecycle_failure_count",
+        "observed_event_count",
+        "predecessor_interval_mismatch_count",
+        "range_page_count",
+        "requested_window_minutes",
+        "source_range_enumeration_complete",
+        "unrequested_row_count",
+        "unexpected_timestamp_count"
+      ],
+      "properties": {
+        "boundary_page_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "canonical_source_table_equal": {"type": "boolean"},
+        "conflicting_key_count": {"const": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "empty_range_page_count": {"type": "integer", "minimum": 0},
+        "internal_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "observed_event_count": {"type": "integer", "minimum": 1},
+        "predecessor_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "range_page_count": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "requested_window_minutes": {"type": "integer", "minimum": 1},
+        "source_range_enumeration_complete": {"type": "boolean"},
+        "unrequested_row_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "reason_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_reason_codes",
+        "observed_reason_counts",
+        "unaccepted_reason_codes",
+        "unknown_reason_count"
+      ],
+      "properties": {
+        "accepted_reason_codes": {"type": "array", "maxItems": 0},
+        "observed_reason_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "canonical_source_mismatch": {"type": "integer", "minimum": 1},
+            "duplicate_canonical_key": {"type": "integer", "minimum": 1},
+            "internal_interval_mismatch": {"type": "integer", "minimum": 1},
+            "predecessor_interval_mismatch": {"type": "integer", "minimum": 1},
+            "registry_lifecycle_failure": {"type": "integer", "minimum": 1},
+            "source_window_returned_no_event": {"type": "integer", "minimum": 1},
+            "unexpected_settlement_timestamp": {"type": "integer", "minimum": 1},
+            "unrequested_instrument_row": {"type": "integer", "minimum": 1},
+            "unexplained_interval_change": {"type": "integer", "minimum": 1}
+          }
+        },
+        "unaccepted_reason_codes": {
+          "type": "array",
+          "maxItems": 9,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "canonical_source_mismatch",
+              "duplicate_canonical_key",
+              "internal_interval_mismatch",
+              "predecessor_interval_mismatch",
+              "registry_lifecycle_failure",
+              "source_window_returned_no_event",
+              "unexpected_settlement_timestamp",
+              "unrequested_instrument_row",
+              "unexplained_interval_change"
+            ]
+          }
+        },
+        "unknown_reason_count": {"const": 0}
+      }
+    },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 700,
+      "items": {"$ref": "#/$defs/series"}
+    },
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "funding_rates_included": false,
+        "github_commit_eligible": false,
+        "observed_settlement_timestamps_included": false,
+        "private_runtime_artifact": true,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "intervalHistogramItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "interval_minutes"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 1},
+        "interval_minutes": {"type": "integer", "minimum": 1, "maximum": 4294967295}
+      }
+    },
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_page_count",
+        "duplicate_key_count",
+        "empty_range_page_count",
+        "end_ms",
+        "instrument_id",
+        "internal_interval_mismatch_count",
+        "interval_change_count",
+        "interval_histogram",
+        "observed_event_count",
+        "predecessor_interval_mismatch_count",
+        "range_page_count",
+        "requested_window_minutes",
+        "stable_observed_interval_minutes",
+        "start_ms",
+        "symbol",
+        "unexpected_timestamp_count",
+        "within_registry_lifecycle_bounds"
+      ],
+      "properties": {
+        "boundary_page_count": {"const": 1},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "empty_range_page_count": {"type": "integer", "minimum": 0},
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "internal_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "interval_histogram": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/intervalHistogramItem"}
+        },
+        "observed_event_count": {"type": "integer", "minimum": 1},
+        "predecessor_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "range_page_count": {"type": "integer", "minimum": 1},
+        "requested_window_minutes": {"type": "integer", "minimum": 1},
+        "stable_observed_interval_minutes": {
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            {"type": "null"}
+          ]
+        },
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0},
+        "within_registry_lifecycle_bounds": {"type": "boolean"}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

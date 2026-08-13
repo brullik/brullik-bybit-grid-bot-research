@@ -57,6 +57,22 @@ class ResolvedFundingRepairPublication:
     registry_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedCommittedFundingRepair:
+    """Purely verified repair inputs and their exact immutable canonical child."""
+
+    verified_execution: VerifiedFundingRepairExecution
+    parent: PublishedDataset
+    published: PublishedDataset
+    spec: FundingDatasetSpec
+    batch: CanonicalFundingBatch
+    budget: CapacityBudget
+    parent_row_count: int
+    repaired_row_count: int
+    restated_interval_count: int
+    registry_sha256: str
+
+
 def _object(path: Path, *, name: str) -> dict[str, object]:
     try:
         raw = json.loads(path.resolve().read_text(encoding="utf-8"))
@@ -178,7 +194,7 @@ def _dataset_id(identity_sha256: str) -> str:
     return f"funding-repair-{identity_sha256[:24]}"
 
 
-def preflight_repaired_funding_publication(
+def _resolve_funding_repair_inputs(
     execution_path: Path,
     repair_plan_path: Path,
     coverage_audit_path: Path,
@@ -187,12 +203,20 @@ def preflight_repaired_funding_publication(
     capacity_evidence_path: Path,
     store_root: Path,
     repair_staging_root: Path,
-    snapshot: HostSnapshot,
     *,
-    now_ms: int,
     software_identity: str,
-) -> ResolvedFundingRepairPublication:
-    """Verify exact source confirmation and preflight one immutable repair child."""
+) -> tuple[
+    VerifiedFundingRepairExecution,
+    PublishedDataset,
+    FundingDatasetSpec,
+    CanonicalFundingBatch,
+    CapacityBudget,
+    int,
+    int,
+    int,
+    str,
+]:
+    """Resolve exact repair inputs without applying mutable-host write gates."""
 
     if not SOFTWARE_IDENTITY_RE.fullmatch(software_identity):
         raise FundingAcquisitionError(
@@ -288,11 +312,61 @@ def preflight_repaired_funding_publication(
         build_config_sha256=build_config_sha,
         software_identity=software_identity,
     )
+    return (
+        execution,
+        parent,
+        spec,
+        batch,
+        _repair_budget(execution),
+        parent.manifest.row_count,
+        repaired_count,
+        restated_count,
+        registry.artifact_sha256,
+    )
+
+
+def preflight_repaired_funding_publication(
+    execution_path: Path,
+    repair_plan_path: Path,
+    coverage_audit_path: Path,
+    original_job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+    repair_staging_root: Path,
+    snapshot: HostSnapshot,
+    *,
+    now_ms: int,
+    software_identity: str,
+) -> ResolvedFundingRepairPublication:
+    """Verify exact source confirmation and preflight one immutable repair child."""
+
+    (
+        execution,
+        parent,
+        spec,
+        batch,
+        budget,
+        parent_row_count,
+        repaired_count,
+        restated_count,
+        registry_sha256,
+    ) = _resolve_funding_repair_inputs(
+        execution_path,
+        repair_plan_path,
+        coverage_audit_path,
+        original_job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+        store_root,
+        repair_staging_root,
+        software_identity=software_identity,
+    )
     plan = preflight_funding_dataset(
         store_root,
         spec,
         batch,
-        _repair_budget(execution),
+        budget,
         snapshot,
         now_ms=now_ms,
     )
@@ -300,10 +374,85 @@ def preflight_repaired_funding_publication(
         verified_execution=execution,
         parent=parent,
         plan=plan,
-        parent_row_count=parent.manifest.row_count,
+        parent_row_count=parent_row_count,
         repaired_row_count=repaired_count,
         restated_interval_count=restated_count,
-        registry_sha256=registry.artifact_sha256,
+        registry_sha256=registry_sha256,
+    )
+
+
+def verify_committed_funding_repair(
+    execution_path: Path,
+    repair_plan_path: Path,
+    coverage_audit_path: Path,
+    original_job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+    repair_staging_root: Path,
+    *,
+    software_identity: str,
+) -> VerifiedCommittedFundingRepair:
+    """Verify an exact repair child without imposing current write-resource gates."""
+
+    (
+        execution,
+        parent,
+        spec,
+        batch,
+        budget,
+        parent_row_count,
+        repaired_count,
+        restated_count,
+        registry_sha256,
+    ) = _resolve_funding_repair_inputs(
+        execution_path,
+        repair_plan_path,
+        coverage_audit_path,
+        original_job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+        store_root,
+        repair_staging_root,
+        software_identity=software_identity,
+    )
+    try:
+        published = verify_committed_funding_dataset(
+            store_root.resolve() / "datasets" / spec.dataset_id
+        )
+    except PublicationError as error:
+        raise FundingAcquisitionError(
+            "funding repair coverage audit requires the exact committed repair child"
+        ) from error
+    committed_table = load_committed_funding_table(published.dataset_root)
+    audit = _object(published.audit_path, name="canonical funding repair audit")
+    if (
+        published.manifest.dataset_id != spec.dataset_id
+        or published.manifest.schema_version != spec.schema_version
+        or published.manifest.semantic_version != spec.semantic_version
+        or published.manifest.parent_dataset_ids != spec.parent_dataset_ids
+        or published.manifest.source_evidence_sha256 != spec.source_evidence_sha256
+        or published.manifest.build_config_sha256 != spec.build_config_sha256
+        or published.manifest.software_identity != spec.software_identity
+        or audit.get("coverage_evidence_sha256") != spec.coverage_evidence_sha256
+        or audit.get("boundary_evidence_sha256") != spec.boundary_evidence_sha256
+        or audit.get("capacity_evidence_sha256") != spec.capacity_evidence_sha256
+        or not committed_table.equals(batch.table, check_metadata=True)
+    ):
+        raise FundingAcquisitionError(
+            "committed funding repair no longer matches exact verified inputs"
+        )
+    return VerifiedCommittedFundingRepair(
+        verified_execution=execution,
+        parent=parent,
+        published=published,
+        spec=spec,
+        batch=batch,
+        budget=budget,
+        parent_row_count=parent_row_count,
+        repaired_row_count=repaired_count,
+        restated_interval_count=restated_count,
+        registry_sha256=registry_sha256,
     )
 
 
@@ -402,21 +551,26 @@ def verify_funding_repair_execution_public_evidence(
 
 
 def build_funding_repair_replacement_evidence(
-    resolved: ResolvedFundingRepairPublication,
+    resolved: ResolvedFundingRepairPublication | VerifiedCommittedFundingRepair,
     published: PublishedDataset,
     *,
     generated_at_utc: str,
 ) -> dict[str, object]:
     """Build a value-free proof of exact repair publication and immutable lineage."""
 
-    if published.manifest.dataset_id != resolved.plan.spec.dataset_id:
+    spec = (
+        resolved.spec
+        if isinstance(resolved, VerifiedCommittedFundingRepair)
+        else resolved.plan.spec
+    )
+    if published.manifest.dataset_id != spec.dataset_id:
         raise FundingAcquisitionError("published funding repair identity differs from preflight")
     if published.manifest.parent_dataset_ids != (resolved.parent.manifest.dataset_id,):
         raise FundingAcquisitionError("funding repair child does not preserve parent lineage")
     execution = resolved.verified_execution
     payload: dict[str, object] = {
         "bindings": {
-            "capacity_evidence_sha256": resolved.plan.spec.capacity_evidence_sha256,
+            "capacity_evidence_sha256": spec.capacity_evidence_sha256,
             "instrument_registry_sha256": resolved.registry_sha256,
             "parent_manifest_sha256": resolved.parent.receipt.manifest_sha256,
             "repair_execution_artifact_sha256": execution.artifact_sha256,
@@ -464,7 +618,7 @@ def build_funding_repair_replacement_evidence(
 
 def verify_funding_repair_replacement_evidence(
     evidence_path: Path,
-    resolved: ResolvedFundingRepairPublication,
+    resolved: ResolvedFundingRepairPublication | VerifiedCommittedFundingRepair,
     published: PublishedDataset,
 ) -> dict[str, object]:
     """Verify and rebuild a committed immutable funding replacement proof."""

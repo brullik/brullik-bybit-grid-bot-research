@@ -387,6 +387,14 @@ fresh-host, atomic-directory, completion-receipt-last funding primitive. The par
 audit remain immutable. Separate receipt-last public projections expose only hashes and aggregate
 counts, never instrument identities, settlement timestamps, funding rates, or runtime paths.
 
+ADR-0058 adds the mandatory read-only audit over that committed child. It verifies the complete
+plan/execution/parent/replacement chain, reconstructs the exact original-plus-repair source union,
+and applies the ADR-0034 parity, predecessor, adjacent-interval, page-tiling, lifecycle, duplicate,
+empty-window, and cadence-change checks. Verification does not inherit current free-space or
+memory write gates. The detailed receipt-last result stays private because its series records
+contain exact identifiers and observed time bounds. A pass does not change the original blocked
+audit, accept a general cadence policy, register the child, or close Gate 2.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
@@ -400,6 +408,8 @@ counts, never instrument identities, settlement timestamps, funding rates, or ru
   by the public source before an immutable funding child can be proposed.
 - Funding discovery execution runs only after whole-plan capacity admission, persists ordinary
   page/manifest receipts, and cannot publish or mutate the canonical parent.
+- A funding repair child is eligible for catalog transition only after a separate receipt-verified
+  post-publication audit passes over the exact original-plus-repair source union.
 - Periodic compaction verifies one or more immutable parents from exactly one month/bucket,
   rejects every duplicate/conflicting key, and writes a new receipt-last child. It calibrates the
   16 MiB ZSTD-3 row target from a bounded in-memory sample, permits only one explicit final tail,
