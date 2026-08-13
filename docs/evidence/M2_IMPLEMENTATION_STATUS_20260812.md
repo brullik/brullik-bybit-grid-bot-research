@@ -681,6 +681,27 @@ only: canonical publication/audit, broader historical scale, Gate 2, and private
 remain unchanged. The result and exact contract assertions are tracked in
 [PR #55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55).
 
+The same completed Landing campaign was published under publisher identity
+`git:eafb4b422e8467085122fb84ea7a4c983bee141d`. Its 24 immutable canonical datasets contain the
+same 8,938,466 rows in 24 ZSTD-3 Parquet files totaling 114,867,201 bytes. Aggregate manifest SHA
+is `46df7b00d0a4e42782e3a098676a8bffd46180089dde2521ba2994c257389152`.
+No-mutation preflight took 473.9 seconds, publication including repeated preflight/final verify
+took 1,185.2 seconds, and an idempotent replay took 707 seconds while proving 24 reused commits
+and zero pending datasets. The GitHub-safe publication projection independently verified the
+source/canonical chain in 230.7 seconds and is
+[`m2-canonical-history-campaign-100x31-20260813.json`](../../benchmarks/results/m2-canonical-history-campaign-100x31-20260813.json).
+
+The subsequent aggregate coverage audit is deliberately
+[`blocked`](../../benchmarks/results/m2-history-campaign-coverage-audit-100x31-20260813.json).
+All 16 candle datasets passed: 8,928,000 expected and observed minutes with zero missing minutes,
+gaps, duplicate/conflicting keys, lifecycle failures, unexpected timestamps, or unrequested rows.
+Five of eight funding datasets passed. Three remain blocked by seven
+`unexplained_interval_change` observations; no reason is accepted. Funding otherwise has 10,466
+events, 100 predecessor and 500 range pages, with zero empty pages, duplicate keys, interval
+mismatches, lifecycle failures, unexpected timestamps, or unrequested rows. This is preserved
+negative evidence: resolving it requires dated cadence evidence or a separately owner-reviewed
+policy, not an implementation change to the accepted audit.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
@@ -689,5 +710,6 @@ remain unchanged. The result and exact contract assertions are tracked in
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
-- further controlled scale-up plus canonical publication/audit of the 100 x 31-day campaign; and
+- further controlled scale-up and dated evidence/policy for the seven blocked July funding
+  cadence transitions; and
 - funding repair/compaction and the remaining PM-owned Gate 2 acceptance checklist.

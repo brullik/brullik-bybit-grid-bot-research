@@ -6,6 +6,12 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Canonical 100-instrument x 31-day publication evidence: 24 immutable ZSTD-3 datasets/files,
+  8,938,466 exact rows, 114,867,201 Parquet bytes, complete aggregate lineage, and a 24-reused /
+  zero-pending idempotent replay.
+- Fail-closed 100-instrument x 31-day aggregate coverage evidence: all 16 candle datasets passed
+  with 8,928,000 gap-free minutes; five funding buckets passed and three remain blocked by seven
+  unaccepted historical cadence changes.
 - Receipt-verified 100-instrument x 31-day public long-run campaign evidence: 9,600 completed
   pages, 8,938,466 Landing rows, 591,702,449 bytes, complete response classification, 21 explicit
   no-response retries, no rate-limit/reduction/cooldown events, and measured resume overhead.
