@@ -111,6 +111,13 @@ grid-data plan-funding-repair --coverage-audit <blocked-funding-audit.json> \
   --planner-software-identity git:<planner-commit-sha> \
   --output <private-funding-repair-plan.json>
 # This executes no market request and does not accept cadence or mutate canonical data.
+grid-data execute-funding-repair --repair-plan <private-funding-repair-plan.json> \
+  --coverage-audit <blocked-funding-audit.json> \
+  --job-root <completed-funding-job-root> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --repair-staging-root <local-path> --executor-software-identity git:<executor-commit-sha> \
+  --output <private-funding-repair-execution.json>
+# Repeat with --execute only after the printed whole-plan preflight is accepted.
 
 # Immutable canonical maintenance (trade/mark compaction)
 grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \

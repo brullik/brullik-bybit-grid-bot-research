@@ -371,6 +371,14 @@ from adjacent source-observed settlements and embedded in bounded standard fundi
 current interval metadata is never used, no request is executed, and the audit remains blocked.
 Real plans contain exact settlement identities and stay in private runtime storage.
 
+ADR-0056 executes only a fully reverified ADR-0055 plan. All embedded requests and their combined
+remaining staging requirement pass one no-mutation preflight before the first public request.
+Tasks then reuse the standard receipt-resumable funding Landing primitive sequentially. A task is
+`passed` only when source-returned timestamps equal every candidate exactly once; empty, partial,
+or unexpected results remain blocked. The rate-free execution record is still private because it
+contains instrument and settlement identities. Parent publication and the original blocked audit
+remain unchanged.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
@@ -381,7 +389,9 @@ Real plans contain exact settlement identities and stay in private runtime stora
 - A successful repair publishes a new child dataset with the old manifest and every repair source
   hash in lineage; it never patches the parent in place.
 - Funding repair planning is discovery-only: exact candidate settlements must later be returned
-  by the public source before a separately implemented immutable funding child can be proposed.
+  by the public source before an immutable funding child can be proposed.
+- Funding discovery execution runs only after whole-plan capacity admission, persists ordinary
+  page/manifest receipts, and cannot publish or mutate the canonical parent.
 - Periodic compaction verifies one or more immutable parents from exactly one month/bucket,
   rejects every duplicate/conflicting key, and writes a new receipt-last child. It calibrates the
   16 MiB ZSTD-3 row target from a bounded in-memory sample, permits only one explicit final tail,

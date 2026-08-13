@@ -61,6 +61,11 @@ from grid_data.funding_publication import (
     preflight_completed_funding_publication,
     publish_preflighted_funding,
 )
+from grid_data.funding_repair_execution import (
+    execute_funding_repair,
+    preflight_funding_repair_execution,
+    verify_funding_repair_execution,
+)
 from grid_data.funding_repair_plan import build_funding_repair_plan
 from grid_data.funding_request import resolve_funding_request
 from grid_data.funding_source_boundary import (
@@ -497,6 +502,31 @@ def parser() -> argparse.ArgumentParser:
     funding_repair_plan.add_argument("--planner-software-identity", required=True)
     funding_repair_plan.add_argument("--output", type=Path, required=True)
     funding_repair_plan.set_defaults(handler=_plan_funding_repair)
+
+    funding_repair_execute = commands.add_parser(
+        "execute-funding-repair",
+        help=(
+            "preflight or execute every standard public request in a verified funding "
+            "repair discovery plan"
+        ),
+    )
+    funding_repair_execute.add_argument("--repair-plan", type=Path, required=True)
+    funding_repair_execute.add_argument("--coverage-audit", type=Path, required=True)
+    funding_repair_execute.add_argument("--job-root", type=Path, required=True)
+    funding_repair_execute.add_argument("--instrument-registry", type=Path, required=True)
+    funding_repair_execute.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_execute.add_argument("--store-root", type=Path, required=True)
+    funding_repair_execute.add_argument("--repair-staging-root", type=Path, required=True)
+    funding_repair_execute.add_argument("--executor-software-identity", required=True)
+    funding_repair_execute.add_argument("--output", type=Path, required=True)
+    funding_repair_execute.add_argument(
+        "--execute",
+        action="store_true",
+        help=(
+            "make bounded public requests and write private Landing/evidence; omitted is preflight"
+        ),
+    )
+    funding_repair_execute.set_defaults(handler=_execute_funding_repair)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -1420,6 +1450,86 @@ def _plan_funding_repair(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _execute_funding_repair(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.repair_staging_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    preflight = preflight_funding_repair_execution(
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        closed_before_ms=closed_before_now_ms(observed_at_ms),
+        executor_software_identity=args.executor_software_identity,
+    )
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    verified_execution = None
+    if output.exists() or receipt.exists():
+        verified_execution = verify_funding_repair_execution(
+            output,
+            args.repair_plan,
+            args.coverage_audit,
+            args.job_root,
+            args.instrument_registry,
+            args.capacity_evidence,
+            args.store_root,
+            args.repair_staging_root,
+        )
+        if (
+            verified_execution.payload.get("executor_software_identity")
+            != args.executor_software_identity
+        ):
+            raise ValueError("existing funding repair execution uses a different software identity")
+    else:
+        preflight_evidence(output)
+    summary = {
+        "execute": bool(args.execute),
+        "existing_execution": verified_execution is not None,
+        "existing_complete_task_count": preflight.existing_complete_count,
+        "planned_max_http_requests": preflight.verified_plan.planned_max_http_requests,
+        "planned_peak_memory_bytes": preflight.planned_peak_memory_bytes,
+        "repair_plan_sha256": preflight.verified_plan.artifact_sha256,
+        "required_free_bytes": preflight.required_free_bytes,
+        "status": "preflight-passed",
+        "task_count": len(preflight.task_plans),
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if verified_execution is not None:
+        payload = verified_execution.payload
+        artifact = verified_execution.path
+    else:
+        preflight_evidence(output)
+        result = execute_funding_repair(
+            preflight,
+            lambda: BybitPublicClient(
+                UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+            ),
+            lambda: probe_host_snapshot(args.repair_staging_root),
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            executor_software_identity=args.executor_software_identity,
+            now_ms=lambda: time.time_ns() // 1_000_000,
+        )
+        artifact, receipt = publish_evidence(output, result.payload)
+        payload = result.payload
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "limits": payload["limits"],
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "status": payload["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0 if payload["status"] == "passed" else 2
 
 
 def _publish_history_1m(args: argparse.Namespace) -> int:

@@ -266,6 +266,14 @@ limited to 1,000 tasks/candidates and 100,000 maximum HTTP attempts. Real artifa
 private because exact instrument and settlement identities are operational evidence; see
 ADR-0055.
 
+`grid.bybit-funding-repair-execution/v1` re-verifies that complete chain, preflights all embedded
+standard funding jobs under one aggregate remaining-staging bound, and inventories their ordinary
+Landing receipts. It is `passed` only when every source response contains exactly the complete
+ordered candidate set, with no missing or unexpected settlement. Empty or partial confirmation
+is `blocked`; the parent and original audit are unchanged. Rates are excluded, but exact
+instrument/range identities make the execution record private and not GitHub-eligible; see
+ADR-0056.
+
 `grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
 complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
 month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically

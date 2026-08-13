@@ -46,8 +46,9 @@ in GitHub, but real generated plans do not. A later execution transition must re
 candidate timestamp to be returned exactly once before a separate immutable child publication
 can be considered.
 
-This decision does not implement execution or publication, accept a schedule change, weaken
-ADR-0034, modify a parent, close Gate 2, or authorize private/live Bybit operations.
+Execution is now defined separately by ADR-0056. This decision does not implement publication,
+accept a schedule change, weaken ADR-0034, modify a parent, close Gate 2, or authorize
+private/live Bybit operations.
 
 ## Consequences
 
