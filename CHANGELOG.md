@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0048 receipt-resumable funding source-boundary discovery: bounded backward public paging,
+  timestamp-only page receipts, exact-rate validation without retention, second-settlement
+  canonical admission, fresh SSD/NVMe/memory/free-space gates, and no private/live capability.
 - Schema-bound five-instrument full-lifecycle campaign-preflight evidence: 1,467 jobs and 46,227
   pages retained identical resource bounds while ADR-0047 reduced same-host elapsed time from
   125,600 ms to 3,284 ms (38.246x; 97.39% less).

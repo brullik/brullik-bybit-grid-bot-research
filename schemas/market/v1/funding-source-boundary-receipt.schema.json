@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/funding-source-boundary-receipt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["artifact", "artifact_sha256", "contract", "status"],
+  "properties": {
+    "artifact": {"type": "string", "minLength": 1},
+    "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "contract": {"const": "grid.funding-source-boundary-receipt/v1"},
+    "status": {"const": "complete"}
+  }
+}
