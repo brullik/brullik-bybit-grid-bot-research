@@ -575,6 +575,8 @@ diagnostic results without publishing symbols, instrument/dataset identities, ma
 event timestamps, runtime paths, account data, or credentials. This closes representative
 multi-year publication/coverage evidence only; it does not erase the separate April 50x90 funding
 cadence blocker, prove a complete historical universe, or close Gate 2.
+The measured aggregate audit and its exact contract assertions are tracked in
+[PR #49](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/49).
 
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
