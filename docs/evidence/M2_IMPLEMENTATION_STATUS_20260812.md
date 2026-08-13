@@ -545,6 +545,8 @@ has artifact SHA-256
 `git:9887c9d5d4aec51966495e6618ffa67909d59743` and evidence-builder identity
 `git:c6c5c8a29de4628647c1562164522efb9604e64e`, and contains no runtime path, market value,
 instrument/dataset identity, account data, or credential.
+The measured artifact and its contract-level redaction assertions are tracked in
+[PR #47](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/47).
 
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
