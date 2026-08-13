@@ -112,6 +112,8 @@ The authoritative implementation and review history is:
   funding repair discovery planning without cadence acceptance or market execution.
 - PR [#70](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/70): bounded public
   funding repair discovery execution with exact candidate confirmation and private evidence.
+- PR [#71](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/71): bounded retry
+  classification for TLS record/read failures observed during the candle-only full-history resume.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -571,7 +573,8 @@ read boundary: Python raised `ssl.SSLError` for a bad-record-MAC/decryption fail
 978 child jobs had committed. Existing receipts remained reusable and no canonical data was
 involved. TLS read failures are now classified through the same bounded `TransportError` path;
 the acquisition layer still owns the fixed per-page attempt ceiling and non-retryable HTTP
-responses remain immediate.
+responses remain immediate. The narrow transport correction is tracked in
+[PR #71](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/71).
 
 The resumed execution completed all 72 children and the independent no-network verifier passed.
 The aggregate contains 11,365 pages, 10,537,365 returned rows, and 11,367 recorded HTTP attempts,
