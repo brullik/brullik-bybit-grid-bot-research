@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Deterministic no-network 1m gap-repair planning from a recomputed receipt-verified blocked
+  coverage audit, with missing-only fail-closed policy, complete gap accounting, bounded standard
+  history requests, Git/hash bindings, and explicit canonical no-mutation semantics.
 - Fail-closed canonical 1m coverage audit with exact Landing/Parquet equality, per-series minute
   accounting, bounded hash-bound gap evidence, lifecycle/duplicate/unexpected/unrequested checks,
   immutable blocked evidence, and no automatically accepted absence reason.

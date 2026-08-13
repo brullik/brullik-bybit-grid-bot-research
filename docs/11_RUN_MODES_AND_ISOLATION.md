@@ -15,8 +15,9 @@ History acquisition, research/parameter selection, strategy release, and live op
 
 The package boundaries are implemented. Phase 2 currently exposes stable-registry publication,
 no-mutation history preflight, bounded public 1m acquisition, completed-Landing verification, and
-receipt-last canonical publication; the full audit/repair/compaction/catalog command family
-remains in progress.
+receipt-last canonical publication, fail-closed coverage audit, and no-network gap-repair
+planning; repair execution, replacement lineage, compaction, and catalog commands remain in
+progress.
 
 ## Separate startup examples
 
@@ -42,6 +43,10 @@ grid-data audit-history-1m --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --publisher-software-identity git:<publisher-commit-sha> \
   --audit-software-identity git:<auditor-commit-sha> --output <audit-evidence.json>
+grid-data plan-history-repair --coverage-audit <blocked-audit.json> \
+  --job-root <completed-job-root> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --planner-software-identity git:<planner-commit-sha> --output <repair-plan.json>
 
 # Planned canonical maintenance commands
 grid-data compact --dataset <dataset-id>

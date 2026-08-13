@@ -14,9 +14,15 @@ The authoritative implementation and review history is:
 - PR [#18](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/18): stable instrument
   registry and resumable public 1m acquisition;
 - PR [#19](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/19): fresh host-snapshot
-  call-order correction; and
+  call-order correction;
 - PR [#20](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/20): verified
-  Landing-to-canonical publication.
+  Landing-to-canonical publication;
+- PR [#21](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/21): sanitized,
+  receipt-verified pilot evidence;
+- PR [#22](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/22): fail-closed
+  canonical requested-range coverage audit; and
+- PR [#23](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/23): receipt-verified
+  measured coverage evidence.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
@@ -58,11 +64,20 @@ conflicting, unexpected, unrequested, and lifecycle-invalid counts were all zero
 range list was empty and hash-bound. This establishes only the bounded requested ranges, not the
 complete historical universe or Gate 2.
 
+## Gap-repair planning implementation
+
+`grid-data plan-history-repair` and `grid.bybit-1m-gap-repair-plan/v1` provide the next fail-closed
+boundary. The no-network command recomputes a receipt-verified blocked audit and permits planning
+only when missing requested minutes classified as `rest_returned_no_data` are the sole blocker.
+It accounts for the complete gap list and embeds bounded, standard history requests without
+editing the committed canonical dataset or changing the accepted-reason policy. The measured
+pilot audit passes with zero gaps, so no artificial runtime repair artifact is created.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
 - measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
-- bounded repair and immutable replacement lineage;
+- measured repair execution and immutable replacement lineage when a genuine gap is observed;
 - multi-file target-size compaction and tail policy at representative scale;
 - catalog registration and reproducible range selection;
 - long-run adaptive throttling evidence and controlled scale-up; and
