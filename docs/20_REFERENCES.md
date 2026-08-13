@@ -8,6 +8,7 @@ The implementation phase must re-check current documentation and record exact AP
 
 - [Integration Guidance](https://bybit-exchange.github.io/docs/v5/guide)
 - [Get Instruments Info](https://bybit-exchange.github.io/docs/v5/market/instrument)
+- [Enum definitions — instrument status](https://bybit-exchange.github.io/docs/v5/enum#status)
 - [Get Kline](https://bybit-exchange.github.io/docs/v5/market/kline)
 - [Get Mark Price Kline](https://bybit-exchange.github.io/docs/v5/market/mark-kline)
 - [Get Funding Rate History](https://bybit-exchange.github.io/docs/v5/market/history-fund-rate)

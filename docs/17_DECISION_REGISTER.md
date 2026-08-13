@@ -45,6 +45,7 @@
 | D-039 | A completed public history campaign publishes as a receipt-resumable sequence of immutable canonical child datasets with one aggregate commit | accepted | Maximum single-writer resource bound, fresh child admission, deterministic receipt reuse, full source/canonical lineage verification, and ADR-0039 |
 | D-040 | Canonical campaign publication results enter GitHub only through a schema-bound aggregate/per-kind hash projection | accepted | Full source/canonical re-verification without paths, identities, market values, account data, credentials, or implicit Gate 2 acceptance; ADR-0040 |
 | D-041 | Multi-dataset coverage is a sequential receipt-bound aggregate of unchanged candle/funding child audits | accepted | Complete campaign membership, child content hashes, summed quality/reasons, strict blocked propagation, and no runtime identity disclosure; ADR-0041 |
+| D-042 | Complete-current Bybit linear inventory enumerates the dated normative `PreLaunch`, `Trading`, `Delivering`, and `Closed` status policy | accepted | Exact policy binding, per-filter status parity, genuine rejection remains partial, immutable older evidence, and ADR-0042 |
 
 ## Decisions requiring benchmark or owner evidence
 

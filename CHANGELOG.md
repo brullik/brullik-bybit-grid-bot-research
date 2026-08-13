@@ -31,6 +31,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Current linear instrument inventories now query exactly the dated normative Bybit status enum
+  (`PreLaunch`, `Trading`, `Delivering`, `Closed`), bind that policy in evidence, reject
+  cross-filter status leakage, and no longer create a false partial-inventory blocker by sending
+  the non-normative mainnet `Settling` filter.
 - Canonical campaign publication now hands each typed, receipt-verified Landing child directly
   from its single page-verification pass into bounded publication preflight. This removes repeated
   JSON/Decimal/Arrow decoding while preserving every page digest, manifest, receipt, source

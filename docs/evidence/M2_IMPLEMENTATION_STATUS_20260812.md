@@ -67,6 +67,9 @@ The authoritative implementation and review history is:
   GitHub-safe measured evidence for the completed 5-instrument, 24-month Landing campaign.
 - PR [#44](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/44): receipt-resumable,
   sequential canonical publication of every completed campaign child with aggregate verification.
+- PR [#50](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/50): dated current
+  Bybit linear-status inventory policy aligned with the normative V5 enum and strict
+  response-partition validation.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -430,6 +433,16 @@ or tick row was downloaded. Two recent snapshots establish the append-only mecha
 lifecycle consistency; they do not provide point-in-time metadata for decisions before
 2026-08-12 or close Gate 2.
 
+ADR-0042 resolves the false current-inventory part of that blocker prospectively. The current
+normative Bybit V5 enum contains `PreLaunch`, `Trading`, `Delivering`, and `Closed`; it does not
+contain the rejected `Settling` filter. New observations bind the dated
+`bybit-v5-linear-status-enum-2026-08-13` policy, require every one of those four independently
+paginated queries to succeed, and reject any row whose returned status differs from its requested
+partition. Older partial artifacts remain immutable. A fresh measured snapshot/timeline result
+must still be generated after the policy implementation is merged; historical metadata before
+2026-08-12 remains unresolved. The implementation and decision are tracked in
+[PR #50](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/50).
+
 ## Resumable multi-year campaign implementation
 
 ADR-0038 and `grid-data history-campaign` now turn one bounded request into deterministic
@@ -586,9 +599,9 @@ campaign belongs in a subsequent evidence commit using the immutable merged publ
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a
-  resolution for the partial source inventory; the current timeline begins on 2026-08-12;
-- canonical publication and coverage-audit evidence for the representative multi-year and
-  full-history controlled scales;
+  fresh post-ADR-0042 complete-current snapshot; the current timeline begins on 2026-08-12 and
+  does not reconstruct earlier point-in-time metadata;
+- canonical publication and coverage-audit evidence for the full-history controlled scale;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
