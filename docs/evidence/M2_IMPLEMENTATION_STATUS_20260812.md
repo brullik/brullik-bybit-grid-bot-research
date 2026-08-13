@@ -29,6 +29,8 @@ The authoritative implementation and review history is:
   repair execution and immutable parent-to-child replacement lineage.
 - PR [#26](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/26): target-size
   immutable compaction, multi-file/tail verification, and complete parent lineage.
+- PR [#27](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/27): receipt-verified
+  DuckDB catalog registration and snapshot-bound reproducible range selection.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
