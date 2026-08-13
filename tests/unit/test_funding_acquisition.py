@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import grid_data.funding_acquisition as funding_acquisition
 import pytest
 from grid_bybit_public import BybitPublicError
 from grid_data.funding_acquisition import (
@@ -15,6 +16,7 @@ from grid_data.funding_acquisition import (
     execute_funding_job,
     load_completed_funding_batch,
     preflight_funding_job,
+    verify_completed_funding_job_integrity,
 )
 from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostSnapshot
 from jsonschema import Draft202012Validator
@@ -303,3 +305,26 @@ def test_tamper_or_stale_lock_blocks_resume(tmp_path: Path) -> None:
     second.paths.run_lock.mkdir()
     with pytest.raises(FundingAcquisitionError, match="run directory"):
         preflight(tmp_path, spec(job_id="funding-2026-01-b01-lock"))
+
+
+def test_integrity_verifier_hashes_pages_without_semantic_decode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    completed = execute(preflight(tmp_path), FakeFundingClient())
+    monkeypatch.setattr(
+        funding_acquisition,
+        "_validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("semantic decode was called")),
+    )
+
+    assert verify_completed_funding_job_integrity(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+    page = next(
+        path
+        for path in (completed.job_root / "pages").glob("*.json")
+        if not path.name.endswith(".receipt.json")
+    )
+    page.write_bytes(page.read_bytes() + b" ")
+    with pytest.raises(FundingAcquisitionError, match="receipt"):
+        verify_completed_funding_job_integrity(completed.job_root)

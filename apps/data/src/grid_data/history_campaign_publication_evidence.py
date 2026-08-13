@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -78,9 +79,14 @@ def build_history_campaign_publication_evidence(
             "publication evidence software identity must be git:<40 hex>"
         )
     _generated_at(generated_at_utc)
+    verification_started_ns = time.perf_counter_ns()
     completed = verify_completed_history_campaign_publication(
         publication_root,
         source_campaign_root,
+    )
+    verification_elapsed_ms = max(
+        1,
+        (time.perf_counter_ns() - verification_started_ns + 999_999) // 1_000_000,
     )
     publication_plan = _object(completed.plan_path)
     publication_manifest = _object(completed.manifest_path)
@@ -192,11 +198,13 @@ def build_history_campaign_publication_evidence(
             "canonical_child_receipts_verified": True,
             "deterministic_resume_supported": True,
             "evidence_builder_software_identity": software_identity,
+            "initial_source_semantic_admission_required": True,
             "max_concurrent_writers": 1,
             "publication_aggregate_receipt_verified": True,
             "publisher_software_identity": publisher_identity,
             "source_aggregate_receipt_verified": True,
             "source_child_receipts_verified": True,
+            "source_reverification_mode": "receipt-integrity-without-row-decode-v1",
         },
         "resource_bounds": {
             "maximum_child_planned_peak_memory_bytes": max(planned_peak_memory_bytes),
@@ -217,6 +225,10 @@ def build_history_campaign_publication_evidence(
             "evidence_contains_market_values": False,
             "evidence_contains_runtime_paths": False,
             "runtime_market_artifacts_committed_to_git": False,
+        },
+        "verification": {
+            "completed_publication_verification_elapsed_ms": verification_elapsed_ms,
+            "source_reverification_mode": "receipt-integrity-without-row-decode-v1",
         },
     }
     if sum(item["dataset_count"] for item in by_kind.values()) != completed.dataset_count:

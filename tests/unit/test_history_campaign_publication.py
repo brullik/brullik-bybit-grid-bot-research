@@ -286,6 +286,37 @@ def test_publication_campaign_detects_outer_and_canonical_tampering(tmp_path: Pa
         )
 
 
+def test_completed_publication_verification_uses_source_integrity_not_row_decode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    completed = execute_publication(preflight_publication(tmp_path, source.campaign_root))
+    monkeypatch.setattr(
+        history_acquisition,
+        "_validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("candle decode was called")),
+    )
+    monkeypatch.setattr(
+        funding_acquisition,
+        "_validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("funding decode was called")),
+    )
+
+    verified = verify_completed_history_campaign_publication(
+        completed.publication_root,
+        source.campaign_root,
+    )
+    assert verified.manifest_sha256 == completed.manifest_sha256
+    evidence = build_history_campaign_publication_evidence(
+        completed.publication_root,
+        source.campaign_root,
+        generated_at_utc="2026-08-13T12:00:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    assert evidence["process"]["source_child_receipts_verified"] is True  # type: ignore[index]
+
+
 def test_publication_campaign_rejects_resource_shortfall_and_mutable_identity(
     tmp_path: Path,
 ) -> None:
@@ -358,12 +389,22 @@ def test_publication_campaign_evidence_is_schema_valid_aggregate_only_and_redact
         "canonical_child_receipts_verified": True,
         "deterministic_resume_supported": True,
         "evidence_builder_software_identity": "git:" + "8" * 40,
+        "initial_source_semantic_admission_required": True,
         "max_concurrent_writers": 1,
         "publication_aggregate_receipt_verified": True,
         "publisher_software_identity": SOFTWARE_IDENTITY,
         "source_aggregate_receipt_verified": True,
         "source_child_receipts_verified": True,
+        "source_reverification_mode": "receipt-integrity-without-row-decode-v1",
     }
+    verification = payload["verification"]
+    assert isinstance(verification, dict)
+    assert set(verification) == {
+        "completed_publication_verification_elapsed_ms",
+        "source_reverification_mode",
+    }
+    assert verification["completed_publication_verification_elapsed_ms"] >= 1
+    assert verification["source_reverification_mode"] == ("receipt-integrity-without-row-decode-v1")
     rendered = json.dumps(payload).lower()
     for forbidden in (
         "aaausdt",

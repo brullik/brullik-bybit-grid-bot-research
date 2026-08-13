@@ -29,6 +29,7 @@ from grid_market_store import (
 from grid_data.funding_acquisition import (
     CompletedFundingJob,
     FundingAcquisitionError,
+    verify_completed_funding_job_integrity,
 )
 from grid_data.funding_publication import (
     FUNDING_HISTORY_PUBLICATION_CONTRACT,
@@ -39,6 +40,7 @@ from grid_data.funding_publication import (
 from grid_data.history_acquisition import (
     CompletedHistoryJob,
     HistoryAcquisitionError,
+    verify_completed_history_job_integrity,
 )
 from grid_data.history_campaign import (
     CAMPAIGN_RECEIPT_CONTRACT,
@@ -70,6 +72,21 @@ _PUBLICATION_POLICY: Final = {
     "receipt_resume": True,
     "tick_rows_requested": False,
 }
+
+
+def _verify_source_child_integrity(
+    job_root: Path,
+    kind: CampaignKind,
+) -> CompletedHistoryJob | CompletedFundingJob:
+    """Verify immutable source bytes/receipts after semantic admission already occurred."""
+
+    return (
+        verify_completed_funding_job_integrity(job_root)
+        if kind == "funding"
+        else verify_completed_history_job_integrity(job_root)
+    )
+
+
 _PLAN_JOB_KEYS: Final = {
     "dataset_id",
     "dataset_root",
@@ -983,7 +1000,10 @@ def verify_completed_history_campaign_publication(
     )
     if SOFTWARE_IDENTITY_RE.fullmatch(software_identity) is None:
         raise HistoryCampaignPublicationError("publisher software identity is mutable or invalid")
-    source_campaign = verify_completed_history_campaign(source_campaign_root)
+    source_campaign = verify_completed_history_campaign(
+        source_campaign_root,
+        child_verifier=_verify_source_child_integrity,
+    )
     source_plan_sha = sha256_file(source_campaign.plan_path)
     if (
         plan.get("source_campaign_manifest_sha256") != source_campaign.manifest_sha256

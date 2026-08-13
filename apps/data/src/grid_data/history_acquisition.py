@@ -363,6 +363,21 @@ def _verify_artifact(path: Path) -> tuple[dict[str, object], str]:
     return payload, digest
 
 
+def _verify_artifact_digest(path: Path) -> str:
+    """Verify immutable artifact bytes against the canonical receipt without decoding payload."""
+
+    receipt_path = path.with_suffix(".receipt.json")
+    if not path.is_file() or not receipt_path.is_file():
+        raise HistoryAcquisitionError(f"artifact/receipt pair is incomplete: {path}")
+    receipt = _load_object(receipt_path)
+    digest = sha256_file(path)
+    if receipt != _receipt_payload(path.name, digest):
+        raise HistoryAcquisitionError(f"artifact receipt does not verify: {path}")
+    if path.parent.name == "pages" and path.stat().st_size > MAX_PAGE_ARTIFACT_BYTES:
+        raise HistoryAcquisitionError("staged page exceeds its fixed artifact byte bound")
+    return digest
+
+
 def _assert_fresh(snapshot: HostSnapshot, *, now_ms: int) -> None:
     age = now_ms - snapshot.observed_at_ms
     if age < 0 or age > MAX_PREFLIGHT_AGE_MS:
@@ -824,6 +839,7 @@ def _verify_completed_history_job(
     job_root: Path,
     *,
     load_batch: bool,
+    verify_page_semantics: bool = True,
 ) -> tuple[CompletedHistoryJob, CanonicalCandleBatch | None]:
     """Verify once and optionally build the exact batch from those same verified page bytes."""
 
@@ -915,6 +931,8 @@ def _verify_completed_history_job(
     total_rows = 0
     total_attempts = 0
     empty_pages = 0
+    if load_batch and not verify_page_semantics:
+        raise HistoryAcquisitionError("history batch loading requires semantic page verification")
     logical_rows: list[Candle1m | MarkCandle1m] | None = [] if load_batch else None
     batch_dataset_type: DatasetType | None = None
     expected_files = {
@@ -934,9 +952,30 @@ def _verify_completed_history_job(
         if task.sequence != sequence or raw_page.get("sequence") != sequence:
             raise HistoryAcquisitionError("history task/page sequence is not canonical")
         page = root / "pages" / task.artifact_name
-        payload, digest = _verify_artifact(page)
-        _validate_page_payload(payload, task)
+        payload: dict[str, object] | None
+        if verify_page_semantics:
+            payload, digest = _verify_artifact(page)
+            _validate_page_payload(payload, task)
+            row_count = cast(int, payload["row_count"])
+            attempt_count = cast(int, payload["attempt_count"])
+        else:
+            payload = None
+            digest = _verify_artifact_digest(page)
+            raw_row_count = raw_page.get("row_count")
+            raw_attempt_count = raw_page.get("attempt_count")
+            if (
+                isinstance(raw_row_count, bool)
+                or not isinstance(raw_row_count, int)
+                or not 0 <= raw_row_count <= task.limit
+                or isinstance(raw_attempt_count, bool)
+                or not isinstance(raw_attempt_count, int)
+                or not 1 <= raw_attempt_count <= verified_spec.max_attempts
+            ):
+                raise HistoryAcquisitionError("history manifest page counts are invalid")
+            row_count = raw_row_count
+            attempt_count = raw_attempt_count
         if logical_rows is not None:
+            assert payload is not None
             raw_rows = cast(list[list[str]], payload["rows"])
             logical_rows.extend(
                 _logical_rows(
@@ -952,16 +991,33 @@ def _verify_completed_history_job(
             if current_type is not batch_dataset_type:
                 raise HistoryAcquisitionError("completed history job mixes dataset types")
         if (
-            raw_page.get("artifact") != f"pages/{page.name}"
+            set(raw_page)
+            != {
+                "artifact",
+                "artifact_sha256",
+                "attempt_count",
+                "end_ms",
+                "ingestion_id",
+                "instrument_id",
+                "row_count",
+                "sequence",
+                "start_ms",
+                "symbol",
+            }
+            or raw_page.get("artifact") != f"pages/{page.name}"
             or raw_page.get("artifact_sha256") != digest
-            or raw_page.get("row_count") != payload.get("row_count")
-            or raw_page.get("attempt_count") != payload.get("attempt_count")
+            or raw_page.get("row_count") != row_count
+            or raw_page.get("attempt_count") != attempt_count
+            or raw_page.get("end_ms") != task.end_ms
+            or raw_page.get("instrument_id") != task.instrument_id
             or raw_page.get("ingestion_id") != f"bybit-page-sha256:{digest}"
+            or raw_page.get("start_ms") != task.start_ms
+            or raw_page.get("symbol") != task.symbol
         ):
             raise HistoryAcquisitionError("history manifest page facts do not verify")
-        total_rows += cast(int, payload["row_count"])
-        total_attempts += cast(int, payload["attempt_count"])
-        empty_pages += payload["row_count"] == 0
+        total_rows += row_count
+        total_attempts += attempt_count
+        empty_pages += row_count == 0
         expected_files.update((f"pages/{page.name}", f"pages/{page.stem}.receipt.json"))
     expected_request_bound = {
         "actual_http_requests": total_attempts,
@@ -1057,6 +1113,17 @@ def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
     """Verify plan, page receipts, completion manifest, and the exact file allowlist."""
 
     completed, _batch = _verify_completed_history_job(job_root, load_batch=False)
+    return completed
+
+
+def verify_completed_history_job_integrity(job_root: Path) -> CompletedHistoryJob:
+    """Verify the immutable receipt/hash chain and manifest facts without row decoding."""
+
+    completed, _batch = _verify_completed_history_job(
+        job_root,
+        load_batch=False,
+        verify_page_semantics=False,
+    )
     return completed
 
 

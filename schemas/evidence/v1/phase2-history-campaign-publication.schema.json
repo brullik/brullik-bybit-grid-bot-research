@@ -83,11 +83,13 @@
         "canonical_child_receipts_verified": {"const": true},
         "deterministic_resume_supported": {"const": true},
         "evidence_builder_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "initial_source_semantic_admission_required": {"const": true},
         "max_concurrent_writers": {"const": 1},
         "publication_aggregate_receipt_verified": {"const": true},
         "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
         "source_aggregate_receipt_verified": {"const": true},
-        "source_child_receipts_verified": {"const": true}
+        "source_child_receipts_verified": {"const": true},
+        "source_reverification_mode": {"const": "receipt-integrity-without-row-decode-v1"}
       }
     },
     "resource_bounds": {
@@ -123,6 +125,23 @@
         "evidence_contains_market_values": false,
         "evidence_contains_runtime_paths": false,
         "runtime_market_artifacts_committed_to_git": false
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed_publication_verification_elapsed_ms",
+        "source_reverification_mode"
+      ],
+      "properties": {
+        "completed_publication_verification_elapsed_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_reverification_mode": {
+          "const": "receipt-integrity-without-row-decode-v1"
+        }
       }
     }
   },

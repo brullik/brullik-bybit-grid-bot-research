@@ -144,6 +144,12 @@ aggregate verifier recomputes source-derived dataset/build identities and verifi
 file, audit, manifest, and receipt. This is publication lineage, not coverage/lifecycle acceptance
 or catalog registration. See ADR-0039.
 
+ADR-0046 makes the verifier mode explicit. Initial/pending publication and coverage auditing use
+semantic source admission. A completed aggregate publication may reverify source children through
+their exact artifact bytes, page receipts, task/manifest facts, child receipts, allowlists, and
+aggregate receipt without decoding source rows, while still fully verifying canonical files and
+receipts. Integrity-only mode cannot return a typed batch.
+
 `grid.phase2-history-campaign-publication/v1` is the GitHub-safe projection of that fully verified
 publication. It binds source request/campaign, registry, capacity, publication plan, and
 publication manifest hashes; records only aggregate/per-kind datasets, rows, files, Parquet bytes,
@@ -151,7 +157,9 @@ scope counts, requested bounds, and maximum sequential child resource bounds; an
 publisher and evidence-builder Git identities. Its exact schema excludes dataset/symbol/instrument
 identities, runtime paths, market values, account data, and credentials. It proves immutable
 canonical publication lineage only; coverage audits, catalog registration, and Gate 2 remain
-separate. See ADR-0040.
+separate. New artifacts may optionally record the ADR-0046 source-reverification mode and the
+monotonic elapsed milliseconds of completed-publication verification; old v1 artifacts remain
+valid. See ADR-0040 and ADR-0046.
 
 `grid.history-campaign-coverage-audit/v1` binds one verified aggregate publication and the
 canonical content hash/status of every ADR-0026/ADR-0034 child audit in campaign sequence. It sums
