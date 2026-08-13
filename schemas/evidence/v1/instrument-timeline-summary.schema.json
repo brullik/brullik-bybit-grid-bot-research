@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/instrument-timeline-summary.schema.json",
+  "title": "Sanitized instrument timeline summary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "blocker_codes",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "quality",
+    "software_identity",
+    "status",
+    "storage_policy",
+    "timeline",
+    "universe"
+  ],
+  "properties": {
+    "blocker_codes": {
+      "type": "array",
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/blockerCode"}
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.instrument-timeline-summary/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "quality": {
+      "const": {
+        "embedded_hash_verified": true,
+        "future_snapshot_fields_exposed_to_as_of_selection": false,
+        "identity_stability_verified": true,
+        "receipt_verified": true,
+        "source_registry_receipts_verified_at_build": true
+      }
+    },
+    "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "contains_account_data": false,
+        "contains_credentials": false,
+        "contains_instrument_rows": false,
+        "contains_local_paths": false,
+        "contains_market_values": false,
+        "runtime_timeline_committed_to_git": false
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_sha256",
+        "content_sha256",
+        "first_snapshot_time_ms",
+        "latest_snapshot_time_ms",
+        "registry_artifact_sha256s",
+        "snapshot_count"
+      ],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "first_snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "latest_snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "registry_artifact_sha256s": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "snapshot_count": {"type": "integer", "minimum": 1, "maximum": 10000}
+      }
+    },
+    "universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_blocked_instrument_count",
+        "coverage_instrument_count",
+        "delivery_bounded_instrument_count",
+        "latest_inventory_status",
+        "latest_status_counts",
+        "latest_usdt_linear_perpetual_count",
+        "open_ended_instrument_count",
+        "partial_snapshot_count"
+      ],
+      "properties": {
+        "coverage_blocked_instrument_count": {"type": "integer", "minimum": 0},
+        "coverage_instrument_count": {"type": "integer", "minimum": 1},
+        "delivery_bounded_instrument_count": {"type": "integer", "minimum": 0},
+        "latest_inventory_status": {"enum": ["complete", "partial"]},
+        "latest_status_counts": {
+          "type": "object",
+          "propertyNames": {"minLength": 1},
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "latest_usdt_linear_perpetual_count": {"type": "integer", "minimum": 1},
+        "open_ended_instrument_count": {"type": "integer", "minimum": 0},
+        "partial_snapshot_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "blockerCode": {
+      "enum": [
+        "closed_without_delivery_time",
+        "conflicting_delivery_time",
+        "conflicting_launch_time",
+        "non_positive_lifecycle_interval",
+        "partial_source_inventory",
+        "symbol_reused_across_instrument_ids"
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/instrument-timeline.schema.json",
+  "title": "Receipt-bound Bybit linear instrument timeline v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["content_sha256", "evidence_schema", "identity_policy", "semantics", "snapshots", "summary"],
+  "properties": {
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.instrument-timeline/v1"},
+    "identity_policy": {
+      "const": {
+        "algorithm": "bybit-linear-source-symbol-id-v1",
+        "category": "linear",
+        "instrument_id_expression": "source_symbol_id",
+        "range": "uint32-positive"
+      }
+    },
+    "semantics": {
+      "const": {
+        "as_of_selection": "latest_snapshot_at_or_before_decision_time_only",
+        "future_snapshot_fields_exposed_to_as_of_selection": false,
+        "lifecycle_coverage_usage": "ex-post-data-quality-only",
+        "metadata_effective_time_inference": "forbidden"
+      }
+    },
+    "snapshots": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/timelineSnapshot"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_blocker_code_count",
+        "coverage_blocker_codes",
+        "coverage_instrument_count",
+        "first_snapshot_time_ms",
+        "latest_inventory_status",
+        "latest_snapshot_time_ms",
+        "latest_status_counts",
+        "latest_usdt_linear_perpetual_count",
+        "partial_snapshot_count",
+        "snapshot_count"
+      ],
+      "properties": {
+        "coverage_blocker_code_count": {"type": "integer", "minimum": 0},
+        "coverage_blocker_codes": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/blockerCode"}
+        },
+        "coverage_instrument_count": {"type": "integer", "minimum": 1},
+        "first_snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "latest_inventory_status": {"enum": ["complete", "partial"]},
+        "latest_snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "latest_status_counts": {
+          "type": "object",
+          "propertyNames": {"minLength": 1},
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "latest_usdt_linear_perpetual_count": {"type": "integer", "minimum": 1},
+        "partial_snapshot_count": {"type": "integer", "minimum": 0},
+        "snapshot_count": {"type": "integer", "minimum": 1, "maximum": 10000}
+      }
+    }
+  },
+  "$defs": {
+    "blockerCode": {
+      "enum": [
+        "closed_without_delivery_time",
+        "conflicting_delivery_time",
+        "conflicting_launch_time",
+        "non_positive_lifecycle_interval",
+        "symbol_reused_across_instrument_ids"
+      ]
+    },
+    "decimal": {"type": "string", "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"},
+    "instrumentId": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshotRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_time_ms", "category", "instrument_id", "source_symbol_id", "symbol",
+        "contract_type", "status", "base_coin", "quote_coin", "settle_coin",
+        "launch_time_ms", "delivery_time_ms", "tick_size", "quantity_step",
+        "min_order_quantity", "max_order_quantity", "min_leverage", "max_leverage",
+        "funding_interval_minutes", "source_payload_sha256"
+      ],
+      "properties": {
+        "snapshot_time_ms": {"type": "integer", "minimum": 0},
+        "category": {"const": "linear"},
+        "instrument_id": {"$ref": "#/$defs/instrumentId"},
+        "source_symbol_id": {"$ref": "#/$defs/instrumentId"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "contract_type": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "base_coin": {"type": "string", "minLength": 1},
+        "quote_coin": {"type": "string", "minLength": 1},
+        "settle_coin": {"type": "string", "minLength": 1},
+        "launch_time_ms": {"type": "integer", "minimum": 0},
+        "delivery_time_ms": {"type": ["integer", "null"], "minimum": 0},
+        "tick_size": {"$ref": "#/$defs/decimal"},
+        "quantity_step": {"$ref": "#/$defs/decimal"},
+        "min_order_quantity": {"$ref": "#/$defs/decimal"},
+        "max_order_quantity": {"$ref": "#/$defs/decimal"},
+        "min_leverage": {"$ref": "#/$defs/decimal"},
+        "max_leverage": {"$ref": "#/$defs/decimal"},
+        "funding_interval_minutes": {"type": ["integer", "null"], "minimum": 1},
+        "source_payload_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "instrumentRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_sha256",
+        "evidence_schema",
+        "identity_policy",
+        "records",
+        "source_inventory",
+        "summary"
+      ],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_schema": {"const": "grid.instrument-registry/v1"},
+        "identity_policy": {
+          "const": {
+            "algorithm": "bybit-linear-source-symbol-id-v1",
+            "category": "linear",
+            "instrument_id_expression": "source_symbol_id",
+            "range": "uint32-positive"
+          }
+        },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {"$ref": "#/$defs/snapshotRecord"}
+        },
+        "source_inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_sha256",
+            "content_sha256",
+            "evidence_schema",
+            "fetched_at_utc",
+            "inventory_status"
+          ],
+          "properties": {
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "content_sha256": {"$ref": "#/$defs/sha256"},
+            "evidence_schema": {"const": "grid.bybit-public-inventory/v1"},
+            "fetched_at_utc": {"type": "string", "format": "date-time"},
+            "inventory_status": {"enum": ["complete", "partial"]}
+          }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instrument_count",
+            "maximum_instrument_id",
+            "minimum_instrument_id",
+            "usdt_linear_perpetual_count"
+          ],
+          "properties": {
+            "instrument_count": {"type": "integer", "minimum": 1},
+            "maximum_instrument_id": {"$ref": "#/$defs/instrumentId"},
+            "minimum_instrument_id": {"$ref": "#/$defs/instrumentId"},
+            "usdt_linear_perpetual_count": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "timelineSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument_registry_artifact_sha256", "registry"],
+      "properties": {
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "registry": {"$ref": "#/$defs/instrumentRegistry"}
+      }
+    }
+  }
+}

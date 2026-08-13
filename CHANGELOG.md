@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Immutable receipt-verified instrument timeline with stable cross-snapshot identities, strict
+  point-in-time selection, separate ex-post lifecycle coverage, fail-closed conflict/partial-source
+  accounting, and a bounded GitHub-safe summary that never exposes future snapshot fields.
 - Receipt-verified measured April trade compaction over five independently acquired 10-instrument
   parents: 2,160,000 exact rows compacted from five files to two 16-MiB target-band files plus one
   explicit tail, with equal logical hashes, immutable parent lineage, and idempotent rerun.

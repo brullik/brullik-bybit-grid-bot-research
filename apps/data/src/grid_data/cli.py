@@ -92,6 +92,11 @@ from grid_data.history_sources import (
 )
 from grid_data.host_probe import probe_host_snapshot
 from grid_data.instrument_registry import build_verified_registry_from_inventory
+from grid_data.instrument_timeline import (
+    build_instrument_timeline,
+    build_instrument_timeline_summary,
+    load_verified_instrument_timeline,
+)
 from grid_data.inventory import build_public_inventory
 from grid_data.public_sample import build_public_sample
 from grid_data.rest_history_boundary import build_rest_history_boundary
@@ -124,6 +129,36 @@ def parser() -> argparse.ArgumentParser:
     registry.add_argument("--output", type=Path, required=True)
     registry.add_argument("--force", action="store_true")
     registry.set_defaults(handler=_instrument_registry)
+
+    timeline = commands.add_parser(
+        "instrument-timeline",
+        help="publish an immutable point-in-time timeline from verified instrument registries",
+    )
+    timeline.add_argument(
+        "--instrument-registry",
+        action="append",
+        type=Path,
+        required=True,
+        help="verified registry snapshot; repeat in any order",
+    )
+    timeline.add_argument("--output", type=Path, required=True)
+    timeline.set_defaults(handler=_instrument_timeline)
+
+    timeline_verify = commands.add_parser(
+        "verify-instrument-timeline",
+        help="verify a receipt-committed instrument timeline and temporal semantics",
+    )
+    timeline_verify.add_argument("timeline", type=Path)
+    timeline_verify.set_defaults(handler=_verify_instrument_timeline)
+
+    timeline_summary = commands.add_parser(
+        "instrument-timeline-summary",
+        help="publish bounded GitHub-safe instrument timeline evidence",
+    )
+    timeline_summary.add_argument("--timeline", type=Path, required=True)
+    timeline_summary.add_argument("--software-identity", required=True)
+    timeline_summary.add_argument("--output", type=Path, required=True)
+    timeline_summary.set_defaults(handler=_instrument_timeline_summary)
 
     archive = commands.add_parser(
         "archive-inventory", help="inventory official public.bybit.com daily trade archives"
@@ -487,6 +522,59 @@ def _instrument_registry(args: argparse.Namespace) -> int:
                 "identity_policy": payload["identity_policy"],
                 "receipt": str(receipt),
                 "summary": payload["summary"],
+            }
+        )
+    )
+    return 0
+
+
+def _instrument_timeline(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_instrument_timeline(tuple(args.instrument_registry))
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "receipt": str(receipt),
+                "summary": payload["summary"],
+            }
+        )
+    )
+    return 0
+
+
+def _verify_instrument_timeline(args: argparse.Namespace) -> int:
+    verified = load_verified_instrument_timeline(args.timeline)
+    print(
+        json.dumps(
+            {
+                "artifact": str(verified.path),
+                "artifact_sha256": verified.artifact_sha256,
+                "coverage_instrument_count": len(verified.coverage),
+                "snapshot_count": len(verified.snapshots),
+                "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _instrument_timeline_summary(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    verified = load_verified_instrument_timeline(args.timeline)
+    payload = build_instrument_timeline_summary(
+        verified,
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "blocker_codes": payload["blocker_codes"],
+                "receipt": str(receipt),
+                "status": payload["status"],
             }
         )
     )
