@@ -236,6 +236,12 @@ def _logical_table_sha256(table: pa.Table) -> str:
     return digest.hexdigest()
 
 
+def logical_table_sha256(table: pa.Table) -> str:
+    """Return the public chunk-independent logical hash for a canonical Arrow table."""
+
+    return _logical_table_sha256(table)
+
+
 def _paths(store_root: Path, spec: CandleDatasetSpec, request_sha256: str) -> PublicationPaths:
     resolved = store_root.resolve()
     return PublicationPaths(

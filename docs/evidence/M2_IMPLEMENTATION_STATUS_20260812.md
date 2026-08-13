@@ -774,4 +774,6 @@ instrument identities, market values, account data, credentials, and any Gate 2 
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - further controlled scale-up and dated evidence/policy for the seven blocked July funding
   cadence transitions; and
-- funding repair/compaction and the remaining PM-owned Gate 2 acceptance checklist.
+- funding repair implementation/evidence, measured ADR-0054 funding-compaction evidence, and the
+  remaining PM-owned Gate 2 acceptance checklist; compaction implementation alone is not measured
+  acceptance.

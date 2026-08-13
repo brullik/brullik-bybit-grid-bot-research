@@ -248,6 +248,14 @@ output bytes, 16 MiB target facts, at most one tail, complete lineage, and immut
 identity. It contains no market values, runtime paths, host identity, account data, or credentials.
 It does not register a catalog entry, delete a parent, or close Gate 2.
 
+`grid.canonical-funding-compaction-publication/v1` combines at least two receipt-verified funding
+parents only when their exact schema, UTC month, and stable bucket match. It rejects duplicate
+keys and settlement-interval mismatches across parent boundaries, binds the exact logical union
+and every parent manifest, and uses the standard funding publication primitive to create one new
+receipt-last child. `grid.canonical-funding-compaction/v1` is the value-free GitHub proof of
+logical equality, file reduction, target classification, unchanged parents, and complete lineage.
+It does not accept chronology, repair missing events, register the child, or close Gate 2.
+
 `grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
 complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
 month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically

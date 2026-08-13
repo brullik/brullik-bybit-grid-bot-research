@@ -291,6 +291,27 @@ Do not delete the parents after compaction. Parent retention/garbage collection 
 catalog reachability policy. Compaction does not register the child, accept a missing-minute
 reason, or close Gate 2.
 
+### Compact funding fragments
+
+Funding uses a separate exact schema and settlement chronology. Run no-mutation preflight first
+with at least two receipt-verified funding parents from exactly one month/bucket:
+
+```powershell
+.venv\Scripts\grid-data.exe compact-funding `
+  --dataset funding-<parent-a> `
+  --dataset funding-<parent-b> `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --software-identity git:<compactor-commit-sha> `
+  --output data\evidence\m2-canonical-funding-compaction-<date>.json
+```
+
+Inspect the input/output file counts, parent IDs, memory bound, and free-space bound. Repeat the
+identical command with `--execute` only after preflight passes. The command rejects duplicate keys,
+mixed partitions, and settlement-interval mismatches across parent boundaries. It creates one new
+receipt-last funding child and a sanitized proof; it never changes or deletes a parent and does
+not accept a previously blocked funding chronology reason.
+
 ## 14. Register datasets and select a reproducible range
 
 Catalog registration is a separate transition after canonical publication, repair, or compaction.

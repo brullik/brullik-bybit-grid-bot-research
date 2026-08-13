@@ -57,6 +57,7 @@
 | D-051 | GitHub candle source-quality evidence contains only verified aggregate quarantine counts and binding hashes | accepted | Exact rows, timestamps, identities, paths, and market values remain local; ADR-0051 |
 | D-052 | Funding campaigns consume only a receipt-verified discovered source boundary and query the predecessor exactly once | accepted | Boundary/request/registry identity equality, clipped series, and no launch-time or current-cadence inference; ADR-0052 |
 | D-053 | Coverage audits classify receipt-bound quarantined candle rows separately and ordinary gap repair rejects them | accepted | Exact runtime key matching, sanitized aggregate reasons, no double-counted missing minute, and ADR-0053 |
+| D-054 | Funding compaction creates one receipt-last child from an exact same-partition parent union and validates settlement intervals across parent boundaries | accepted | Deterministic parent/hash lineage, duplicate rejection, unchanged parents, sanitized proof, and ADR-0054 |
 
 ## Decisions requiring benchmark or owner evidence
 
