@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0049 GitHub-safe funding source-boundary evidence: full runtime receipt reverification,
+  strict completed-response accounting, aggregate hash/count projection, exact schema/redaction
+  tests, and no symbol, instrument ID, funding rate, observed settlement time, or runtime path.
 - ADR-0048 receipt-resumable funding source-boundary discovery: bounded backward public paging,
   timestamp-only page receipts, exact-rate validation without retention, second-settlement
   canonical admission, fresh SSD/NVMe/memory/free-space gates, and no private/live capability.

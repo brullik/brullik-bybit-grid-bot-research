@@ -402,6 +402,20 @@ Independently verify the completed root printed by execution before consuming it
   data\funding-boundary\funding-source-boundary--<plan-prefix>
 ```
 
+After the evidence builder is merged, publish a new GitHub-safe result with that merge identity:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-source-boundary-evidence `
+  --job-root data\funding-boundary\funding-source-boundary--<plan-prefix> `
+  --software-identity git:<full-evidence-builder-merge-sha> `
+  --output benchmarks\results\m2-funding-source-boundary-<date>.json
+```
+
+The builder re-verifies every private receipt but publishes only aggregate counts, requested scan
+bounds, hashes, immutable Git identities, and strict response accounting. Inspect the schema and
+receipt before commit. The artifact must contain no symbol, instrument ID, per-series boundary,
+funding rate, observed settlement timestamp, runtime path, host/account datum, or credential.
+
 ### Acquire one canonical funding partition
 
 Example `data\requests\btc-funding-2026-07.json`:

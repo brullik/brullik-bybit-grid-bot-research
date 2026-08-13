@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from grid_bybit_public import BybitPublicError
+from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_contracts.canonical import canonical_sha256
 from grid_data.cli import parser
 from grid_data.evidence import publish_evidence
@@ -14,6 +14,9 @@ from grid_data.funding_source_boundary import (
     execute_funding_source_boundary,
     preflight_funding_source_boundary,
     verify_completed_funding_source_boundary,
+)
+from grid_data.funding_source_boundary_evidence import (
+    build_funding_source_boundary_evidence,
 )
 from grid_data.instrument_registry import build_instrument_registry
 from grid_market_store import HostSnapshot
@@ -35,6 +38,7 @@ class FakeClient:
     def __init__(self, *, fail_after_calls: int | None = None) -> None:
         self.calls: list[int] = []
         self.fail_after_calls = fail_after_calls
+        self._observation: RateLimitObservation | None = None
 
     def funding_page(
         self,
@@ -50,7 +54,7 @@ class FakeClient:
         if self.fail_after_calls is not None and len(self.calls) > self.fail_after_calls:
             raise BybitPublicError("injected boundary interruption")
         values = [value for value in EVENTS if start_ms <= value <= end_ms]
-        return tuple(
+        rows = tuple(
             {
                 "fundingRate": "0.0001",
                 "fundingRateTimestamp": str(value),
@@ -58,6 +62,20 @@ class FakeClient:
             }
             for value in sorted(values, reverse=True)[:limit]
         )
+        self._observation = RateLimitObservation(
+            http_status=200,
+            bybit_ret_code=0,
+            header_state="absent",
+            limit=None,
+            remaining=None,
+            reset_at_ms=None,
+        )
+        return rows
+
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = self._observation
+        self._observation = None
+        return observed
 
 
 def registry_payload() -> dict[str, object]:
@@ -265,5 +283,76 @@ def test_boundary_discovery_cli_exposes_execute_and_independent_verify() -> None
         ]
     )
     verify_args = command_parser.parse_args(["verify-funding-source-boundary", "boundary/job"])
+    evidence_args = command_parser.parse_args(
+        [
+            "funding-source-boundary-evidence",
+            "--job-root",
+            "boundary/job",
+            "--software-identity",
+            SOFTWARE_IDENTITY,
+            "--output",
+            "evidence.json",
+        ]
+    )
     assert execute_args.execute is True
     assert verify_args.job_root == Path("boundary/job")
+    assert evidence_args.output == Path("evidence.json")
+
+
+def test_boundary_evidence_is_schema_valid_hash_bound_and_redacted(tmp_path: Path) -> None:
+    completed = execute(preflight(tmp_path), FakeClient())
+    payload = build_funding_source_boundary_evidence(
+        completed.job_root,
+        generated_at_utc="2026-08-13T20:00:00Z",
+        software_identity="git:" + "9" * 40,
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-funding-source-boundary.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(payload)
+    hash_input = dict(payload)
+    embedded = hash_input.pop("content_sha256")
+    assert embedded == canonical_sha256(hash_input)
+    assert payload["landing"] == {
+        "event_count": 4,
+        "http_attempt_count": 3,
+        "page_count": 3,
+        "retry_count": 0,
+    }
+    assert payload["result"] == {
+        "canonical_start_proven_count": 1,
+        "predecessor_proven_count": 1,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "aaausdt",
+        '"symbol":',
+        '"instrument_id":',
+        '"fundingrate":',
+        '"funding_rate":',
+        str(EVENTS[0]),
+        str(EVENTS[1]),
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
+def test_boundary_evidence_requires_response_observation_coverage(tmp_path: Path) -> None:
+    class UnobservedClient(FakeClient):
+        def take_rate_limit_observation(self) -> None:
+            return None
+
+    completed = execute(preflight(tmp_path), UnobservedClient())
+    with pytest.raises(FundingSourceBoundaryError, match="every completed page"):
+        build_funding_source_boundary_evidence(
+            completed.job_root,
+            generated_at_utc="2026-08-13T20:00:00Z",
+            software_identity="git:" + "9" * 40,
+        )

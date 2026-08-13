@@ -59,6 +59,10 @@ timestamp-only pages, validates but does not retain exact rates, and identifies 
 source-observed settlement as the earliest canonical start with a proven predecessor. Registry
 launch time remains a query bound rather than source-availability proof. The discovery does not
 accept source absence or historical cadence and does not publish canonical data.
+ADR-0049 adds the GitHub-safe projection of one fully re-verified discovery. It exposes only
+aggregate scope/counts, transitive hashes, immutable code identities, fixed redaction/limitations,
+and strict adaptive response accounting. Symbols, instrument IDs, observed settlement timestamps,
+rates, runtime paths, host/account data, and credentials remain outside Git.
 ADR-0034 adds a read-only funding chronology audit: exact source/canonical parity, range-page
 tiling, predecessor/internal interval recomputation, and stable observed cadence. Empty pages and
 cadence changes remain blocked without dated evidence; current interval metadata is never used as

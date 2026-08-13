@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0049 - Sanitized funding source-boundary evidence](ADR-0049-sanitized-funding-source-boundary-evidence.md)
 - [ADR-0048 - Receipt-resumable funding source-boundary discovery](ADR-0048-receipt-resumable-funding-source-boundary-discovery.md)
 - [ADR-0047 - Single-snapshot campaign input admission](ADR-0047-single-snapshot-campaign-input-admission.md)
 - [ADR-0046 - Semantic admission and receipt-integrity reverification](ADR-0046-semantic-admission-and-receipt-integrity-reverification.md)

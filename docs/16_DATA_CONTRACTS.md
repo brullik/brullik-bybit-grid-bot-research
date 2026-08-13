@@ -332,6 +332,14 @@ second-oldest settlements. The oldest is predecessor-only; the second-oldest is 
 canonical start this evidence can admit. These runtime identities and timestamps stay outside
 Git, and the result does not imply cadence/coverage acceptance or Gate 2; see ADR-0048.
 
+`grid.phase2-funding-source-boundary/v1` is the GitHub-safe projection of one complete ADR-0048
+discovery. It re-verifies the private plan, every timestamp page/receipt, manifest, adaptive
+summary, completion receipt, and allowlist, then exposes only request/registry/plan/manifest
+hashes, immutable Git identities, requested scan bounds, aggregate counts, strict response
+accounting, and fixed policy/limitations. It excludes symbols, instrument IDs, per-series facts,
+funding rates, observed settlement timestamps, runtime paths, device/account data, credentials,
+and private endpoints; see ADR-0049.
+
 `grid.phase2-public-funding-pilot/v1` re-verifies one immutable funding publication, exact
 Landing/Parquet table equality, and every predecessor/internal interval derivation. The
 GitHub-safe receipt-bound summary contains requested ranges, observed event counts, page/process

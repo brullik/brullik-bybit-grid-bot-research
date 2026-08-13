@@ -94,6 +94,8 @@ The authoritative implementation and review history is:
   same-host qualification evidence for the ADR-0047 full-history campaign preflight.
 - PR [#61](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/61): ADR-0048 bounded,
   receipt-resumable public funding source-boundary discovery with timestamp-only retention.
+- PR [#62](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/62): ADR-0049 strict,
+  GitHub-safe aggregate funding source-boundary evidence projection.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -101,6 +103,13 @@ predecessor. The workflow scans only public funding history, commits timestamp-o
 validates but does not retain exact rates, and admits the second-oldest observed settlement only
 after retaining the oldest as predecessor evidence. Its measured five-instrument result and
 GitHub-safe aggregate projection remain pending a post-merge run; Gate 2 remains closed.
+
+ADR-0049 defines that GitHub-safe projection. Its builder re-verifies the complete private
+ADR-0048 receipt chain and requires classified response observations to cover every completed
+page, then retains only aggregate counts, requested scan bounds, hashes, and immutable code
+identities. Measured evidence remains a separate post-merge artifact; exact symbols, instrument
+IDs, rates, observed settlement timestamps, runtime paths, account data, and credentials remain
+excluded.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
