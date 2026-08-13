@@ -54,6 +54,8 @@ The authoritative implementation and review history is:
 - PR [#38](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/38): receipt-verified
   trade/mark/funding evidence for controlled scale step 3 (50 instruments x 90 days) and the
   ADR-0036 candle-audit schema-bound correction.
+- PR [#39](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/39): receipt-verified
+  measured multi-parent April trade compaction with target-band and immutable-lineage evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -343,7 +345,46 @@ blocker are committed as the source of truth.
 
 This closes scale sequence step 3 only. It does not provide a dated historical funding-schedule
 source, an accepted cadence-change policy, a historical universe timeline, a genuine missing-candle
-repair, measured multi-file compaction, the representative multi-year step, or Gate 2 acceptance.
+repair, the representative multi-year step, or Gate 2 acceptance.
+
+## Measured multi-file compaction
+
+Representative trade compaction has now been executed on the same 50-instrument April scope as
+scale step 3. Five non-overlapping 10-instrument public requests are committed as
+[g01](../../benchmarks/specifications/m2-trade-april-compaction-g01-history-request-20260813.json),
+[g02](../../benchmarks/specifications/m2-trade-april-compaction-g02-history-request-20260813.json),
+[g03](../../benchmarks/specifications/m2-trade-april-compaction-g03-history-request-20260813.json),
+[g04](../../benchmarks/specifications/m2-trade-april-compaction-g04-history-request-20260813.json),
+and
+[g05](../../benchmarks/specifications/m2-trade-april-compaction-g05-history-request-20260813.json).
+Each independently acquired and published parent contains 432,000 exact requested minutes in one
+canonical file. Their receipt-verified sanitized summaries are
+[g01](../../benchmarks/results/m2-public-trade-april-compaction-g01-20260813.json),
+[g02](../../benchmarks/results/m2-public-trade-april-compaction-g02-20260813.json),
+[g03](../../benchmarks/results/m2-public-trade-april-compaction-g03-20260813.json),
+[g04](../../benchmarks/results/m2-public-trade-april-compaction-g04-20260813.json), and
+[g05](../../benchmarks/results/m2-public-trade-april-compaction-g05-20260813.json). Together they
+cover 50 disjoint instruments and 2,160,000 rows.
+
+The
+[measured compaction evidence](../../benchmarks/results/m2-trade-april-50x90-compaction-20260813.json)
+binds every parent manifest and the compacted child manifest. The accepted ZSTD-3 calibration
+selected 1,024,000 rows per target file. Five input files became three output files: two non-tail
+`target-band` files measured 18,673,836 and 18,343,136 bytes, followed by one explicit
+1,531,918-byte/112,000-row tail. Total output is 38,548,890 bytes for 2,160,000 rows. Input and
+output logical table SHA-256 are both
+`c1c9d6b26bf5313d581a4d1e0a9aa39fdde90a95ba3cc4d7bf84d598ee4d24fc`; duplicate and conflict
+counts are zero. All five parents re-verified byte-identically after publication,
+`parent_datasets_mutated=false`, and the reordered-parent rerun preserved the same child manifest
+`60fac7b0867d6e13900bdad99a6b51aa19594f875ea7cecd4e095619f6af601b`.
+
+The successful transition is bound to the accepted capacity evidence and passed the mandatory
+fresh same-host admission on the current laptop. This proves that the measured month/bucket unit
+and 16 MiB target operate within the evidence-based laptop policy; it is not permission to bypass
+fresh admission on later partitions. Parents and child remain outside Git, while requests,
+sanitized summaries, exact hashes, counts, target classifications, receipts, tests, and
+limitations are the source of truth. Compaction did not update the catalog, delete parents,
+accept a gap reason, or close Gate 2.
 
 ## Still required before Gate 2
 
@@ -353,6 +394,5 @@ repair, measured multi-file compaction, the representative multi-year step, or G
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
-- measured multi-file compaction/target-attainment evidence at representative scale;
 - long-run adaptive throttling evidence and controlled scale-up; and
 - funding repair/compaction and the remaining PM-owned Gate 2 acceptance checklist.

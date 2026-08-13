@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified measured April trade compaction over five independently acquired 10-instrument
+  parents: 2,160,000 exact rows compacted from five files to two 16-MiB target-band files plus one
+  explicit tail, with equal logical hashes, immutable parent lineage, and idempotent rerun.
 - Receipt-verified Phase 2 scale-step evidence for 50 instruments over 90 days across three
   monthly partitions: 12,960,000 complete trade/mark candles, 21,421 funding events, revision-4
   three-object catalog selections, and an honestly blocked April funding audit for four undated
