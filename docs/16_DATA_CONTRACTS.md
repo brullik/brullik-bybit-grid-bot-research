@@ -292,6 +292,16 @@ accounting; source-confirmed inserted-settlement and restated-interval counts; z
 and `parent_dataset_mutated=false`. It does not update the original audit, accept a cadence
 policy, register the child, or close Gate 2; see ADR-0057.
 
+`grid.canonical-funding-repair-coverage-audit/v1` is the private receipt-last verdict over a
+committed repair child. It re-verifies the original Landing/publication/audit, plan, execution,
+immutable parent/child lineage, registry, capacity evidence, and replacement evidence; requires
+exact canonical equality with the reconstructed original-plus-repair source union; and reuses the
+ADR-0034 predecessor/internal chronology, page coverage, lifecycle, duplicate, empty-window, and
+cadence-change rules. Current interval metadata remains excluded. The contract contains exact
+series identifiers and time bounds, so `github_commit_eligible=false`; a pass neither rewrites the
+original blocked audit nor accepts cadence policy, catalog registration, Gate 2, or live use. See
+ADR-0058.
+
 `grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
 complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
 month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically

@@ -118,6 +118,23 @@ grid-data execute-funding-repair --repair-plan <private-funding-repair-plan.json
   --repair-staging-root <local-path> --executor-software-identity git:<executor-commit-sha> \
   --output <private-funding-repair-execution.json>
 # Repeat with --execute only after the printed whole-plan preflight is accepted.
+grid-data publish-funding-repair --repair-execution <passed-execution.json> \
+  --repair-plan <private-funding-repair-plan.json> --coverage-audit <blocked-audit.json> \
+  --job-root <completed-funding-job-root> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --repair-staging-root <local-path> --software-identity git:<publisher-commit-sha> \
+  --output <replacement-evidence.json>
+# Repeat with --execute only after the printed no-mutation publication preflight is accepted.
+grid-data audit-funding-repair --repair-execution <passed-execution.json> \
+  --repair-plan <private-funding-repair-plan.json> \
+  --original-coverage-audit <blocked-audit.json> --job-root <completed-funding-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --repair-staging-root <local-path> \
+  --replacement-evidence <replacement-evidence.json> \
+  --publisher-software-identity git:<publisher-commit-sha> \
+  --audit-software-identity git:<auditor-commit-sha> \
+  --output <private-repair-coverage-audit.json>
+# Existing output is receipt-verified and rebuilt; the detailed audit remains private.
 
 # Immutable canonical maintenance (trade/mark compaction)
 grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
