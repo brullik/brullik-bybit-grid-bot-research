@@ -61,6 +61,12 @@ The authoritative implementation and review history is:
   partial-inventory evidence.
 - PR [#41](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/41): receipt-resumable
   multi-month public history campaigns with aggregate preflight and deterministic child reuse.
+- PR [#42](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/42): bounded retry
+  classification for direct stdlib connection/protocol failures observed by the real campaign.
+- PR [#43](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/43): receipt-verified,
+  GitHub-safe measured evidence for the completed 5-instrument, 24-month Landing campaign.
+- PR [#44](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/44): receipt-resumable,
+  sequential canonical publication of every completed campaign child with aggregate verification.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
