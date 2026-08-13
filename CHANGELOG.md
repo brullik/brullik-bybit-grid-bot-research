@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified Phase 2 scale-step evidence for 10 instruments over 7 days across trade 1m,
+  mark 1m, and funding: exact public requests, 201,600 complete candles, 231 chronology-verified
+  funding events, zero gap/key/lifecycle blockers, and revision-3 catalog selections.
 - Receipt-verified measured funding catalog evidence: revision 2 over the existing candle/funding
   datasets, one exact BTC/UNI funding selection, idempotent reruns, and no rates, local paths,
   runtime DuckDB, credentials, account data, or Gate 2 implication.

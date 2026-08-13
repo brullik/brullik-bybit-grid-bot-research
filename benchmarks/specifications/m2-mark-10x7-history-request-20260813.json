@@ -1,0 +1,22 @@
+{
+  "contract": "grid.bybit-1m-history-request/v1",
+  "job_id": "mark-2026-07-b05-10x7-scale",
+  "kind": "mark",
+  "series": [
+    {"symbol": "BANDUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "BTCUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "CHZUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "EGLDUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "FILUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "IMXUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "KAVAUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "QNTUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "UNIUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000},
+    {"symbol": "WOOUSDT", "start_ms": 1782864000000, "end_ms": 1783468740000}
+  ],
+  "page_limit": 1000,
+  "workers": 24,
+  "target_rps": 15,
+  "max_attempts": 3,
+  "max_http_requests": 100000
+}

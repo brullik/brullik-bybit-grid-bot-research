@@ -49,6 +49,8 @@ The authoritative implementation and review history is:
   canonical funding registration and snapshot-bound single-type selection.
 - PR [#36](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/36): measured,
   receipt-verified funding catalog registration/selection evidence and redaction assertions.
+- PR [#37](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/37): receipt-verified
+  trade/mark/funding evidence for controlled scale step 2 (10 instruments x 7 days).
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -229,10 +231,57 @@ published chain is bound to the measured funding pilot and chronology manifest, 
 bounded two-series result and does not prove full-history lifecycle coverage, repair, compaction,
 scale, or Gate 2.
 
+## Controlled scale step 2: 10 instruments x 7 days
+
+The second PM-owned scale step has been executed for one stable July 2026 month/bucket partition.
+The exact public request specs are
+[`trade`](../../benchmarks/specifications/m2-trade-10x7-history-request-20260813.json),
+[`mark`](../../benchmarks/specifications/m2-mark-10x7-history-request-20260813.json), and
+[`funding`](../../benchmarks/specifications/m2-funding-10x7-history-request-20260813.json).
+They use the accepted maximum page sizes, 24 workers, and a measured 15-RPS profile. Every flow is
+unauthenticated and calls only its public Bybit V5 market endpoint.
+
+Trade and mark each completed 110 fixed pages/HTTP requests and produced 100,800 exact one-minute
+rows: 10 instruments x 10,080 requested minutes. Their canonical pilots are
+[`trade`](../../benchmarks/results/m2-public-trade-10x7-canonical-scale-20260813.json) and
+[`mark`](../../benchmarks/results/m2-public-mark-10x7-canonical-scale-20260813.json); their
+fail-closed audits are
+[`trade`](../../benchmarks/results/m2-trade-10x7-coverage-audit-20260813.json) and
+[`mark`](../../benchmarks/results/m2-mark-10x7-coverage-audit-20260813.json). Both prove exact
+Landing/Parquet equality, complete requested-minute coverage, lifecycle fit, and zero missing,
+duplicate, conflicting, unexpected, or unrequested keys.
+
+Funding completed 10 predecessor plus 10 range requests in one attempt each and retained 231 exact
+events. Nine series have a stable observed 480-minute cadence; IMXUSDT has a stable 240-minute
+cadence. The
+[`funding pilot`](../../benchmarks/results/m2-public-funding-10x7-canonical-scale-20260813.json)
+and
+[`funding chronology audit`](../../benchmarks/results/m2-funding-10x7-coverage-audit-20260813.json)
+prove exact source/canonical equality, complete unsaturated range enumeration, and zero empty
+windows, cadence changes, predecessor/internal interval mismatches, lifecycle failures,
+duplicates, conflicts, unexpected timestamps, or unrequested events.
+
+The three datasets were atomically added in
+[`catalog revision 3`](../../benchmarks/results/m2-10x7-catalog-registration-20260813.json), whose
+logical content SHA-256 is
+`dcbc0e430e9b7aea72f7c7d9e7b2187644e191bf90ccfc096bed0ad7c43d686f`. Exact single-type
+[`trade`](../../benchmarks/results/m2-trade-10x7-catalog-selection-20260813.json),
+[`mark`](../../benchmarks/results/m2-mark-10x7-catalog-selection-20260813.json), and
+[`funding`](../../benchmarks/results/m2-funding-10x7-catalog-selection-20260813.json) selections
+each returned one receipt/hash-bound object. Registration and all selections were rerun
+idempotently without changing revision or hash.
+
+This closes only scale sequence step 2. It does not provide a historical universe timeline, a
+genuine-gap repair run, multi-file target-size compaction, long-run throttling, the 50 x 90-day or
+larger steps, or Gate 2 acceptance. Runtime Landing, Parquet, and DuckDB remain outside Git; the
+request/evidence schemas, hashes, counts, receipts, tests, and limitations above are the GitHub
+source of truth.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
-- measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
+- measured coverage-audit evidence for the 50 x 90-day and larger controlled scales, plus an
+  owner-reviewed reason policy;
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
 - long-run adaptive throttling evidence and controlled scale-up; and

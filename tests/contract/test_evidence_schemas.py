@@ -308,6 +308,169 @@ def test_funding_catalog_evidence_chain_matches_schema_hash_receipts_and_redacti
             assert forbidden not in rendered
 
 
+def test_phase2_ten_by_seven_scale_chain_is_complete_bound_and_sanitized() -> None:
+    specifications = ROOT / "benchmarks" / "specifications"
+    results = ROOT / "benchmarks" / "results"
+    market_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "bybit-1m-history-request.schema.json"
+    )
+    funding_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "bybit-funding-history-request.schema.json"
+    )
+    candle_pilot_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-public-1m-pilot.schema.json"
+    )
+    candle_audit_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-1m-coverage-audit.schema.json"
+    )
+    funding_pilot_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-public-funding-pilot.schema.json"
+    )
+    funding_audit_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-funding-coverage-audit.schema.json"
+    )
+    registration_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-catalog-registration.schema.json"
+    )
+    selection_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "canonical-dataset-selection-request.schema.json"
+    )
+    selection_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-selection.schema.json"
+    )
+    flows = {
+        "trade": {
+            "request": specifications / "m2-trade-10x7-history-request-20260813.json",
+            "pilot": results / "m2-public-trade-10x7-canonical-scale-20260813.json",
+            "audit": results / "m2-trade-10x7-coverage-audit-20260813.json",
+            "selection_request": specifications / "m2-trade-10x7-catalog-selection-20260813.json",
+            "selection": results / "m2-trade-10x7-catalog-selection-20260813.json",
+        },
+        "mark": {
+            "request": specifications / "m2-mark-10x7-history-request-20260813.json",
+            "pilot": results / "m2-public-mark-10x7-canonical-scale-20260813.json",
+            "audit": results / "m2-mark-10x7-coverage-audit-20260813.json",
+            "selection_request": specifications / "m2-mark-10x7-catalog-selection-20260813.json",
+            "selection": results / "m2-mark-10x7-catalog-selection-20260813.json",
+        },
+        "funding": {
+            "request": specifications / "m2-funding-10x7-history-request-20260813.json",
+            "pilot": results / "m2-public-funding-10x7-canonical-scale-20260813.json",
+            "audit": results / "m2-funding-10x7-coverage-audit-20260813.json",
+            "selection_request": specifications / "m2-funding-10x7-catalog-selection-20260813.json",
+            "selection": results / "m2-funding-10x7-catalog-selection-20260813.json",
+        },
+    }
+    registration_path = results / "m2-10x7-catalog-registration-20260813.json"
+    registration = load_json(registration_path)
+    Draft202012Validator(
+        registration_schema,
+        format_checker=FormatChecker(),
+    ).validate(registration)
+    registered = {item["dataset_type"]: item for item in registration["datasets"]}
+    expected_symbols: set[str] | None = None
+
+    for name, paths in flows.items():
+        request = load_json(paths["request"])
+        pilot = load_json(paths["pilot"])
+        audit = load_json(paths["audit"])
+        selection_request = load_json(paths["selection_request"])
+        selection = load_json(paths["selection"])
+        request_schema = funding_request_schema if name == "funding" else market_request_schema
+        pilot_schema = funding_pilot_schema if name == "funding" else candle_pilot_schema
+        audit_schema = funding_audit_schema if name == "funding" else candle_audit_schema
+        Draft202012Validator(request_schema).validate(request)
+        Draft202012Validator(pilot_schema, format_checker=FormatChecker()).validate(pilot)
+        Draft202012Validator(audit_schema, format_checker=FormatChecker()).validate(audit)
+        Draft202012Validator(selection_request_schema).validate(selection_request)
+        Draft202012Validator(
+            selection_schema,
+            format_checker=FormatChecker(),
+        ).validate(selection)
+        symbols = {item["symbol"] for item in request["series"]}
+        assert len(symbols) == 10
+        expected_symbols = symbols if expected_symbols is None else expected_symbols
+        assert symbols == expected_symbols
+        request_hash_field = (
+            pilot["bindings"]["funding_request_sha256"]
+            if name == "funding"
+            else pilot["landing"]["request_sha256"]
+        )
+        assert request_hash_field == canonical_sha256(request)
+        assert audit["dataset_id"] == pilot["canonical"]["dataset_id"]
+        audit_manifest_hash = audit["bindings"]["canonical_manifest_sha256"]
+        assert audit_manifest_hash == pilot["canonical"]["manifest_sha256"]
+        assert selection["request"] == selection_request
+        assert selection["request_sha256"] == canonical_sha256(selection_request)
+        assert selection["catalog"] == {
+            "content_sha256": registration["catalog"]["content_sha256"],
+            "revision": 3,
+            "schema_version": 1,
+        }
+        assert selection["selection"] == {
+            "object_count": 1,
+            "selected_row_inventory": pilot["canonical"]["row_count"],
+            "selected_size_bytes": pilot["canonical"]["parquet_bytes"],
+        }
+        dataset_type = pilot["canonical"]["dataset_type"]
+        assert registered[dataset_type]["manifest_sha256"] == pilot["canonical"]["manifest_sha256"]
+        assert selection["selected_dataset_manifests"] == [
+            {
+                "dataset_id": pilot["canonical"]["dataset_id"],
+                "manifest_sha256": pilot["canonical"]["manifest_sha256"],
+            }
+        ]
+        for artifact_path, payload in (
+            (paths["pilot"], pilot),
+            (paths["audit"], audit),
+            (paths["selection"], selection),
+        ):
+            content = dict(payload)
+            embedded_hash = content.pop("content_sha256")
+            assert embedded_hash == canonical_sha256(content)
+            assert verify_evidence(artifact_path)
+
+    assert registration["catalog"] == {
+        "backend": "duckdb",
+        "content_sha256": "dcbc0e430e9b7aea72f7c7d9e7b2187644e191bf90ccfc096bed0ad7c43d686f",
+        "dataset_count": 5,
+        "file_count": 5,
+        "revision": 3,
+        "schema_version": 1,
+    }
+    registration_content = dict(registration)
+    embedded_registration_hash = registration_content.pop("content_sha256")
+    assert embedded_registration_hash == canonical_sha256(registration_content)
+    assert verify_evidence(registration_path)
+    assert registered["trade_kline_1m"]["row_count"] == 100_800
+    assert registered["mark_kline_1m"]["row_count"] == 100_800
+    assert registered["funding_event"]["row_count"] == 231
+    assert load_json(flows["trade"]["audit"])["quality"]["missing_minute_count"] == 0
+    assert load_json(flows["mark"]["audit"])["quality"]["missing_minute_count"] == 0
+    funding_quality = load_json(flows["funding"]["audit"])["quality"]
+    assert funding_quality["source_range_enumeration_complete"] is True
+    assert funding_quality["interval_change_count"] == 0
+    assert funding_quality["predecessor_interval_mismatch_count"] == 0
+
+    evidence_paths = [registration_path]
+    for paths in flows.values():
+        evidence_paths.extend(paths.values())
+    for artifact_path in evidence_paths:
+        rendered = artifact_path.read_text(encoding="utf-8").lower()
+        for forbidden in (
+            "c:\\",
+            "/home/",
+            "api_key",
+            "api_secret",
+            "authorization",
+            "device_identity",
+            '"funding_rate"',
+            '"open"',
+            '"volume"',
+        ):
+            assert forbidden not in rendered
+
+
 def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-archive-coverage.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-archive-coverage.schema.json")
