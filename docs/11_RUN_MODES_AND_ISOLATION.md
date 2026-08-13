@@ -16,8 +16,8 @@ History acquisition, research/parameter selection, strategy release, and live op
 The package boundaries are implemented. Phase 2 currently exposes stable-registry publication,
 no-mutation history preflight, bounded public 1m acquisition, completed-Landing verification, and
 receipt-last canonical publication, fail-closed coverage audit, and no-network gap-repair
-planning; repair execution, replacement lineage, compaction, and catalog commands remain in
-progress.
+planning, receipt-resumable repair execution, and immutable replacement lineage; compaction and
+catalog commands remain in progress.
 
 ## Separate startup examples
 
@@ -47,6 +47,19 @@ grid-data plan-history-repair --coverage-audit <blocked-audit.json> \
   --job-root <completed-job-root> --instrument-registry <registry.json> \
   --capacity-evidence <capacity.json> --store-root <local-path> \
   --planner-software-identity git:<planner-commit-sha> --output <repair-plan.json>
+grid-data execute-history-repair --repair-plan <repair-plan.json> \
+  --coverage-audit <blocked-audit.json> --job-root <completed-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --repair-staging-root <local-path> \
+  --executor-software-identity git:<executor-commit-sha> --output <execution.json>
+# Repeat with --execute only after the printed whole-plan preflight is accepted.
+grid-data publish-history-repair --repair-execution <passed-execution.json> \
+  --repair-plan <repair-plan.json> --coverage-audit <blocked-audit.json> \
+  --job-root <completed-job-root> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --repair-staging-root <local-path> --software-identity git:<replacement-commit-sha> \
+  --output <replacement-evidence.json>
+# Repeat with --execute only after the printed no-mutation publication preflight is accepted.
 
 # Planned canonical maintenance commands
 grid-data compact --dataset <dataset-id>
