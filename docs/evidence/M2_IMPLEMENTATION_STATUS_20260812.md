@@ -110,6 +110,8 @@ The authoritative implementation and review history is:
   canonical funding compaction with cross-parent settlement-interval verification.
 - PR [#69](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/69): fail-closed private
   funding repair discovery planning without cadence acceptance or market execution.
+- PR [#70](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/70): bounded public
+  funding repair discovery execution with exact candidate confirmation and private evidence.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -792,6 +794,8 @@ source-returned timestamps and the complete candidate list passes; empty, partia
 invalid responses remain blocked. The rate-free record is private because it retains exact runtime
 instrument/range identities. Parent publication, the blocked audit, cadence acceptance, and Gate 2
 remain unchanged.
+The execution implementation, contract, ADR, and synthetic exact/empty/resume proofs are tracked
+in [PR #70](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/70).
 
 ## Still required before Gate 2
 
