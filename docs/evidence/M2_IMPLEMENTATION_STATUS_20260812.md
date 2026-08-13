@@ -92,6 +92,8 @@ The authoritative implementation and review history is:
   and resource gates.
 - PR [#60](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/60): schema-bound
   same-host qualification evidence for the ADR-0047 full-history campaign preflight.
+- PR [#61](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/61): ADR-0048 bounded,
+  receipt-resumable public funding source-boundary discovery with timestamp-only retention.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
