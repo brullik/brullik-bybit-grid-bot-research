@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0047 single-snapshot campaign admission: each invocation receipt-verifies registry/capacity
+  inputs once for all child derivations, keeps exact per-child hash bindings, rejects path
+  substitution, reloads on execute/resume, and exposes monotonic preflight elapsed milliseconds.
 - Receipt-verified 100-instrument x 31-day ADR-0046 performance evidence: the same complete
   Landing/canonical chain verified in 88,566 ms, 2.60x faster than the prior 230.7-second semantic
   projection, with source-row decode still mandatory for first publication and coverage audits.

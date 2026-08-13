@@ -67,6 +67,12 @@ before the first child, each existing child receipt is reused, and an aggregate 
 is written only after all child allowlists and hashes verify. Registry lifecycle intersection is
 ex-post acquisition scoping, not point-in-time research metadata.
 
+ADR-0047 removes redundant input admission inside that boundary. Each campaign invocation
+receipt-verifies and hashes the registry/capacity artifacts once, then derives every child from
+that single path-checked in-process snapshot. A later execute or resume invocation reloads the
+artifacts; no verified object is cached across commands. Child plan hashes, resource bounds,
+sequential pacing, and all fail-closed checks remain unchanged.
+
 ADR-0039 adds the separate Landing-to-canonical campaign boundary. It re-verifies one completed
 campaign, resolves each candle/funding publication one at a time, and freezes all source,
 input-table, canonical-request, dataset, and publisher identities before mutation. Canonical

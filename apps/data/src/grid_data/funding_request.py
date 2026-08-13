@@ -22,13 +22,11 @@ from grid_data.funding_acquisition import (
 )
 from grid_data.history_acquisition import HistoryAcquisitionError
 from grid_data.history_request import (
+    VerifiedRequestEvidence,
     active_and_building_bytes_from_capacity,
-    load_verified_capacity_evidence,
+    load_verified_request_evidence,
 )
-from grid_data.instrument_registry import (
-    VerifiedInstrumentRegistry,
-    load_verified_instrument_registry,
-)
+from grid_data.instrument_registry import VerifiedInstrumentRegistry
 
 FUNDING_REQUEST_CONTRACT: Final = "grid.bybit-funding-history-request/v1"
 _REQUEST_KEYS: Final = frozenset(
@@ -139,19 +137,29 @@ def resolve_funding_request_payload(
     source_path: Path,
     instrument_registry_path: Path,
     capacity_evidence_path: Path,
+    verified_evidence: VerifiedRequestEvidence | None = None,
 ) -> ResolvedFundingRequest:
     """Resolve an already-loaded funding request without mutating storage."""
 
     if set(request) - _REQUEST_KEYS or request.get("contract") != FUNDING_REQUEST_CONTRACT:
         raise FundingAcquisitionError("funding request fields or contract do not match v1")
-    registry = load_verified_instrument_registry(instrument_registry_path)
-    series = _resolve_series(request.get("series"), registry=registry)
     try:
-        capacity_path, capacity, capacity_hash = load_verified_capacity_evidence(
-            capacity_evidence_path
+        evidence = verified_evidence or load_verified_request_evidence(
+            instrument_registry_path,
+            capacity_evidence_path,
         )
     except HistoryAcquisitionError as error:
         raise FundingAcquisitionError(str(error)) from error
+    if (
+        evidence.registry.path != instrument_registry_path.resolve()
+        or evidence.capacity_path != capacity_evidence_path.resolve()
+    ):
+        raise FundingAcquisitionError("verified request evidence paths do not match funding inputs")
+    registry = evidence.registry
+    series = _resolve_series(request.get("series"), registry=registry)
+    capacity_path = evidence.capacity_path
+    capacity = evidence.capacity
+    capacity_hash = evidence.capacity_artifact_sha256
     defaults = {
         "page_span_minutes": DEFAULT_PAGE_SPAN_MINUTES,
         "page_limit": MAX_PAGE_LIMIT,

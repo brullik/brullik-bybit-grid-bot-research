@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0047 - Single-snapshot campaign input admission](ADR-0047-single-snapshot-campaign-input-admission.md)
 - [ADR-0046 - Semantic admission and receipt-integrity reverification](ADR-0046-semantic-admission-and-receipt-integrity-reverification.md)
 - [ADR-0045 - Transport-attempt versus HTTP-response accounting](ADR-0045-transport-attempt-versus-response-accounting.md)
 - [ADR-0044 - Receipt-bound long-run throttling evidence](ADR-0044-receipt-bound-long-run-throttling-evidence.md)

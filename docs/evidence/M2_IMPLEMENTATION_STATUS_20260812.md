@@ -87,6 +87,9 @@ The authoritative implementation and review history is:
   admission retained for first publication and coverage audits.
 - PR [#58](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/58): receipt-bound
   100-instrument x 31-day performance evidence for the ADR-0046 completed-publication verifier.
+- PR [#59](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/59): ADR-0047
+  single-snapshot input admission for full-history campaign preflight with unchanged child hashes
+  and resource gates.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket

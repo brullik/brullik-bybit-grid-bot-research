@@ -111,6 +111,9 @@ acquisition scope and cannot be used as point-in-time strategy metadata.
 endpoint policy, and every deterministic dataset/month/eight-bucket child request and plan hash.
 Aggregate preflight accounts for all incomplete child Landing bounds before mutation, while
 execution is sequential so per-child pacers do not multiply the configured RPS.
+Within one preflight invocation, ADR-0047 verifies registry/capacity bytes once and reuses their
+path-checked parsed snapshot for all child derivations. Every child and aggregate artifact retains
+the same exact evidence hashes; each later command invocation reloads and reverifies the files.
 `grid.public-history-campaign-manifest/v1` is written with a separate
 `grid.history-campaign-receipt/v1` only after every child completion receipt verifies. It records
 only aggregate job/page/row/HTTP counts and child hashes/relative roots; it is runtime acquisition
