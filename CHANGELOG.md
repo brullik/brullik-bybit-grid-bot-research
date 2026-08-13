@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Schema-bound GitHub-safe canonical campaign publication evidence that re-verifies every source
+  and canonical receipt/file while exposing only aggregate/per-kind counts, Parquet bytes,
+  resource bounds, immutable Git identities, and transitive hashes.
 - Receipt-resumable canonical publication for a completed public history campaign: bounded
   one-child-at-a-time preflight, sequential candle/funding writers, immutable child-receipt reuse,
   receipt-last aggregate lineage verification, and no network/credential/live dependency.

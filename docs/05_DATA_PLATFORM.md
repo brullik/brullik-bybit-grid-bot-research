@@ -252,6 +252,12 @@ records their canonical hashes, requested ranges, exact 1m coverage, counts, imm
 commit, and limitations. A hash-bound summary makes substitution detectable without turning the
 public repository into the market-data store.
 
+ADR-0040 applies the same boundary to an entire ADR-0039 publication campaign. Its evidence
+builder first re-verifies the source campaign and every canonical file/audit/manifest/receipt,
+then emits only aggregate and per-kind counts/bytes, maximum sequential-child resource bounds,
+immutable Git identities, and transitive hashes. Dataset, symbol, and instrument identities,
+runtime paths, market values, account data, and credentials are excluded by the exact schema.
+
 ## Quality checks
 
 Required checks include:

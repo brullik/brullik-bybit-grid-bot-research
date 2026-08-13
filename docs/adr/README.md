@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0040 - Sanitized canonical campaign publication evidence](ADR-0040-sanitized-canonical-campaign-publication-evidence.md)
 - [ADR-0039 - Receipt-resumable canonical campaign publication](ADR-0039-receipt-resumable-canonical-campaign-publication.md)
 - [ADR-0038 - Receipt-resumable public history campaign](ADR-0038-receipt-resumable-public-history-campaign.md)
 - [ADR-0037 - Point-in-time instrument timeline and ex-post lifecycle coverage](ADR-0037-point-in-time-instrument-timeline.md)

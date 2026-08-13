@@ -72,6 +72,9 @@ from grid_data.history_campaign_publication import (
     preflight_history_campaign_publication,
     verify_completed_history_campaign_publication,
 )
+from grid_data.history_campaign_publication_evidence import (
+    build_history_campaign_publication_evidence,
+)
 from grid_data.history_compaction import (
     build_compaction_evidence,
     preflight_history_compaction,
@@ -321,6 +324,16 @@ def parser() -> argparse.ArgumentParser:
     campaign_publication_verify.add_argument("publication_root", type=Path)
     campaign_publication_verify.add_argument("--campaign-root", type=Path, required=True)
     campaign_publication_verify.set_defaults(handler=_verify_history_campaign_publication)
+
+    campaign_publication_evidence = commands.add_parser(
+        "history-campaign-publication-evidence",
+        help="publish a receipt-verified GitHub-safe canonical campaign summary",
+    )
+    campaign_publication_evidence.add_argument("--publication-root", type=Path, required=True)
+    campaign_publication_evidence.add_argument("--campaign-root", type=Path, required=True)
+    campaign_publication_evidence.add_argument("--software-identity", required=True)
+    campaign_publication_evidence.add_argument("--output", type=Path, required=True)
+    campaign_publication_evidence.set_defaults(handler=_history_campaign_publication_evidence)
 
     funding = commands.add_parser(
         "funding-history",
@@ -898,6 +911,28 @@ def _verify_history_campaign_publication(args: argparse.Namespace) -> int:
                 "publication_root": str(completed.publication_root),
                 "row_count": completed.row_count,
                 "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _history_campaign_publication_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_history_campaign_publication_evidence(
+        args.publication_root,
+        args.campaign_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
             }
         )
     )
