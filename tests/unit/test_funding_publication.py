@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from grid_data.funding_acquisition import execute_funding_job, preflight_funding_job
+import pytest
+from grid_contracts.canonical import canonical_sha256
+from grid_data.funding_acquisition import (
+    FundingAcquisitionError,
+    execute_funding_job,
+    preflight_funding_job,
+)
+from grid_data.funding_pilot_evidence import build_funding_pilot_evidence
 from grid_data.funding_publication import (
     load_verified_funding_publication_input,
     preflight_completed_funding_publication,
@@ -11,6 +19,7 @@ from grid_data.funding_publication import (
 from grid_data.funding_request import resolve_funding_request
 from grid_data.history_request import closed_before_now_ms
 from grid_market_store import verify_committed_funding_dataset
+from jsonschema import Draft202012Validator, FormatChecker
 
 from tests.unit.test_funding_acquisition import FakeFundingClient, snapshot
 from tests.unit.test_funding_request import evidence_files, request_payload, write_request
@@ -93,3 +102,87 @@ def test_completed_funding_publication_binds_boundary_and_is_idempotent(
         software_identity=SOFTWARE_IDENTITY,
     )
     assert rerun.plan.existing_commit is True
+
+
+def test_verified_funding_publication_builds_sanitized_pilot_evidence(tmp_path: Path) -> None:
+    completed, registry, capacity = completed_job(tmp_path)
+    store = tmp_path / "market-store"
+    initial = preflight_completed_funding_publication(
+        store,
+        completed.job_root,
+        registry,
+        capacity,
+        snapshot(tmp_path, observed_at_ms=2_000, free_bytes=120 * 1024**3),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    published = publish_preflighted_funding(
+        initial,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002, free_bytes=120 * 1024**3),
+        lambda: 2_003,
+    )
+    with pytest.raises(FundingAcquisitionError, match="existing immutable commit"):
+        build_funding_pilot_evidence(
+            initial,
+            published,
+            generated_at_utc="2026-08-13T12:00:00Z",
+        )
+
+    rerun = preflight_completed_funding_publication(
+        store,
+        completed.job_root,
+        registry,
+        capacity,
+        snapshot(tmp_path, observed_at_ms=3_000, free_bytes=120 * 1024**3),
+        now_ms=3_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    assert rerun.plan.existing_commit is True
+    payload = build_funding_pilot_evidence(
+        rerun,
+        verify_committed_funding_dataset(published.dataset_root),
+        generated_at_utc="2026-08-13T12:00:00Z",
+    )
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "phase2-public-funding-pilot.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    embedded_hash = payload.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(payload)
+    assert payload["scope"] == {
+        "category": "linear",
+        "observed_event_count": 2,
+        "requested_window_minutes": 4,
+        "series": [
+            {
+                "end_ms": JANUARY_1_2026_MS + 60_000,
+                "instrument_id": 1,
+                "observed_event_count": 1,
+                "predecessor_bound": True,
+                "requested_window_minutes": 2,
+                "start_ms": JANUARY_1_2026_MS,
+                "symbol": "AAAUSDT",
+            },
+            {
+                "end_ms": JANUARY_1_2026_MS + 60_000,
+                "instrument_id": 9,
+                "observed_event_count": 1,
+                "predecessor_bound": True,
+                "requested_window_minutes": 2,
+                "start_ms": JANUARY_1_2026_MS,
+                "symbol": "BBBUSDT",
+            },
+        ],
+    }
+    rendered = json.dumps(payload)
+    assert str(tmp_path) not in rendered
+    assert "0.0001000" not in rendered
+    assert "-0.0002000" not in rendered
+    assert '"fundingRate"' not in rendered
+    assert '"funding_rate":' not in rendered

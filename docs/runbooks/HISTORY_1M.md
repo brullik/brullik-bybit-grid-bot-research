@@ -414,3 +414,29 @@ An empty entire requested series, missing predecessor, non-minute settlement, du
 saturated response, altered page, stale lock/building output, or conflicting dataset identity
 fails closed. Successful publication does not yet prove full funding coverage, perform funding
 repair/compaction/catalog registration, or close Gate 2.
+
+## 16. Publish sanitized funding pilot evidence to GitHub
+
+After canonical publication is committed, repeat its preflight through the evidence command using
+the same full publisher Git SHA. The output target must be new:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-pilot-evidence `
+  --job-root data\history\.funding-landing\funding-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-publisher-commit-sha> `
+  --output benchmarks\results\m2-public-funding-canonical-pilot-<date>.json
+```
+
+The command requires `existing_commit=true`, re-verifies Landing and canonical receipts, compares
+the reconstructed and committed exact Arrow tables, and privately recomputes the first interval
+from each predecessor plus every later interval from adjacent settlements. It writes canonical
+JSON and its receipt last without overwriting an existing artifact.
+
+Only requested bounds, event/window/page counts, process/layout facts, immutable software identity,
+and transitive hashes are safe to commit. The schema forbids rates, observed settlement timestamps,
+local paths, device/account data, credentials, and runtime market artifacts. This bounded proof is
+not a funding chronology/lifecycle audit, repair, compaction, catalog registration, scale result,
+or Gate 2 acceptance.

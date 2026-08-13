@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- GitHub-safe funding pilot evidence with exact Landing/Parquet equality, private predecessor and
+  internal interval recomputation, sparse event/window accounting, transitive receipts/hashes,
+  immutable publisher identity, and no rates, observed settlement times, paths, host/account data,
+  credentials, or Gate 2 implication.
 - Public-only funding acquisition with one receipted predecessor per series, fixed unsaturated
   range pages, bounded retries/concurrency/capacity, durable resume, exact normalization, boundary
   aggregate evidence, and a verified Landing-to-canonical adapter.
