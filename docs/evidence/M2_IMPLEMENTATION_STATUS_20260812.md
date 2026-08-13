@@ -45,8 +45,9 @@ The authoritative implementation and review history is:
   source-parity and stable observed-chronology audit.
 - PR [#34](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/34): receipt-verified
   measured funding source-parity/chronology evidence.
-- Funding catalog implementation is prepared on a dedicated branch; its PR and measured catalog
-  evidence remain pending until the implementation merge identity exists.
+- PR [#35](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/35): receipt-verified
+  canonical funding registration and snapshot-bound single-type selection. Measured funding
+  catalog evidence remains pending until the implementation merge identity exists.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
