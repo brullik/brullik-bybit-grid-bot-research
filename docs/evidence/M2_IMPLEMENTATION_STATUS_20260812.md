@@ -70,6 +70,8 @@ The authoritative implementation and review history is:
 - PR [#50](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/50): dated current
   Bybit linear-status inventory policy aligned with the normative V5 enum and strict
   response-partition validation.
+- PR [#51](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/51): receipt-verified
+  complete-current mainnet inventory evidence plus preserved cumulative partial-snapshot evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -455,7 +457,9 @@ proves that evidence immutability was not weakened: its latest inventory is comp
 lifecycle conflict count is zero, but it remains `blocked` because it includes the two earlier
 partial snapshots. This is intentional negative-evidence preservation. The new observation
 resolves the false complete-current blocker only; it does not reconstruct point-in-time metadata
-before 2026-08-12, infer suspensions, or close Gate 2.
+before 2026-08-12, infer suspensions, or close Gate 2. Both measured summaries and their exact
+contract/redaction assertions are tracked in
+[PR #51](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/51).
 
 ## Resumable multi-year campaign implementation
 
