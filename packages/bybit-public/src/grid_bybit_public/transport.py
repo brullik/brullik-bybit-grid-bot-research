@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import random
 import time
@@ -58,7 +59,13 @@ class UrllibJsonTransport:
                 last_error = error
                 if error.code < 500 and error.code != 429:
                     raise TransportError(f"Bybit HTTP error {error.code}") from error
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+            except (
+                urllib.error.URLError,
+                http.client.HTTPException,
+                ConnectionError,
+                TimeoutError,
+                json.JSONDecodeError,
+            ) as error:
                 last_error = error
             if attempt + 1 < self.max_attempts:
                 ceiling = min(self.max_backoff_seconds, self.base_backoff_seconds * (2**attempt))
