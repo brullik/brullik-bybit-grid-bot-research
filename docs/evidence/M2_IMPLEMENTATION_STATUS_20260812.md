@@ -24,7 +24,9 @@ The authoritative implementation and review history is:
 - PR [#23](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/23): receipt-verified
   measured coverage evidence; and
 - PR [#24](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/24): verified,
-  bounded standard-request planning for blocked 1m gaps.
+  bounded standard-request planning for blocked 1m gaps; and
+- PR [#25](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/25): whole-plan-admitted
+  repair execution and immutable parent-to-child replacement lineage.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
