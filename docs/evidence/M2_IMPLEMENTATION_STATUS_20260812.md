@@ -46,8 +46,31 @@ partitioning, ZSTD-3, receipt-last publication, and a separate public acquisitio
 series captures a receipted predecessor, range pages are fixed and resumable, and saturated
 200-row responses fail closed. The funding-specific sanitized evidence contract and builder now
 verify exact Landing/Parquet equality and predecessor/internal interval derivation without
-publishing rates or observed settlement timestamps. Its measured artifact, funding-specific
-coverage/repair, compaction, and catalog evidence remain pending; Gate 2 is not accepted.
+publishing rates or observed settlement timestamps. Funding-specific coverage/repair, compaction,
+and catalog evidence remain pending; Gate 2 is not accepted.
+
+The receipt-verified measured funding result is
+[`m2-public-funding-canonical-pilot-20260813.json`](../../benchmarks/results/m2-public-funding-canonical-pilot-20260813.json).
+It used the public unauthenticated `GET /v5/market/funding/history` endpoint for BTCUSDT and
+UNIUSDT over 2026-07-01 through 2026-07-07 inclusive. Two predecessor pages and two fixed range
+pages completed in four HTTP attempts, with no application retry or accepted saturated response.
+The requested windows total 20,160 minutes; the source returned 42 exact funding events, 21 per
+instrument.
+
+The Landing manifest is
+`5c377afcbf8754a6a705676e718d2b4c797e1f4587f63c4faaaf4c13f005b620`, its predecessor aggregate
+is `d39bfaa6abb377cc6553b5b55de4eabb7d5df91a373eb5c134945583424229de`, and the canonical
+manifest is `55ccedfaa84e611ab704553843027b7054e389b7f4930239351a75406703e50f`.
+The committed dataset contains 42 rows for two instruments in one 5,050-byte ZSTD-3 tail file and
+is bound to publisher identity `git:cbe8391db0b9d5b9bdeb9ebae5af4035e570a7e2` (PR #30). The
+evidence builder was merged as `44bf5233c93a3cc184de2675d6ed8a58cb74197c` (PR #31).
+
+Exact Landing/Parquet table equality, every first predecessor-derived interval, every internal
+interval, sorted unique keys, canonical receipt, content hash, and evidence receipt verify. No
+rate, observed settlement timestamp, local path, host/account data, credential, private endpoint,
+order, bot, or transfer is in GitHub. This proves only the bounded source return and immutable
+publication; it does not prove complete funding chronology, lifecycle coverage, scale behavior,
+or Gate 2.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
