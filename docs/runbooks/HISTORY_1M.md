@@ -520,7 +520,9 @@ limit. First run aggregate no-mutation preflight:
 ```
 
 Review the deterministic plan hash, job/page counts, fresh host identity, aggregate required free
-space, and peak memory. Repeat with `--execute` only if all pass. Children run sequentially and
+space, peak memory, and `preflight_elapsed_ms`. ADR-0047 verifies the registry/capacity files once
+per command and derives all child plans from that exact snapshot; every execute/resume command
+reloads them. Repeat with `--execute` only if all pass. Children run sequentially and
 emit progress JSON; interruption preserves their verified pages. Repeating the identical command
 downloads only missing pages, while a completed campaign performs no public request.
 

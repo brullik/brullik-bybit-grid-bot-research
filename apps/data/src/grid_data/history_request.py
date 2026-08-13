@@ -62,6 +62,16 @@ class ResolvedHistoryRequest:
     budget: CapacityBudget
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedRequestEvidence:
+    """One receipt-verified registry/capacity snapshot reusable within a single preflight."""
+
+    registry: VerifiedInstrumentRegistry
+    capacity_path: Path
+    capacity: dict[str, object]
+    capacity_artifact_sha256: str
+
+
 def _object_file(path: Path, *, name: str) -> tuple[Path, dict[str, object]]:
     resolved = path.resolve()
     try:
@@ -190,12 +200,29 @@ def load_verified_capacity_evidence(
     return capacity_path, capacity, sha256_file(capacity_path)
 
 
+def load_verified_request_evidence(
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+) -> VerifiedRequestEvidence:
+    """Verify campaign-wide immutable inputs once and retain their exact artifact identities."""
+
+    registry = load_verified_instrument_registry(instrument_registry_path)
+    capacity_path, capacity, capacity_hash = load_verified_capacity_evidence(capacity_evidence_path)
+    return VerifiedRequestEvidence(
+        registry=registry,
+        capacity_path=capacity_path,
+        capacity=capacity,
+        capacity_artifact_sha256=capacity_hash,
+    )
+
+
 def resolve_history_request_payload(
     request: dict[str, object],
     *,
     source_path: Path,
     instrument_registry_path: Path,
     capacity_evidence_path: Path,
+    verified_evidence: VerifiedRequestEvidence | None = None,
 ) -> ResolvedHistoryRequest:
     """Resolve an already-loaded v1 request without materializing a temporary request file."""
 
@@ -205,13 +232,24 @@ def resolve_history_request_payload(
     kind = request.get("kind")
     if kind not in ("trade", "mark"):
         raise HistoryAcquisitionError("history request kind must be trade or mark")
-    registry = load_verified_instrument_registry(instrument_registry_path)
+    evidence = verified_evidence or load_verified_request_evidence(
+        instrument_registry_path,
+        capacity_evidence_path,
+    )
+    if (
+        evidence.registry.path != instrument_registry_path.resolve()
+        or evidence.capacity_path != capacity_evidence_path.resolve()
+    ):
+        raise HistoryAcquisitionError("verified request evidence paths do not match request inputs")
+    registry = evidence.registry
     series = _resolve_series(
         request.get("series"),
         kind=kind,
         registry=registry,
     )
-    capacity_path, capacity, capacity_hash = load_verified_capacity_evidence(capacity_evidence_path)
+    capacity_path = evidence.capacity_path
+    capacity = evidence.capacity
+    capacity_hash = evidence.capacity_artifact_sha256
     defaults = {
         "page_limit": 1000,
         "workers": 24,

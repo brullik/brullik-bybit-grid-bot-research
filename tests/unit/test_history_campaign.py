@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import local
 from typing import Any
 
+import grid_data.history_request as history_request
 import pytest
 from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_contracts.canonical import canonical_sha256
@@ -315,6 +316,31 @@ def test_campaign_schema_split_order_and_no_mutation(tmp_path: Path) -> None:
     )
     assert plan.plan_payload["source_policy"]["tick_rows_requested"] is False  # type: ignore[index]
     assert plan.required_free_bytes > 98_000_000_000
+
+
+def test_campaign_verifies_shared_registry_and_capacity_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry_load = history_request.load_verified_instrument_registry
+    capacity_load = history_request.load_verified_capacity_evidence
+    calls = {"capacity": 0, "registry": 0}
+
+    def counted_registry(path: Path):  # type: ignore[no-untyped-def]
+        calls["registry"] += 1
+        return registry_load(path)
+
+    def counted_capacity(path: Path):  # type: ignore[no-untyped-def]
+        calls["capacity"] += 1
+        return capacity_load(path)
+
+    monkeypatch.setattr(history_request, "load_verified_instrument_registry", counted_registry)
+    monkeypatch.setattr(history_request, "load_verified_capacity_evidence", counted_capacity)
+
+    plan = preflight(tmp_path)
+
+    assert len(plan.jobs) == 12
+    assert calls == {"capacity": 1, "registry": 1}
 
 
 def test_campaign_executes_verifies_and_complete_rerun_is_idempotent(tmp_path: Path) -> None:

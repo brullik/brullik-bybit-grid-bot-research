@@ -52,10 +52,9 @@ from grid_data.history_acquisition import (
 from grid_data.history_request import (
     HISTORY_REQUEST_CONTRACT,
     active_and_building_bytes_from_capacity,
-    load_verified_capacity_evidence,
+    load_verified_request_evidence,
     resolve_history_request_payload,
 )
-from grid_data.instrument_registry import load_verified_instrument_registry
 
 CAMPAIGN_REQUEST_CONTRACT: Final = "grid.public-history-campaign-request/v1"
 CAMPAIGN_PLAN_CONTRACT: Final = "grid.public-history-campaign-plan/v1"
@@ -517,10 +516,13 @@ def preflight_history_campaign(
     target_rps = _integer("target_rps", request.get("target_rps", 10), minimum=1, maximum=96)
     max_attempts = _integer("max_attempts", request.get("max_attempts", 3), minimum=1, maximum=5)
 
-    registry = load_verified_instrument_registry(instrument_registry_path)
-    capacity_path, capacity, capacity_sha256 = load_verified_capacity_evidence(
-        capacity_evidence_path
+    verified_evidence = load_verified_request_evidence(
+        instrument_registry_path, capacity_evidence_path
     )
+    registry = verified_evidence.registry
+    capacity_path = verified_evidence.capacity_path
+    capacity = verified_evidence.capacity
+    capacity_sha256 = verified_evidence.capacity_artifact_sha256
     by_symbol = registry.by_symbol()
     selected: list[InstrumentSnapshot] = []
     for symbol in symbols:
@@ -576,6 +578,7 @@ def preflight_history_campaign(
                         source_path=resolved_request_path,
                         instrument_registry_path=instrument_registry_path,
                         capacity_evidence_path=capacity_path,
+                        verified_evidence=verified_evidence,
                     )
                     job_plan: HistoryJobPlan | FundingJobPlan = preflight_funding_job(
                         root,
@@ -591,6 +594,7 @@ def preflight_history_campaign(
                         source_path=resolved_request_path,
                         instrument_registry_path=instrument_registry_path,
                         capacity_evidence_path=capacity_path,
+                        verified_evidence=verified_evidence,
                     )
                     job_plan = preflight_history_job(
                         root,

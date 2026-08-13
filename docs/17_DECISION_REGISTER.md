@@ -50,6 +50,7 @@
 | D-044 | Long-run public acquisition evidence requires receipt-bound timing and one sanitized adaptive observation per verified HTTP response | accepted | Strict campaign projection, legacy compatibility, aggregate-only GitHub disclosure, and ADR-0044 |
 | D-045 | Long-run evidence distinguishes transport attempts without an HTTP response from classified response observations | accepted | Every completed page response must be covered; bounded no-response retries remain explicit; ADR-0045 |
 | D-046 | Completed canonical campaign reuse and evidence may reverify Landing through the full receipt/hash chain without decoding rows | accepted | First publication and coverage retain semantic admission; every source byte/receipt/fact and canonical dataset still verifies; ADR-0046 |
+| D-047 | One campaign invocation admits one receipt-verified registry/capacity snapshot and reuses it for every child plan | accepted | Child paths and hashes remain exact; every new execute/resume invocation reloads and reverifies inputs; ADR-0047 |
 
 ## Decisions requiring benchmark or owner evidence
 

@@ -747,6 +747,7 @@ def _history_1m(args: argparse.Namespace) -> int:
 def _history_campaign(args: argparse.Namespace) -> int:
     snapshot = probe_host_snapshot(args.staging_root)
     now_ms = time.time_ns() // 1_000_000
+    preflight_started_ns = time.perf_counter_ns()
     plan = preflight_history_campaign(
         args.request,
         instrument_registry_path=args.instrument_registry,
@@ -755,6 +756,10 @@ def _history_campaign(args: argparse.Namespace) -> int:
         snapshot=snapshot,
         now_ms=now_ms,
         closed_before_ms=closed_before_now_ms(now_ms),
+    )
+    preflight_elapsed_ms = max(
+        1,
+        (time.perf_counter_ns() - preflight_started_ns + 999_999) // 1_000_000,
     )
     pending_jobs = sum(not job.existing_complete for job in plan.jobs)
     summary = {
@@ -773,6 +778,7 @@ def _history_campaign(args: argparse.Namespace) -> int:
         "pending_job_count": pending_jobs,
         "pending_page_count": sum(job.pending_page_count for job in plan.jobs),
         "plan_sha256": plan.plan_sha256,
+        "preflight_elapsed_ms": preflight_elapsed_ms,
         "planned_page_count": sum(job.planned_page_count for job in plan.jobs),
         "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
         "request_sha256": plan.request_sha256,
