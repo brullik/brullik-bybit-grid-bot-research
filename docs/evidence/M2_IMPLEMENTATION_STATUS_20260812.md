@@ -709,6 +709,16 @@ policy, not an implementation change to the accepted audit.
 The canonical and audit artifacts plus exact assertions are tracked in
 [PR #56](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/56).
 
+ADR-0046 was merged as `git:10031a3e9603d031f7d806adc0d5fe20307d501e`. On the identical
+100-instrument x 31-day source/publication chain, the receipt-integrity verifier hashed and
+verified all 9,600 Landing page/receipt pairs, source child/aggregate lineage, and all 24 canonical
+datasets without source-row decoding in 88,566 ms. The prior full semantic publication projection
+took 230.7 seconds, so the completed-publication verification boundary is 2.60x faster (61.6%
+less elapsed time) while retaining first-publication and coverage semantics. The new
+[`integrity-fastpath evidence`](../../benchmarks/results/m2-canonical-history-campaign-100x31-integrity-fastpath-20260813.json)
+contains the measured monotonic duration and mode, but no path, instrument identity, market value,
+device/account data, credential, or new Gate 2 claim.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

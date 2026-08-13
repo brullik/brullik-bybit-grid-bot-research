@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified 100-instrument x 31-day ADR-0046 performance evidence: the same complete
+  Landing/canonical chain verified in 88,566 ms, 2.60x faster than the prior 230.7-second semantic
+  projection, with source-row decode still mandatory for first publication and coverage audits.
 - ADR-0046 receipt-integrity reverification for completed canonical campaigns: every source byte,
   receipt, manifest fact, allowlist, aggregate chain, and canonical dataset still verifies while
   repeated publication/evidence checks avoid rebuilding already admitted source row batches; new
