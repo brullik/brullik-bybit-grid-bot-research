@@ -9,6 +9,7 @@ import grid_data.history_acquisition as history_acquisition
 import pytest
 from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_bybit_public.transport import TransportError
+from grid_contracts.canonical import canonical_sha256
 from grid_data.history_acquisition import (
     MAX_PAGE_ARTIFACT_BYTES,
     STAGING_METADATA_BYTES,
@@ -76,6 +77,20 @@ class FakeKlineClient:
                 row += ("10.5000", "1050.000000000001")
             rows.append(row)
         return tuple(rows)
+
+
+class EnvelopeViolationClient(FakeKlineClient):
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        rows = [list(row) for row in super().kline_page(**kwargs)]
+        rows[0][1] = str(int(rows[0][2]) + 1)
+        return tuple(tuple(row) for row in rows)
+
+
+class NegativeVolumeClient(FakeKlineClient):
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        rows = [list(row) for row in super().kline_page(**kwargs)]
+        rows[0][5] = "-1"
+        return tuple(tuple(row) for row in rows)
 
 
 class AlwaysFailClient(FakeKlineClient):
@@ -284,6 +299,19 @@ def test_fixed_page_plan_is_no_mutation_and_completed_job_loads_exact_batch(tmp_
         "target_rps": 96,
         "workers": 1,
     }
+    assert completed.quarantined_row_count == 0
+    assert manifest["source_quality"] == {
+        "admitted_row_count": 6,
+        "policy": "exact-source-row-quarantine-v1",
+        "quarantined_row_count": 0,
+        "quarantined_rows_sha256": canonical_sha256([]),
+        "reason_counts": {
+            "close_outside_low_high": 0,
+            "low_exceeds_high": 0,
+            "open_outside_low_high": 0,
+        },
+        "source_row_count": 6,
+    }
     batch = load_completed_history_batch(completed.job_root)
     assert batch.table.num_rows == 6
     assert batch.table.column("instrument_id").to_pylist() == [1, 1, 1, 9, 9, 9]
@@ -423,6 +451,77 @@ def test_empty_pages_are_explicit_coverage_evidence(tmp_path: Path) -> None:
     manifest = json.loads(completed.manifest_path.read_text(encoding="utf-8"))
     assert manifest["empty_page_count"] == 1
     assert completed.row_count == 4
+
+
+def test_exact_ohlc_anomaly_is_receipted_but_excluded_from_canonical_batch(
+    tmp_path: Path,
+) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS + 60_000),),
+        max_http_requests=1,
+    )
+    plan = preflight_history_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=1),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 120_000,
+    )
+
+    completed = execute(plan, EnvelopeViolationClient())
+    page = json.loads((completed.job_root / "pages" / "00000000.json").read_text("utf-8"))
+    manifest = json.loads(completed.manifest_path.read_text("utf-8"))
+
+    assert completed.row_count == 1
+    assert completed.quarantined_row_count == 1
+    assert page["source_row_count"] == 2
+    assert page["row_count"] == 1
+    assert page["quarantined_row_count"] == 1
+    assert page["quarantined_rows"][0]["reason"] == "open_outside_low_high"
+    assert page["quarantined_rows"][0]["source_index"] == 0
+    assert page["quarantined_rows"][0]["source_row_sha256"] == canonical_sha256(
+        page["quarantined_rows"][0]["row"]
+    )
+    assert manifest["source_quality"]["source_row_count"] == 2
+    assert manifest["source_quality"]["admitted_row_count"] == 1
+    assert manifest["source_quality"]["quarantined_row_count"] == 1
+    assert manifest["source_quality"]["reason_counts"]["open_outside_low_high"] == 1
+    assert load_completed_history_batch(completed.job_root).table.num_rows == 1
+
+    schema_root = ROOT / "schemas" / "market" / "v1"
+    for schema_name, artifact in (
+        ("bybit-1m-history-page.schema.json", completed.job_root / "pages/00000000.json"),
+        ("bybit-1m-history-acquisition.schema.json", completed.manifest_path),
+    ):
+        Draft202012Validator(
+            json.loads((schema_root / schema_name).read_text(encoding="utf-8"))
+        ).validate(json.loads(artifact.read_text(encoding="utf-8")))
+
+    page["quarantined_rows"][0]["reason"] = "close_outside_low_high"
+    page["quarantined_rows_sha256"] = canonical_sha256(page["quarantined_rows"])
+    with pytest.raises(HistoryAcquisitionError, match="classification"):
+        history_acquisition._validate_page_payload(page, plan.tasks[0])
+
+
+def test_non_ohlc_semantic_failure_still_aborts_without_page_receipt(tmp_path: Path) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS),),
+        max_http_requests=1,
+    )
+    plan = preflight_history_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=1),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+    )
+
+    with pytest.raises(HistoryAcquisitionError, match="logical candle contract"):
+        execute(plan, NegativeVolumeClient())
+    assert not (plan.paths.pages_root / "00000000.receipt.json").exists()
+    assert not plan.paths.receipt_path.exists()
 
 
 def test_out_of_range_response_fails_without_completion_receipt(tmp_path: Path) -> None:

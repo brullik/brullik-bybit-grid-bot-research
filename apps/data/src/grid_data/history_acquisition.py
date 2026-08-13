@@ -52,6 +52,12 @@ MAX_PREFLIGHT_AGE_MS: Final = 60_000
 UINT32_MAX: Final = (1 << 32) - 1
 JOB_ID_RE: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
+QUARANTINE_POLICY: Final = "exact-source-row-quarantine-v1"
+QUARANTINE_REASONS: Final = (
+    "close_outside_low_high",
+    "low_exceeds_high",
+    "open_outside_low_high",
+)
 
 
 class HistoryAcquisitionError(RuntimeError):
@@ -241,6 +247,15 @@ class CompletedHistoryJob:
     manifest_sha256: str
     page_count: int
     row_count: int
+    quarantined_row_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class PageSourceQuality:
+    source_row_count: int
+    quarantined_row_count: int
+    quarantined_rows_sha256: str
+    reason_counts: dict[str, int]
 
 
 def _plan_tasks(spec: HistoryJobSpec) -> tuple[HistoryPageTask, ...]:
@@ -434,7 +449,9 @@ def _task_page_path(paths: HistoryJobPaths, task: HistoryPageTask) -> Path:
     return paths.pages_root / task.artifact_name
 
 
-def _validate_page_payload(payload: Mapping[str, object], task: HistoryPageTask) -> None:
+def _validate_page_payload(
+    payload: Mapping[str, object], task: HistoryPageTask
+) -> PageSourceQuality:
     expected = {
         "category": task.category,
         "end_ms": task.end_ms,
@@ -460,10 +477,101 @@ def _validate_page_payload(payload: Mapping[str, object], task: HistoryPageTask)
         if not isinstance(row, list) or any(not isinstance(value, str) for value in row):
             raise HistoryAcquisitionError("staged page rows must contain string arrays")
         typed_rows.append(tuple(row))
-    _logical_rows(task, typed_rows, ingestion_id="history-page-verification")
+    extension_names = {
+        "quarantined_row_count",
+        "quarantined_rows",
+        "quarantined_rows_sha256",
+        "source_row_count",
+    }
+    present_extensions = extension_names.intersection(payload)
+    if present_extensions and present_extensions != extension_names:
+        raise HistoryAcquisitionError("staged page quarantine extension is incomplete")
+    if present_extensions:
+        raw_quarantined = payload.get("quarantined_rows")
+        source_row_count = payload.get("source_row_count")
+        quarantined_row_count = payload.get("quarantined_row_count")
+        quarantined_rows_sha256 = payload.get("quarantined_rows_sha256")
+        if (
+            not isinstance(raw_quarantined, list)
+            or isinstance(source_row_count, bool)
+            or not isinstance(source_row_count, int)
+            or isinstance(quarantined_row_count, bool)
+            or not isinstance(quarantined_row_count, int)
+            or not isinstance(quarantined_rows_sha256, str)
+            or SHA256_RE.fullmatch(quarantined_rows_sha256) is None
+            or source_row_count != len(rows) + len(raw_quarantined)
+            or quarantined_row_count != len(raw_quarantined)
+            or not 0 <= source_row_count <= task.limit
+            or canonical_sha256(raw_quarantined) != quarantined_rows_sha256
+        ):
+            raise HistoryAcquisitionError("staged page quarantine count/hash is invalid")
+        source_rows: list[tuple[str, ...] | None] = [None] * source_row_count
+        for raw_entry in raw_quarantined:
+            if not isinstance(raw_entry, dict) or set(raw_entry) != {
+                "reason",
+                "row",
+                "source_index",
+                "source_row_sha256",
+            }:
+                raise HistoryAcquisitionError("staged page quarantine entry is invalid")
+            source_index = raw_entry.get("source_index")
+            raw_row = raw_entry.get("row")
+            reason = raw_entry.get("reason")
+            source_row_sha256 = raw_entry.get("source_row_sha256")
+            if (
+                isinstance(source_index, bool)
+                or not isinstance(source_index, int)
+                or not 0 <= source_index < source_row_count
+                or source_rows[source_index] is not None
+                or not isinstance(raw_row, list)
+                or any(not isinstance(value, str) for value in raw_row)
+                or reason not in QUARANTINE_REASONS
+                or not isinstance(source_row_sha256, str)
+                or source_row_sha256 != canonical_sha256(raw_row)
+            ):
+                raise HistoryAcquisitionError("staged page quarantine entry is invalid")
+            source_rows[source_index] = tuple(raw_row)
+        admitted = iter(typed_rows)
+        for index, source_row in enumerate(source_rows):
+            if source_row is None:
+                source_rows[index] = next(admitted)
+        try:
+            next(admitted)
+        except StopIteration:
+            pass
+        else:  # pragma: no cover - guarded by source_row_count arithmetic
+            raise HistoryAcquisitionError("staged page admitted row inventory is invalid")
+        verified_rows, verified_quarantine = _partition_source_rows(
+            task,
+            cast(list[tuple[str, ...]], source_rows),
+            ingestion_id="history-page-verification",
+        )
+        if [list(row) for row in verified_rows] != rows or verified_quarantine != raw_quarantined:
+            raise HistoryAcquisitionError("staged page quarantine classification does not verify")
+        reason_counts = {
+            reason: sum(entry["reason"] == reason for entry in verified_quarantine)
+            for reason in QUARANTINE_REASONS
+        }
+        quality = PageSourceQuality(
+            source_row_count=source_row_count,
+            quarantined_row_count=quarantined_row_count,
+            quarantined_rows_sha256=quarantined_rows_sha256,
+            reason_counts=reason_counts,
+        )
+    else:
+        if len(rows) > task.limit:
+            raise HistoryAcquisitionError("staged page exceeds its requested row limit")
+        _logical_rows(task, typed_rows, ingestion_id="history-page-verification")
+        quality = PageSourceQuality(
+            source_row_count=len(rows),
+            quarantined_row_count=0,
+            quarantined_rows_sha256=canonical_sha256([]),
+            reason_counts={reason: 0 for reason in QUARANTINE_REASONS},
+        )
     expected_rows_sha = canonical_sha256(rows)
     if payload.get("rows_sha256") != expected_rows_sha or payload.get("row_count") != len(rows):
         raise HistoryAcquisitionError("staged page row hash/count mismatch")
+    return quality
 
 
 def _existing_state(
@@ -617,11 +725,76 @@ def _logical_rows(
     return tuple(logical)
 
 
+def _quarantine_reason(row: tuple[str, ...]) -> str | None:
+    prices = {
+        "open": _parse_decimal("open", row[1]),
+        "high": _parse_decimal("high", row[2]),
+        "low": _parse_decimal("low", row[3]),
+        "close": _parse_decimal("close", row[4]),
+    }
+    if any(value <= 0 for value in prices.values()):
+        raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
+    if prices["low"] > prices["high"]:
+        return "low_exceeds_high"
+    if not prices["low"] <= prices["open"] <= prices["high"]:
+        return "open_outside_low_high"
+    if not prices["low"] <= prices["close"] <= prices["high"]:
+        return "close_outside_low_high"
+    return None
+
+
+def _partition_source_rows(
+    task: HistoryPageTask,
+    rows: Sequence[tuple[str, ...]],
+    *,
+    ingestion_id: str,
+) -> tuple[tuple[tuple[str, ...], ...], list[dict[str, object]]]:
+    """Admit exact logical rows and retain only recognized OHLC anomalies verbatim."""
+
+    expected_width = 7 if task.kind == "trade" else 5
+    timestamps: list[int] = []
+    admitted: list[tuple[str, ...]] = []
+    quarantined: list[dict[str, object]] = []
+    for source_index, row in enumerate(rows):
+        if len(row) != expected_width or not row[0].isdigit():
+            raise HistoryAcquisitionError("Bybit kline row has invalid width or timestamp")
+        timestamp = int(row[0])
+        if timestamp < task.start_ms or timestamp > task.end_ms or timestamp % MINUTE_MS:
+            raise HistoryAcquisitionError("Bybit kline timestamp escapes its planned page")
+        timestamps.append(timestamp)
+        reason = _quarantine_reason(row)
+        if task.kind == "trade":
+            volume = _parse_decimal("volume", row[5])
+            turnover = _parse_decimal("turnover", row[6])
+            if volume < 0 or turnover < 0:
+                raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
+        if reason is None:
+            admitted.append(row)
+        else:
+            serialized = list(row)
+            quarantined.append(
+                {
+                    "reason": reason,
+                    "row": serialized,
+                    "source_index": source_index,
+                    "source_row_sha256": canonical_sha256(serialized),
+                }
+            )
+    if timestamps != sorted(timestamps, reverse=True) or len(timestamps) != len(set(timestamps)):
+        raise HistoryAcquisitionError("Bybit kline page must be unique reverse chronological data")
+    _logical_rows(task, admitted, ingestion_id=ingestion_id)
+    return tuple(admitted), quarantined
+
+
 def _page_payload(
     task: HistoryPageTask, rows: Sequence[tuple[str, ...]], attempts: int
 ) -> dict[str, object]:
-    _logical_rows(task, rows, ingestion_id="history-page-validation")
-    serialized_rows = [list(row) for row in rows]
+    admitted, quarantined = _partition_source_rows(
+        task,
+        rows,
+        ingestion_id="history-page-validation",
+    )
+    serialized_rows = [list(row) for row in admitted]
     return {
         "attempt_count": attempts,
         "category": task.category,
@@ -630,10 +803,14 @@ def _page_payload(
         "instrument_id": task.instrument_id,
         "kind": task.kind,
         "limit": task.limit,
+        "quarantined_row_count": len(quarantined),
+        "quarantined_rows": quarantined,
+        "quarantined_rows_sha256": canonical_sha256(quarantined),
         "row_count": len(serialized_rows),
         "rows": serialized_rows,
         "rows_sha256": canonical_sha256(serialized_rows),
         "sequence": task.sequence,
+        "source_row_count": len(rows),
         "start_ms": task.start_ms,
         "symbol": task.symbol,
     }
@@ -754,15 +931,31 @@ def execute_history_job(
         finish_now = now_ms()
         _assert_execute_snapshot(plan, finish_snapshot, now_ms=finish_now)
         page_inventory: list[dict[str, object]] = []
+        quarantine_bindings: list[dict[str, object]] = []
+        quarantine_reason_counts = {reason: 0 for reason in QUARANTINE_REASONS}
         total_rows = 0
+        total_source_rows = 0
+        total_quarantined_rows = 0
         empty_pages = 0
         for task in plan.tasks:
             page = _task_page_path(plan.paths, task)
             payload, digest = _verify_artifact(page)
-            _validate_page_payload(payload, task)
+            quality = _validate_page_payload(payload, task)
             row_count = cast(int, payload["row_count"])
             total_rows += row_count
+            total_source_rows += quality.source_row_count
+            total_quarantined_rows += quality.quarantined_row_count
+            for reason, count in quality.reason_counts.items():
+                quarantine_reason_counts[reason] += count
             empty_pages += row_count == 0
+            if quality.quarantined_row_count:
+                quarantine_bindings.append(
+                    {
+                        "page_artifact_sha256": digest,
+                        "quarantined_row_count": quality.quarantined_row_count,
+                        "quarantined_rows_sha256": quality.quarantined_rows_sha256,
+                    }
+                )
             page_inventory.append(
                 {
                     "artifact": f"pages/{page.name}",
@@ -771,8 +964,12 @@ def execute_history_job(
                     "end_ms": task.end_ms,
                     "ingestion_id": f"bybit-page-sha256:{digest}",
                     "instrument_id": task.instrument_id,
+                    "quarantine_reason_counts": quality.reason_counts,
+                    "quarantined_row_count": quality.quarantined_row_count,
+                    "quarantined_rows_sha256": quality.quarantined_rows_sha256,
                     "row_count": row_count,
                     "sequence": task.sequence,
+                    "source_row_count": quality.source_row_count,
                     "start_ms": task.start_ms,
                     "symbol": task.symbol,
                 }
@@ -808,6 +1005,14 @@ def execute_history_job(
                 "workers": plan.spec.workers,
             },
             "row_count": total_rows,
+            "source_quality": {
+                "admitted_row_count": total_rows,
+                "policy": QUARANTINE_POLICY,
+                "quarantined_row_count": total_quarantined_rows,
+                "quarantined_rows_sha256": canonical_sha256(quarantine_bindings),
+                "reason_counts": quarantine_reason_counts,
+                "source_row_count": total_source_rows,
+            },
             "source_policy": {
                 "mark": "/v5/market/mark-price-kline",
                 "trade": "/v5/market/kline",
@@ -929,6 +1134,10 @@ def _verify_completed_history_job(
     if not isinstance(raw_pages, list) or len(raw_pages) != len(raw_tasks):
         raise HistoryAcquisitionError("history manifest page inventory is incomplete")
     total_rows = 0
+    total_source_rows = 0
+    total_quarantined_rows = 0
+    quarantine_bindings: list[dict[str, object]] = []
+    quarantine_reason_counts = {reason: 0 for reason in QUARANTINE_REASONS}
     total_attempts = 0
     empty_pages = 0
     if load_batch and not verify_page_semantics:
@@ -942,6 +1151,8 @@ def _verify_completed_history_job(
         "manifest.receipt.json",
         "completion-receipt.json",
     }
+    manifest_source_quality = manifest.get("source_quality")
+    has_source_quality = manifest_source_quality is not None
     for sequence, (raw_task, raw_page) in enumerate(zip(raw_tasks, raw_pages, strict=True)):
         if not isinstance(raw_task, dict) or not isinstance(raw_page, dict):
             raise HistoryAcquisitionError("history task/page inventory entries must be objects")
@@ -955,7 +1166,7 @@ def _verify_completed_history_job(
         payload: dict[str, object] | None
         if verify_page_semantics:
             payload, digest = _verify_artifact(page)
-            _validate_page_payload(payload, task)
+            page_quality = _validate_page_payload(payload, task)
             row_count = cast(int, payload["row_count"])
             attempt_count = cast(int, payload["attempt_count"])
         else:
@@ -974,6 +1185,50 @@ def _verify_completed_history_job(
                 raise HistoryAcquisitionError("history manifest page counts are invalid")
             row_count = raw_row_count
             attempt_count = raw_attempt_count
+            if has_source_quality:
+                raw_source_count = raw_page.get("source_row_count")
+                raw_quarantined_count = raw_page.get("quarantined_row_count")
+                raw_quarantined_sha = raw_page.get("quarantined_rows_sha256")
+                raw_reason_counts = raw_page.get("quarantine_reason_counts")
+                if (
+                    isinstance(raw_source_count, bool)
+                    or not isinstance(raw_source_count, int)
+                    or isinstance(raw_quarantined_count, bool)
+                    or not isinstance(raw_quarantined_count, int)
+                    or raw_source_count != row_count + raw_quarantined_count
+                    or not 0 <= raw_source_count <= task.limit
+                    or not isinstance(raw_quarantined_sha, str)
+                    or SHA256_RE.fullmatch(raw_quarantined_sha) is None
+                    or not isinstance(raw_reason_counts, dict)
+                    or set(raw_reason_counts) != set(QUARANTINE_REASONS)
+                    or any(
+                        isinstance(raw_reason_counts[reason], bool)
+                        or not isinstance(raw_reason_counts[reason], int)
+                        or raw_reason_counts[reason] < 0
+                        for reason in QUARANTINE_REASONS
+                    )
+                    or sum(cast(int, raw_reason_counts[reason]) for reason in QUARANTINE_REASONS)
+                    != raw_quarantined_count
+                ):
+                    raise HistoryAcquisitionError(
+                        "history manifest page quarantine facts are invalid"
+                    )
+                page_quality = PageSourceQuality(
+                    source_row_count=raw_source_count,
+                    quarantined_row_count=raw_quarantined_count,
+                    quarantined_rows_sha256=raw_quarantined_sha,
+                    reason_counts={
+                        reason: cast(int, raw_reason_counts[reason])
+                        for reason in QUARANTINE_REASONS
+                    },
+                )
+            else:
+                page_quality = PageSourceQuality(
+                    source_row_count=row_count,
+                    quarantined_row_count=0,
+                    quarantined_rows_sha256=canonical_sha256([]),
+                    reason_counts={reason: 0 for reason in QUARANTINE_REASONS},
+                )
         if logical_rows is not None:
             assert payload is not None
             raw_rows = cast(list[list[str]], payload["rows"])
@@ -990,20 +1245,33 @@ def _verify_completed_history_job(
             batch_dataset_type = current_type if batch_dataset_type is None else batch_dataset_type
             if current_type is not batch_dataset_type:
                 raise HistoryAcquisitionError("completed history job mixes dataset types")
+        if not has_source_quality and page_quality.quarantined_row_count:
+            raise HistoryAcquisitionError(
+                "legacy history manifest cannot omit observed quarantine facts"
+            )
+        expected_page_fields = {
+            "artifact",
+            "artifact_sha256",
+            "attempt_count",
+            "end_ms",
+            "ingestion_id",
+            "instrument_id",
+            "row_count",
+            "sequence",
+            "start_ms",
+            "symbol",
+        }
+        if has_source_quality:
+            expected_page_fields.update(
+                {
+                    "quarantine_reason_counts",
+                    "quarantined_row_count",
+                    "quarantined_rows_sha256",
+                    "source_row_count",
+                }
+            )
         if (
-            set(raw_page)
-            != {
-                "artifact",
-                "artifact_sha256",
-                "attempt_count",
-                "end_ms",
-                "ingestion_id",
-                "instrument_id",
-                "row_count",
-                "sequence",
-                "start_ms",
-                "symbol",
-            }
+            set(raw_page) != expected_page_fields
             or raw_page.get("artifact") != f"pages/{page.name}"
             or raw_page.get("artifact_sha256") != digest
             or raw_page.get("row_count") != row_count
@@ -1013,9 +1281,31 @@ def _verify_completed_history_job(
             or raw_page.get("ingestion_id") != f"bybit-page-sha256:{digest}"
             or raw_page.get("start_ms") != task.start_ms
             or raw_page.get("symbol") != task.symbol
+            or (
+                has_source_quality
+                and (
+                    raw_page.get("source_row_count") != page_quality.source_row_count
+                    or raw_page.get("quarantined_row_count") != page_quality.quarantined_row_count
+                    or raw_page.get("quarantined_rows_sha256")
+                    != page_quality.quarantined_rows_sha256
+                    or raw_page.get("quarantine_reason_counts") != page_quality.reason_counts
+                )
+            )
         ):
             raise HistoryAcquisitionError("history manifest page facts do not verify")
         total_rows += row_count
+        total_source_rows += page_quality.source_row_count
+        total_quarantined_rows += page_quality.quarantined_row_count
+        for reason, count in page_quality.reason_counts.items():
+            quarantine_reason_counts[reason] += count
+        if page_quality.quarantined_row_count:
+            quarantine_bindings.append(
+                {
+                    "page_artifact_sha256": digest,
+                    "quarantined_row_count": page_quality.quarantined_row_count,
+                    "quarantined_rows_sha256": page_quality.quarantined_rows_sha256,
+                }
+            )
         total_attempts += attempt_count
         empty_pages += row_count == 0
         expected_files.update((f"pages/{page.name}", f"pages/{page.stem}.receipt.json"))
@@ -1076,6 +1366,16 @@ def _verify_completed_history_job(
         }
     ):
         raise HistoryAcquisitionError("history manifest aggregate counts do not verify")
+    expected_source_quality = {
+        "admitted_row_count": total_rows,
+        "policy": QUARANTINE_POLICY,
+        "quarantined_row_count": total_quarantined_rows,
+        "quarantined_rows_sha256": canonical_sha256(quarantine_bindings),
+        "reason_counts": quarantine_reason_counts,
+        "source_row_count": total_source_rows,
+    }
+    if has_source_quality and manifest_source_quality != expected_source_quality:
+        raise HistoryAcquisitionError("history manifest source-quality facts do not verify")
     if any(path.is_symlink() for path in root.rglob("*")):
         raise HistoryAcquisitionError("history job cannot contain symlinks")
     actual_files = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
@@ -1094,6 +1394,7 @@ def _verify_completed_history_job(
         manifest_sha256=manifest_digest,
         page_count=len(raw_tasks),
         row_count=total_rows,
+        quarantined_row_count=total_quarantined_rows,
     )
 
     batch: CanonicalCandleBatch | None = None

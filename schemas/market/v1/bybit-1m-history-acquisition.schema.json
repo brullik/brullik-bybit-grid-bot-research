@@ -44,6 +44,7 @@
       }
     },
     "row_count": {"type": "integer", "minimum": 0},
+    "source_quality": {"$ref": "#/$defs/sourceQuality"},
     "source_policy": {
       "type": "object",
       "additionalProperties": false,
@@ -84,6 +85,12 @@
     "page": {
       "type": "object",
       "additionalProperties": false,
+      "dependentRequired": {
+        "quarantine_reason_counts": ["quarantined_row_count", "quarantined_rows_sha256", "source_row_count"],
+        "quarantined_row_count": ["quarantine_reason_counts", "quarantined_rows_sha256", "source_row_count"],
+        "quarantined_rows_sha256": ["quarantine_reason_counts", "quarantined_row_count", "source_row_count"],
+        "source_row_count": ["quarantine_reason_counts", "quarantined_row_count", "quarantined_rows_sha256"]
+      },
       "required": ["artifact", "artifact_sha256", "attempt_count", "end_ms", "ingestion_id", "instrument_id", "row_count", "sequence", "start_ms", "symbol"],
       "properties": {
         "artifact": {"type": "string", "pattern": "^pages/[0-9]{8}\\.json$"},
@@ -92,10 +99,37 @@
         "end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
         "ingestion_id": {"type": "string", "pattern": "^bybit-page-sha256:[0-9a-f]{64}$"},
         "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "quarantine_reason_counts": {"$ref": "#/$defs/quarantineReasonCounts"},
+        "quarantined_row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "quarantined_rows_sha256": {"$ref": "#/$defs/sha256"},
         "row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
         "sequence": {"type": "integer", "minimum": 0},
+        "source_row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
         "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
         "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    },
+    "quarantineReasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["close_outside_low_high", "low_exceeds_high", "open_outside_low_high"],
+      "properties": {
+        "close_outside_low_high": {"type": "integer", "minimum": 0},
+        "low_exceeds_high": {"type": "integer", "minimum": 0},
+        "open_outside_low_high": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sourceQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["admitted_row_count", "policy", "quarantined_row_count", "quarantined_rows_sha256", "reason_counts", "source_row_count"],
+      "properties": {
+        "admitted_row_count": {"type": "integer", "minimum": 0},
+        "policy": {"const": "exact-source-row-quarantine-v1"},
+        "quarantined_row_count": {"type": "integer", "minimum": 0},
+        "quarantined_rows_sha256": {"$ref": "#/$defs/sha256"},
+        "reason_counts": {"$ref": "#/$defs/quarantineReasonCounts"},
+        "source_row_count": {"type": "integer", "minimum": 0}
       }
     }
   }

@@ -4,6 +4,12 @@
   "title": "Staged Bybit public one-minute page v1",
   "type": "object",
   "additionalProperties": false,
+  "dependentRequired": {
+    "quarantined_row_count": ["quarantined_rows", "quarantined_rows_sha256", "source_row_count"],
+    "quarantined_rows": ["quarantined_row_count", "quarantined_rows_sha256", "source_row_count"],
+    "quarantined_rows_sha256": ["quarantined_row_count", "quarantined_rows", "source_row_count"],
+    "source_row_count": ["quarantined_row_count", "quarantined_rows", "quarantined_rows_sha256"]
+  },
   "required": ["attempt_count", "category", "contract", "end_ms", "instrument_id", "kind", "limit", "row_count", "rows", "rows_sha256", "sequence", "start_ms", "symbol"],
   "properties": {
     "attempt_count": {"type": "integer", "minimum": 1, "maximum": 5},
@@ -13,6 +19,13 @@
     "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
     "kind": {"enum": ["trade", "mark"]},
     "limit": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "quarantined_row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "quarantined_rows": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/quarantinedRow"}
+    },
+    "quarantined_rows_sha256": {"$ref": "#/$defs/sha256"},
     "row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
     "rows": {
       "type": "array",
@@ -21,7 +34,22 @@
     },
     "rows_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "sequence": {"type": "integer", "minimum": 0},
+    "source_row_count": {"type": "integer", "minimum": 0, "maximum": 1000},
     "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
     "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+  },
+  "$defs": {
+    "quarantinedRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "row", "source_index", "source_row_sha256"],
+      "properties": {
+        "reason": {"enum": ["close_outside_low_high", "low_exceeds_high", "open_outside_low_high"]},
+        "row": {"type": "array", "minItems": 5, "maxItems": 7, "items": {"type": "string"}},
+        "source_index": {"type": "integer", "minimum": 0, "maximum": 999},
+        "source_row_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }
