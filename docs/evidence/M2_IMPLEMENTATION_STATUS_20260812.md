@@ -41,6 +41,8 @@ The authoritative implementation and review history is:
   GitHub-safe pilot evidence with exact Landing/Parquet and predecessor-interval verification.
 - PR [#32](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/32): receipt-verified,
   measured public funding pilot evidence and its sanitized acceptance assertions.
+- PR [#33](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/33): fail-closed funding
+  source-parity and stable observed-chronology audit.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -48,8 +50,8 @@ partitioning, ZSTD-3, receipt-last publication, and a separate public acquisitio
 series captures a receipted predecessor, range pages are fixed and resumable, and saturated
 200-row responses fail closed. The funding-specific sanitized evidence contract and builder now
 verify exact Landing/Parquet equality and predecessor/internal interval derivation without
-publishing rates or observed settlement timestamps. Funding-specific coverage/repair, compaction,
-and catalog evidence remain pending; Gate 2 is not accepted.
+publishing rates or observed settlement timestamps. Funding-specific repair, compaction, and
+catalog evidence remain pending; Gate 2 is not accepted.
 
 The receipt-verified measured funding result is
 [`m2-public-funding-canonical-pilot-20260813.json`](../../benchmarks/results/m2-public-funding-canonical-pilot-20260813.json).
