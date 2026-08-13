@@ -27,6 +27,8 @@ The authoritative implementation and review history is:
   bounded standard-request planning for blocked 1m gaps; and
 - PR [#25](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/25): whole-plan-admitted
   repair execution and immutable parent-to-child replacement lineage.
+- PR [#26](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/26): target-size
+  immutable compaction, multi-file/tail verification, and complete parent lineage.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
