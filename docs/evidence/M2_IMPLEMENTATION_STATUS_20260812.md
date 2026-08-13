@@ -524,6 +524,8 @@ resource bounds, immutable publisher/builder identities, and transitive hashes. 
 forbids runtime paths, dataset/symbol/instrument identities, market values, account data, and
 credentials. The measured evidence artifact must be generated only after this builder is merged,
 using that immutable merge commit as the evidence-builder identity.
+The builder contract and redaction tests are tracked in
+[PR #46](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/46).
 
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
