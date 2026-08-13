@@ -144,6 +144,34 @@ def test_canonical_coverage_audit_matches_schema_hash_receipt_and_redaction() ->
         assert forbidden not in rendered
 
 
+def test_instrument_timeline_summary_matches_schema_hash_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-instrument-timeline-20260813.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "instrument-timeline-summary.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["status"] == "blocked"
+    assert payload["blocker_codes"] == ["partial_source_inventory"]
+    assert payload["universe"]["coverage_blocked_instrument_count"] == 0
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"records"',
+        '"symbol"',
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
     specifications = ROOT / "benchmarks" / "specifications"
     results = ROOT / "benchmarks" / "results"
