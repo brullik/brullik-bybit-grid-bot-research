@@ -279,3 +279,59 @@ values or local paths.
 Do not delete the parents after compaction. Parent retention/garbage collection requires a future
 catalog reachability policy. Compaction does not register the child, accept a missing-minute
 reason, or close Gate 2.
+
+## 14. Register datasets and select a reproducible range
+
+Catalog registration is a separate transition after canonical publication, repair, or compaction.
+The catalog must live inside the market-store root. Include every unregistered parent together
+with a child so lineage is complete. First run without `--execute`:
+
+```powershell
+.venv\Scripts\grid-data.exe catalog-register `
+  --dataset trade-1m-<parent-or-current-dataset> `
+  --dataset trade-1m-<compacted-child> `
+  --store-root data\market-store `
+  --catalog data\market-store\catalog\canonical.duckdb `
+  --software-identity git:<catalog-implementation-sha> `
+  --output data\evidence\m2-catalog-registration-<date>.json
+```
+
+Preflight verifies every dataset receipt, Parquet hash/footer/key order, exact partition layout,
+catalog digest/revision, and lineage while creating no catalog/evidence file. Review requested/new
+dataset IDs and the current catalog hash, then repeat the identical command with `--execute`.
+Registration uses a same-directory building database and exclusive lock; do not delete a leftover
+lock/building file until an operator has confirmed no writer is running and inspected the catalog.
+An identical rerun verifies the existing registration and evidence without changing the revision.
+
+Build a closed `grid.canonical-dataset-selection-request/v1` JSON from the printed final
+`catalog_revision` and `catalog_content_sha256`. Dataset IDs and include-mode instrument IDs must
+be sorted and unique; never substitute a `latest` alias:
+
+```json
+{
+  "catalog_content_sha256": "<64 lowercase hex>",
+  "catalog_revision": 1,
+  "consumer_software_identity": "git:<full-consumer-commit-sha>",
+  "dataset_ids": ["trade-1m-<exact-id>"],
+  "dataset_type": "trade_kline_1m",
+  "end_time_ms": 1767229140000,
+  "instrument_filter": {"instrument_ids": [9], "mode": "include"},
+  "request_schema": "grid.canonical-dataset-selection-request/v1",
+  "start_time_ms": 1767225600000
+}
+```
+
+Run the read-only selection and publish its receipt-bound object manifest:
+
+```powershell
+.venv\Scripts\grid-data.exe catalog-select `
+  --request data\requests\catalog-selection-<id>.json `
+  --store-root data\market-store `
+  --catalog data\market-store\catalog\canonical.duckdb `
+  --output data\evidence\catalog-selection-<id>.json
+```
+
+The output contains only canonical store-relative object keys and hashes, never absolute paths or
+market values. A changed catalog snapshot, missing month/bucket, parent plus child, overlapping key
+range, or substituted dataset/file fails closed. Selection is not a coverage audit: research must
+still require the applicable PM-owned gap/lifecycle evidence before treating the range as complete.

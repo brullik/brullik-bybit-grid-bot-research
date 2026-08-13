@@ -13,7 +13,10 @@ it contains no bot creation, close, transfer, or ordinary-order endpoint.
 
 Phase 2 public 1m acquisition is documented in the
 [history runbook](docs/runbooks/HISTORY_1M.md). Preflight is the default; network/file mutation
-requires the explicit `--execute` switch and never uses account credentials.
+requires the explicit `--execute` switch and never uses account credentials. Canonical datasets
+can now be registered in a receipt-verified DuckDB metadata catalog and selected only through an
+explicit catalog revision/content hash and dataset list; the live application has no catalog
+dependency.
 
 [Русская версия](README.ru.md)
 

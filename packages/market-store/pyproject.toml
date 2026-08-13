@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "grid-market-store"
 version = "0.2.0"
-description = "Exact canonical Parquet contracts and immutable market-store primitives"
+description = "Exact canonical Parquet contracts, immutable datasets, and catalog primitives"
 requires-python = ">=3.12"
-dependencies = ["grid-contracts==0.2.0", "pyarrow>=19,<26"]
+dependencies = ["grid-contracts==0.2.0", "duckdb>=1.2,<2", "pyarrow>=19,<26"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
