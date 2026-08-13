@@ -56,6 +56,11 @@ The authoritative implementation and review history is:
   ADR-0036 candle-audit schema-bound correction.
 - PR [#39](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/39): receipt-verified
   measured multi-parent April trade compaction with target-band and immutable-lineage evidence.
+- PR [#40](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/40): immutable
+  point-in-time instrument timeline with separate ex-post lifecycle coverage and sanitized
+  partial-inventory evidence.
+- PR [#41](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/41): receipt-resumable
+  multi-month public history campaigns with aggregate preflight and deterministic child reuse.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
