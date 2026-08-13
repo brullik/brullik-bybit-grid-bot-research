@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Schema-bound five-instrument full-lifecycle campaign-preflight evidence: 1,467 jobs and 46,227
+  pages retained identical resource bounds while ADR-0047 reduced same-host elapsed time from
+  125,600 ms to 3,284 ms (38.246x; 97.39% less).
 - ADR-0047 single-snapshot campaign admission: each invocation receipt-verifies registry/capacity
   inputs once for all child derivations, keeps exact per-child hash bindings, rejects path
   substitution, reloads on execute/resume, and exposes monotonic preflight elapsed milliseconds.

@@ -724,6 +724,16 @@ less elapsed time) while retaining first-publication and coverage semantics. The
 contains the measured monotonic duration and mode, but no path, instrument identity, market value,
 device/account data, credential, or new Gate 2 claim.
 
+The first five-instrument full-lifecycle preflight (103 calendar months, trade/mark/funding)
+resolved 1,467 children and 46,227 fixed pages in 125,600 ms under
+`git:f14df8fe8eff4741ca7c488b97ad28704c1d1372`. ADR-0047 was merged as
+`git:8bb04ef4e21b84c7a3461c95d95fba70e28888f2`; its same-host post-merge preflight used the
+same scope, job/page inventory, 146,800,640-byte peak-memory bound, and 220,130,581,210-byte
+free-space gate but completed in 3,284 ms. The
+[`schema-bound performance evidence`](../../benchmarks/results/m2-history-campaign-preflight-performance-5xfull-20260813.json)
+records a 38.246x speedup and 97.39% elapsed reduction while excluding paths, device identity,
+instrument identities, market values, account data, credentials, and any Gate 2 implication.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

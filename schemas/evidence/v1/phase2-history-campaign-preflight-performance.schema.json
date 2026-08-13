@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-history-campaign-preflight-performance.schema.json",
+  "title": "Sanitized Phase 2 full-history campaign preflight performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baseline",
+    "bindings",
+    "comparison",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "qualified",
+    "scope",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "baseline": {"$ref": "#/$defs/run"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity_evidence_sha256", "instrument_registry_sha256"],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_count_unchanged",
+        "page_count_unchanged",
+        "planned_peak_memory_unchanged",
+        "preflight_elapsed_reduction_basis_points",
+        "request_scope_equivalent_except_campaign_id",
+        "required_free_bytes_unchanged",
+        "same_reference_host_identity_verified",
+        "speedup_milli"
+      ],
+      "properties": {
+        "job_count_unchanged": {"const": true},
+        "page_count_unchanged": {"const": true},
+        "planned_peak_memory_unchanged": {"const": true},
+        "preflight_elapsed_reduction_basis_points": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "request_scope_equivalent_except_campaign_id": {"const": true},
+        "required_free_bytes_unchanged": {"const": true},
+        "same_reference_host_identity_verified": {"const": true},
+        "speedup_milli": {"type": "integer", "minimum": 1001}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-history-campaign-preflight-performance/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "qualified": {"$ref": "#/$defs/run"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "end_ms",
+        "kind_count",
+        "month_count",
+        "start_ms",
+        "symbol_count",
+        "tick_rows_requested"
+      ],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "kind_count": {"const": 3},
+        "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "tick_rows_requested": {"const": false}
+      }
+    },
+    "status": {"const": "qualified-full-history-campaign-preflight-performance"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_device_identity": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_identity",
+        "job_count",
+        "page_count",
+        "plan_sha256",
+        "planned_peak_memory_bytes",
+        "preflight_elapsed_ms",
+        "request_sha256",
+        "required_free_bytes"
+      ],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "page_count": {"type": "integer", "minimum": 1},
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "planned_peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "preflight_elapsed_ms": {"type": "integer", "minimum": 1},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "required_free_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
