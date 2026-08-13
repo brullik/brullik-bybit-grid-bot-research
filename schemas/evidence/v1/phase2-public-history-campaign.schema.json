@@ -24,6 +24,7 @@
       "required": [
         "automatic_increase_count",
         "child_job_count",
+        "completed_page_response_coverage_complete",
         "complete_header_observation_count",
         "configured_target_rps",
         "cooldown_event_count",
@@ -38,12 +39,15 @@
         "rate_limit_event_count",
         "rate_reduction_count",
         "response_observation_count",
-        "response_observation_coverage_complete",
-        "unobserved_http_response_count"
+        "response_observation_classification_complete",
+        "transport_attempt_accounting_complete",
+        "transport_attempt_count",
+        "transport_attempt_without_response_count"
       ],
       "properties": {
         "automatic_increase_count": {"const": 0},
         "child_job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "completed_page_response_coverage_complete": {"type": "boolean"},
         "complete_header_observation_count": {"type": "integer", "minimum": 0},
         "configured_target_rps": {"type": "integer", "minimum": 1},
         "cooldown_event_count": {"type": "integer", "minimum": 0},
@@ -58,8 +62,10 @@
         "rate_limit_event_count": {"type": "integer", "minimum": 0},
         "rate_reduction_count": {"type": "integer", "minimum": 0},
         "response_observation_count": {"type": "integer", "minimum": 0},
-        "response_observation_coverage_complete": {"type": "boolean"},
-        "unobserved_http_response_count": {"type": "integer", "minimum": 0}
+        "response_observation_classification_complete": {"const": true},
+        "transport_attempt_accounting_complete": {"const": true},
+        "transport_attempt_count": {"type": "integer", "minimum": 1},
+        "transport_attempt_without_response_count": {"type": "integer", "minimum": 0}
       }
     },
     "bindings": {

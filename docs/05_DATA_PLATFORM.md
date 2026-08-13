@@ -41,8 +41,11 @@ halve it and impose a cooldown, and HTTP 403 aborts the current run with the doc
 resume boundary. Missing/invalid headers are counted and never interpreted as permission to
 increase. Receipt-bound long-run qualification remains required before full-universe scale or any
 operating-rate increase. ADR-0044 makes that qualification reproducible: new child manifests bind
-execution start/completion, and the strict campaign evidence projection requires one sanitized
-adaptive observation for every verified HTTP attempt without publishing response or market data.
+execution start/completion, and the strict campaign evidence projection checks sanitized adaptive
+response accounting without publishing response or market data. ADR-0045 defines the measured
+boundary: every completed page response must have an observation,
+while retryable transport attempts that produced no HTTP response are counted separately rather
+than being mislabeled as missing headers.
 
 ADR-0032 adds the separate funding path. Each series has one receipted predecessor query and
 fixed range pages of at most seven days/200 rows. A range response with the full requested limit

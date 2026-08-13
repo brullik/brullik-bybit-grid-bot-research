@@ -123,6 +123,18 @@ class UnobservedFundingClient:
         return self._delegate.funding_page(**kwargs)
 
 
+class RetryWithoutResponseKlineClient(FakeKlineClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self._fail_once_without_response = True
+
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        if self._fail_once_without_response:
+            self._fail_once_without_response = False
+            raise BybitPublicError("injected transport failure without response")
+        return super().kline_page(**kwargs)
+
+
 def inventory_record(
     symbol: str,
     source_symbol_id: int,
@@ -472,6 +484,7 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
     assert payload["adaptive_throttling"] == {  # type: ignore[index]
         "automatic_increase_count": 0,
         "child_job_count": 12,
+        "completed_page_response_coverage_complete": True,
         "complete_header_observation_count": 0,
         "configured_target_rps": 96,
         "cooldown_event_count": 0,
@@ -486,8 +499,10 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
         "rate_limit_event_count": 0,
         "rate_reduction_count": 0,
         "response_observation_count": payload["landing"]["http_request_count"],  # type: ignore[index]
-        "response_observation_coverage_complete": True,
-        "unobserved_http_response_count": 0,
+        "response_observation_classification_complete": True,
+        "transport_attempt_accounting_complete": True,
+        "transport_attempt_count": payload["landing"]["http_request_count"],  # type: ignore[index]
+        "transport_attempt_without_response_count": 0,
     }
     assert payload["timing"] == {  # type: ignore[index]
         "campaign_completed_at_ms": 1_002,
@@ -532,10 +547,30 @@ def test_campaign_evidence_strict_throttling_rejects_unobserved_responses(
     tmp_path: Path,
 ) -> None:
     completed = execute(preflight(tmp_path), UnobservedKlineClient(), UnobservedFundingClient())
-    with pytest.raises(HistoryCampaignError, match="one observation per HTTP request"):
+    with pytest.raises(HistoryCampaignError, match="every completed page response"):
         build_history_campaign_evidence(
             completed.campaign_root,
             generated_at_utc="2026-08-13T12:00:00Z",
             software_identity="git:" + "1" * 40,
             require_complete_throttling_evidence=True,
         )
+
+
+def test_campaign_evidence_accounts_retry_without_http_response(tmp_path: Path) -> None:
+    completed = execute(
+        preflight(tmp_path, request=request_payload(max_attempts=2)),
+        RetryWithoutResponseKlineClient(),
+        FakeFundingClient(),
+    )
+    payload = build_history_campaign_evidence(
+        completed.campaign_root,
+        generated_at_utc="2026-08-13T12:00:00Z",
+        software_identity="git:" + "1" * 40,
+        require_complete_throttling_evidence=True,
+    )
+    adaptive = payload["adaptive_throttling"]  # type: ignore[assignment]
+    assert adaptive["completed_page_response_coverage_complete"] is True
+    assert adaptive["transport_attempt_accounting_complete"] is True
+    assert adaptive["transport_attempt_without_response_count"] == 1
+    assert adaptive["transport_attempt_count"] == payload["landing"]["http_request_count"]  # type: ignore[index]
+    assert adaptive["response_observation_count"] == payload["landing"]["page_count"]  # type: ignore[index]

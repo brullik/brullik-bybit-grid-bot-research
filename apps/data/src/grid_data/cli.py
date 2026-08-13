@@ -304,8 +304,8 @@ def parser() -> argparse.ArgumentParser:
         "--require-complete-throttling-evidence",
         action="store_true",
         help=(
-            "fail unless every child has execution timing and one sanitized adaptive "
-            "observation per HTTP response"
+            "fail unless every child has execution timing and every completed page response "
+            "has a sanitized adaptive observation"
         ),
     )
     campaign_evidence.set_defaults(handler=_history_campaign_evidence)

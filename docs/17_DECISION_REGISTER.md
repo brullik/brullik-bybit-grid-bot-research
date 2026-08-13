@@ -48,6 +48,7 @@
 | D-042 | Complete-current Bybit linear inventory enumerates the dated normative `PreLaunch`, `Trading`, `Delivering`, and `Closed` status policy | accepted | Exact policy binding, per-filter status parity, genuine rejection remains partial, immutable older evidence, and ADR-0042 |
 | D-043 | Public candle/funding acquisition applies one receipt-evidenced global decrease-only pacer to response headers and rate-limit outcomes | accepted | 20% headroom cap, no automatic increase, 429/10006 cooldown, 403 abort/resume boundary, backward-compatible manifests, and ADR-0043 |
 | D-044 | Long-run public acquisition evidence requires receipt-bound timing and one sanitized adaptive observation per verified HTTP response | accepted | Strict campaign projection, legacy compatibility, aggregate-only GitHub disclosure, and ADR-0044 |
+| D-045 | Long-run evidence distinguishes transport attempts without an HTTP response from classified response observations | accepted | Every completed page response must be covered; bounded no-response retries remain explicit; ADR-0045 |
 
 ## Decisions requiring benchmark or owner evidence
 

@@ -1,6 +1,6 @@
 # ADR-0044: Receipt-bound long-run throttling evidence
 
-- Status: accepted
+- Status: accepted; strict attempt/response criterion superseded by ADR-0045
 - Date: 2026-08-13
 - Implements: Phase 2 measured long-duration public acquisition evidence
 

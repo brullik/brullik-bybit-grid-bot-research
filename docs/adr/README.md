@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0045 - Transport-attempt versus HTTP-response accounting](ADR-0045-transport-attempt-versus-response-accounting.md)
 - [ADR-0044 - Receipt-bound long-run throttling evidence](ADR-0044-receipt-bound-long-run-throttling-evidence.md)
 - [ADR-0043 - Decrease-only global public REST throttling](ADR-0043-decrease-only-global-public-rest-throttling.md)
 - [ADR-0042 - Dated current linear-status inventory policy](ADR-0042-dated-current-linear-status-inventory-policy.md)
