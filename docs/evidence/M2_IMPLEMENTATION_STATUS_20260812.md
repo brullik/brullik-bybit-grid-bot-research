@@ -122,8 +122,23 @@ every selected manifest and file, rejects mutable-latest behavior, missing month
 ancestor-plus-child inputs, and overlapping key ranges, and publishes receipt-bound store-relative
 object keys. The result proves deterministic pruning, not historical completeness. Runtime DuckDB
 and market data remain outside Git; schemas, tests, ADR-0030, and sanitized evidence contracts are
-authoritative in GitHub. Representative runtime registration/selection evidence is still required
-before Gate 2.
+authoritative in GitHub.
+
+The receipt-verified representative run is
+[`m2-canonical-catalog-registration-20260813.json`](../../benchmarks/results/m2-canonical-catalog-registration-20260813.json)
+plus
+[`m2-canonical-catalog-selection-20260813.json`](../../benchmarks/results/m2-canonical-catalog-selection-20260813.json).
+It used implementation merge identity `git:15c58b2aeba7c605df4c59f80a124673bb9cc156`
+and registered the existing two-instrument, 20,160-row pilot manifest
+`2b9f6cce69be8bec260b1745c4380e2278bdfdd96d6d1438f79ce5c664269117`.
+The resulting catalog is revision 1 with logical content SHA-256
+`154c1e644466a44e93945473208823fda19ccf1f6ea39b0becd50636cc70c122`.
+An exact request for instrument IDs 5 and 29 over 2026-07-01 through 2026-07-07 selected one
+hash-bound object with a 20,160-row/481,048-byte inventory; request SHA-256 is
+`da456e1b7569938326d1d350177bf0f7fc959a8a7f2d3177f4fed702947baec4`.
+Identical registration and selection reruns retained revision/hash and re-verified their existing
+evidence. No candle values, absolute paths, credentials, account data, or runtime DuckDB bytes are
+in GitHub. This proves representative catalog/selection operation only, not full-history coverage.
 
 ## Still required before Gate 2
 
@@ -131,6 +146,5 @@ before Gate 2.
 - measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
-- representative receipt-verified catalog registration/selection evidence;
 - long-run adaptive throttling evidence and controlled scale-up; and
 - funding ingestion plus the remaining PM-owned Gate 2 acceptance checklist.
