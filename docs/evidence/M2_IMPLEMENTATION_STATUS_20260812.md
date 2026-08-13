@@ -799,7 +799,9 @@ result only inside the same command. On the unchanged 978-job/43,328-page local 
 development preflight measured 72,018 ms and 70,399 ms in two runs; after the second preflight,
 the executor traversed 927 verified children and reached a synthetic first-pending HTTP 403 in
 1,257 ms with exactly one client call. These are pre-merge diagnostic measurements, not Gate 2
-acceptance evidence; a schema-bound post-merge measurement remains required.
+acceptance evidence; a schema-bound post-merge measurement remains required. The implementation,
+regression proofs, and review are tracked in
+[PR #74](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/74).
 
 ADR-0055 adds funding repair discovery planning without changing ADR-0034 acceptance. A planner
 re-verifies and recomputes a blocked audit, admits only a complete set of isolated integer-multiple
