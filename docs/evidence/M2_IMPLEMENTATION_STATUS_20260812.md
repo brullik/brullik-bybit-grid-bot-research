@@ -98,6 +98,16 @@ The authoritative implementation and review history is:
   GitHub-safe aggregate funding source-boundary evidence projection.
 - PR [#63](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/63): receipt-verified,
   schema-bound measured five-instrument funding source-boundary evidence.
+- PR [#64](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/64): receipt-bound
+  quarantine for recognized invalid candle source rows without alternate-source substitution.
+- PR [#65](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/65): sanitized aggregate
+  source-quality evidence for candle-only campaigns containing quarantined source rows.
+- PR [#66](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/66): exact
+  receipt-verified funding source-boundary admission into full-history campaign children.
+- PR [#67](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/67): quarantine-aware
+  coverage classification and strict exclusion from ordinary same-source gap repair.
+- PR [#68](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/68): exact immutable
+  canonical funding compaction with cross-parent settlement-interval verification.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -764,6 +774,13 @@ free-space gate but completed in 3,284 ms. The
 records a 38.246x speedup and 97.39% elapsed reduction while excluding paths, device identity,
 instrument identities, market values, account data, credentials, and any Gate 2 implication.
 
+ADR-0055 adds funding repair discovery planning without changing ADR-0034 acceptance. A planner
+re-verifies and recomputes a blocked audit, admits only a complete set of isolated integer-multiple
+`C, N*C, C` interval sandwiches with no other blocker, and embeds bounded ordinary public funding
+requests for the inferred candidate settlements. It does not execute those requests, use current
+interval metadata, accept a candidate or schedule change, mutate canonical data, or publish exact
+runtime identities to GitHub. Execution and immutable repair-child publication remain separate.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
@@ -774,6 +791,6 @@ instrument identities, market values, account data, credentials, and any Gate 2 
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - further controlled scale-up and dated evidence/policy for the seven blocked July funding
   cadence transitions; and
-- funding repair implementation/evidence, measured ADR-0054 funding-compaction evidence, and the
-  remaining PM-owned Gate 2 acceptance checklist; compaction implementation alone is not measured
-  acceptance.
+- funding repair discovery execution/publication and evidence, measured ADR-0054
+  funding-compaction evidence, and the remaining PM-owned Gate 2 acceptance checklist; planning
+  and compaction implementation alone are not measured acceptance.

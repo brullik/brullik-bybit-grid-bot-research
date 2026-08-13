@@ -256,6 +256,16 @@ receipt-last child. `grid.canonical-funding-compaction/v1` is the value-free Git
 logical equality, file reduction, target classification, unchanged parents, and complete lineage.
 It does not accept chronology, repair missing events, register the child, or close Gate 2.
 
+`grid.bybit-funding-repair-plan/v1` is a receipt-last, no-network private discovery plan. It
+recomputes the exact blocked `grid.canonical-funding-coverage-audit/v1` and is valid only when
+`unexplained_interval_change` is the sole blocker and every changed edge belongs to an isolated
+integer-multiple `C, N*C, C` pattern. Each task binds exact candidate settlement timestamps, the
+source-observed predecessor, and one bounded standard funding request. The plan accepts no
+candidate or schedule change, uses no current interval metadata, mutates no dataset, and is
+limited to 1,000 tasks/candidates and 100,000 maximum HTTP attempts. Real artifacts remain
+private because exact instrument and settlement identities are operational evidence; see
+ADR-0055.
+
 `grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
 complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
 month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically
