@@ -551,3 +551,37 @@ The command re-verifies every child again and can take minutes. It writes only h
 aggregate counts, measured bytes, public endpoint policy, process facts, and limitations. Never
 commit the campaign plan/manifests or Landing pages: they contain runtime relative paths, symbols,
 instrument identities, and market values.
+
+## 19. Publish a completed campaign as canonical datasets
+
+Use the exact publisher merge commit containing ADR-0039. First run the aggregate no-mutation
+preflight; it verifies the acquisition campaign and every child Landing input while retaining only
+one Arrow batch at a time:
+
+```powershell
+.venv\Scripts\grid-data.exe publish-history-campaign `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-merge-commit-sha>
+```
+
+Review the source manifest hash, dataset/pending counts, maximum single-writer free-space and
+memory bounds, and deterministic publication root. Repeat the exact command with `--execute` only
+after preflight passes. Writers run sequentially; each emits progress JSON only after its own
+canonical completion receipt verifies. If interrupted, rerun the same command: already committed
+datasets are hash-verified and reused, never rewritten.
+
+Verify the aggregate receipt and every source/canonical relationship independently:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-history-campaign-publication `
+  data\market-store\.publication-campaigns\m2-representative-5x24--<plan-prefix> `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<plan-prefix>
+```
+
+This command performs no exchange request. A successful result proves immutable publication and
+lineage only. Run the separate candle and funding coverage audits before claiming requested-range
+quality; register only explicitly selected verified datasets in the catalog. Do not commit runtime
+campaign plans, Landing data, Parquet, or local catalog files.

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-resumable canonical publication for a completed public history campaign: bounded
+  one-child-at-a-time preflight, sequential candle/funding writers, immutable child-receipt reuse,
+  receipt-last aggregate lineage verification, and no network/credential/live dependency.
 - GitHub-safe, receipt-verified public history campaign evidence with exact aggregate hashes,
   kind/job/page/row/HTTP/retry counts, measured Landing bytes, immutable implementation identity,
   and schema-enforced exclusion of market values, runtime paths, account data, and credentials.

@@ -53,6 +53,15 @@ before the first child, each existing child receipt is reused, and an aggregate 
 is written only after all child allowlists and hashes verify. Registry lifecycle intersection is
 ex-post acquisition scoping, not point-in-time research metadata.
 
+ADR-0039 adds the separate Landing-to-canonical campaign boundary. It re-verifies one completed
+campaign, resolves each candle/funding publication one at a time, and freezes all source,
+input-table, canonical-request, dataset, and publisher identities before mutation. Canonical
+writers run strictly sequentially and resume from their own immutable completion receipts. The
+aggregate resource gate uses the maximum single-child writer requirement because every child
+already reserves the same full active-plus-building envelope and only one write workspace exists
+at a time. A campaign manifest receipt is committed only after every canonical dataset verifies;
+coverage audits and catalog registration remain separate.
+
 ## Data layers
 
 ```mermaid
@@ -227,6 +236,11 @@ the Landing manifest, instrument registry, accepted capacity evidence, exact Arr
 layout, and explicit software identity. Its deterministic dataset ID is derived from the complete
 Landing manifest hash. Publication is no-mutation by default and repeats a fresh host observation
 before `--execute`; successful writing is not lifecycle/gap acceptance.
+
+ADR-0039 composes that adapter with the funding equivalent for a completed ADR-0038 campaign. Its
+runtime aggregate plan lives under `.publication-campaigns`, never embeds Arrow batches, and uses
+each canonical completion receipt as the resume marker. It neither merges partitions nor changes
+the immutable single-child layout.
 
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact

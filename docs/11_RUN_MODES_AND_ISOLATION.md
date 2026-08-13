@@ -25,6 +25,8 @@ Funding-specific pilot evidence and a fail-closed source-chronology audit remain
 read-only commands; neither uses current undated interval metadata.
 Multi-month public acquisition is now a separate `history-campaign` coordinator over those same
 child boundaries. It has no research, catalog, live, credential, or private-endpoint dependency.
+Canonical campaign publication is a second `grid-data` coordinator: it consumes only a completed
+campaign, runs the existing receipt-last writers sequentially, and has no Bybit network client.
 
 ## Separate startup examples
 
@@ -47,6 +49,13 @@ grid-data history-campaign --request <campaign-request.json> \
   --staging-root <local-path>
 # Repeat with --execute only after aggregate no-mutation preflight; children run sequentially.
 grid-data verify-history-campaign <completed-campaign-root>
+grid-data publish-history-campaign --campaign-root <completed-campaign-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --software-identity git:<full-commit-sha>
+# Repeat with --execute only after aggregate no-mutation preflight; canonical children are serial.
+grid-data verify-history-campaign-publication \
+  <store>/.publication-campaigns/<publication-campaign-root> \
+  --campaign-root <completed-campaign-root>
 grid-data publish-history-1m --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --software-identity git:<full-commit-sha>

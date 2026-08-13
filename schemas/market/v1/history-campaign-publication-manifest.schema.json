@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-campaign-publication-manifest.schema.json",
+  "title": "Completed canonical history campaign publication manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "campaign_id",
+    "capacity_evidence_sha256",
+    "completed_at_ms",
+    "contract",
+    "dataset_count",
+    "datasets",
+    "file_count",
+    "instrument_evidence_sha256",
+    "parquet_bytes",
+    "publication_plan_sha256",
+    "publisher_software_identity",
+    "row_count",
+    "source_campaign_manifest_sha256",
+    "source_campaign_plan_sha256",
+    "status"
+  ],
+  "properties": {
+    "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "completed_at_ms": {"type": "integer", "minimum": 0},
+    "contract": {"const": "grid.history-campaign-publication-manifest/v1"},
+    "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2880,
+      "items": {"$ref": "#/$defs/dataset"}
+    },
+    "file_count": {"type": "integer", "minimum": 1},
+    "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "parquet_bytes": {"type": "integer", "minimum": 1},
+    "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "publisher_software_identity": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    },
+    "row_count": {"type": "integer", "minimum": 1},
+    "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "complete"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_root",
+        "dataset_type",
+        "file_count",
+        "kind",
+        "manifest_sha256",
+        "parquet_bytes",
+        "publication_request_sha256",
+        "row_count",
+        "sequence",
+        "source_job_manifest_sha256"
+      ],
+      "properties": {
+        "dataset_id": {"type": "string", "pattern": "^(?:trade-1m|mark-1m|funding)-[0-9a-f]{24}$"},
+        "dataset_root": {
+          "type": "string",
+          "pattern": "^datasets/(?:trade-1m|mark-1m|funding)-[0-9a-f]{24}$"
+        },
+        "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m", "funding_event"]},
+        "file_count": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["trade", "mark", "funding"]},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "parquet_bytes": {"type": "integer", "minimum": 1},
+        "publication_request_sha256": {"$ref": "#/$defs/sha256"},
+        "row_count": {"type": "integer", "minimum": 1},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 2879},
+        "source_job_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

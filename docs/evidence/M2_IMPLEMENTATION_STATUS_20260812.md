@@ -61,6 +61,12 @@ The authoritative implementation and review history is:
   partial-inventory evidence.
 - PR [#41](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/41): receipt-resumable
   multi-month public history campaigns with aggregate preflight and deterministic child reuse.
+- PR [#42](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/42): bounded retry
+  classification for direct stdlib connection/protocol failures observed by the real campaign.
+- PR [#43](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/43): receipt-verified,
+  GitHub-safe measured evidence for the completed 5-instrument, 24-month Landing campaign.
+- PR [#44](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/44): receipt-resumable,
+  sequential canonical publication of every completed campaign child with aggregate verification.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -483,12 +489,34 @@ builder identity `git:2089d77820078b72d1dd5c405b2a91f51d2b9034`. Trade and mark 
 5,263,200 rows over 5,325 pages and 5,326 HTTP attempts; funding contains 10,965 events over 715
 predecessor/range pages and 715 attempts.
 
+## Resumable canonical campaign publication implementation
+
+ADR-0039 and `grid-data publish-history-campaign` compose the existing verified candle and
+funding publication boundaries over a completed ADR-0038 campaign. Aggregate preflight resolves
+each child one at a time, freezes the source manifest, exact Arrow input hash, canonical request,
+deterministic dataset identity, publisher Git identity, and writer resource bound, then releases
+the batch before examining the next child. It performs no mutation by default.
+
+Execution writes the aggregate plan receipt before the first child, invokes only one canonical
+writer at a time, and uses each canonical completion receipt as its resume marker. The aggregate
+free-space requirement is the maximum child requirement rather than a false sum of 72 identical
+active-plus-building/operating reserves. Every child still receives a fresh preflight and the
+existing second host check before mutation. The aggregate completion receipt is written last only
+after every source job, canonical audit/file/manifest/receipt, and total verifies. Fault-injection
+tests cover interruption after a committed child, receipt-based resume without rewrite, complete
+idempotency, resource failure before mutation, source substitution, and outer/canonical tampering.
+
+This implementation contains no public or private Bybit client and cannot create an order, bot,
+or transfer. A completed publication campaign still requires separate candle/funding coverage
+audits and catalog registration. Measured publication of the 72-child representative runtime
+campaign belongs in a subsequent evidence commit using the immutable merged publisher identity.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a
   resolution for the partial source inventory; the current timeline begins on 2026-08-12;
-- execution, canonical publication, and coverage-audit evidence for the representative multi-year
-  and full-history controlled scales;
+- canonical publication and coverage-audit evidence for the representative multi-year and
+  full-history controlled scales;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
