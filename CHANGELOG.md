@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Fail-closed funding source-chronology audit with exact Landing/Parquet parity, complete range-page
+  tiling, private predecessor/internal interval recomputation, stable observed-cadence policy,
+  hash-bound anomaly inventory, and explicit blocking of empty windows or undated cadence changes.
 - GitHub-safe funding pilot evidence with exact Landing/Parquet equality, private predecessor and
   internal interval recomputation, sparse event/window accounting, transitive receipts/hashes,
   immutable publisher identity, and no rates, observed settlement times, paths, host/account data,

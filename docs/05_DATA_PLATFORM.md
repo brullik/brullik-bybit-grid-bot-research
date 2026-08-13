@@ -39,6 +39,10 @@ is rejected as potentially truncated. The predecessor and requested events deriv
 intervals from settlement chronology; the current registry interval is not reused as historical
 truth. Funding Landing has its own manifest and completion receipt, while host/capacity admission,
 bounded concurrency, explicit retries, and receipt-based resume remain consistent with 1m jobs.
+ADR-0034 adds a read-only funding chronology audit: exact source/canonical parity, range-page
+tiling, predecessor/internal interval recomputation, and stable observed cadence. Empty pages and
+cadence changes remain blocked without dated evidence; current interval metadata is never used as
+historical truth.
 
 ## Data layers
 
@@ -225,6 +229,7 @@ Required checks include:
 - no candle before launch or after effective close/delisting interval;
 - source request/page coverage;
 - unresolved gaps and reason codes;
+- funding predecessor/internal interval parity, empty windows, and unexplained cadence changes;
 - conflicting duplicate evidence;
 - file hash and Parquet footer validation;
 - orphan and unreferenced file detection;

@@ -74,6 +74,15 @@ order, bot, or transfer is in GitHub. This proves only the bounded source return
 publication; it does not prove complete funding chronology, lifecycle coverage, scale behavior,
 or Gate 2.
 
+`grid-data audit-funding-history` and `grid.canonical-funding-coverage-audit/v1` now provide the
+funding-specific read-only boundary. They prove exact Landing/Parquet parity, predecessor and
+internal interval derivation, range-page tiling, lifecycle bounds, and stable observed cadence.
+Empty source windows and cadence changes are unaccepted blockers; current undated
+`fundingInterval` is never historical evidence. The audit publishes counts, interval histograms,
+transitive hashes, and a complete private-anomaly hash without rates or observed settlement
+timestamps. Measured audit evidence remains pending until this implementation is merged; Gate 2
+remains closed.
+
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
 Local Landing pages, candle rows, and Parquet files are deliberately not in Git. Their canonical

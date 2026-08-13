@@ -440,3 +440,32 @@ and transitive hashes are safe to commit. The schema forbids rates, observed set
 local paths, device/account data, credentials, and runtime market artifacts. This bounded proof is
 not a funding chronology/lifecycle audit, repair, compaction, catalog registration, scale result,
 or Gate 2 acceptance.
+
+## 17. Audit funding source chronology
+
+Run the read-only audit only after canonical publication. The publisher identity must be the SHA
+already bound into the canonical manifest; the auditor identity is the full Git SHA containing the
+audit implementation:
+
+```powershell
+.venv\Scripts\grid-data.exe audit-funding-history `
+  --job-root data\history\.funding-landing\funding-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --publisher-software-identity git:<full-publisher-commit-sha> `
+  --audit-software-identity git:<full-auditor-commit-sha> `
+  --output benchmarks\results\m2-canonical-funding-coverage-audit-<date>.json
+```
+
+The command makes no network call and does not mutate Landing or canonical storage. It
+re-verifies all receipts and identities, exact Landing/Parquet equality, one predecessor per
+series, complete range-page tiling, registry lifecycle bounds, and every derived interval. It
+writes the audit and receipt even when blocked, then exits `2` for a blocked result.
+
+V1 accepts no absence or schedule-change reason. An empty range page, predecessor/internal
+interval mismatch, or change in observed cadence is hash-bound and blocks. Do not use current
+`fundingInterval` to override the result; a legitimate historical cadence change needs separately
+dated evidence or an explicit governance decision. A passing bounded audit still does not prove an
+independent venue ledger, full lifecycle/history, repair, compaction, catalog readiness, scale, or
+Gate 2.
