@@ -467,6 +467,22 @@ bounded fault-injection tests cover disconnect-then-success, exhausted disconnec
 unchanged immediate failure for non-retryable HTTP responses. The unchanged campaign can resume
 without refetching its verified children.
 
+The resumed execution completed all 72 children and the independent no-network verifier passed.
+The aggregate contains 11,365 pages, 10,537,365 returned rows, and 11,367 recorded HTTP attempts,
+so the entire run required two explicit retries. The completed manifest SHA-256 is
+`cef361cb5eb04cee9f2c645a5281b06f50b050eaaf327c58d170b725f558485a`. Runtime campaign files
+measure 693,425,484 bytes and remain under ignored `data/` storage. A separate schema-bound
+summary publishes only those safe aggregate facts and transitive hashes; no price, volume,
+funding rate, symbol/instrument identity, path, host/account data, or credential enters Git.
+The receipt-verified
+[sanitized evidence](../../benchmarks/results/m2-public-history-campaign-5x24-20260813.json)
+has artifact SHA-256
+`9bc405aece11e2e7f312600b2ef4533155f6656cf08c728dd7c8bbd49a2a1ebe`, content SHA-256
+`ea2074b1449a1baea1e0eb78697e908aa8f3a34ca180b9c9ed5717072a9e7b5e`, and binds evidence
+builder identity `git:2089d77820078b72d1dd5c405b2a91f51d2b9034`. Trade and mark each contain
+5,263,200 rows over 5,325 pages and 5,326 HTTP attempts; funding contains 10,965 events over 715
+predecessor/range pages and 715 attempts.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a

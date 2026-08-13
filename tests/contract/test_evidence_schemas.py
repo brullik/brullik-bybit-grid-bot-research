@@ -202,6 +202,70 @@ def test_representative_multi_year_campaign_request_is_bounded_and_sanitized() -
         assert forbidden not in rendered
 
 
+def test_representative_multi_year_campaign_evidence_is_bound_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks/results/m2-public-history-campaign-5x24-20260813.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/phase2-public-history-campaign.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["bindings"]["campaign_manifest_sha256"] == (
+        "cef361cb5eb04cee9f2c645a5281b06f50b050eaaf327c58d170b725f558485a"
+    )
+    assert payload["bindings"]["campaign_plan_sha256"] == (
+        "ab32162397e396975071ee3a64cdc372b58938c3f1865439b9e93501611d8f4e"
+    )
+    assert payload["landing"] == {
+        "artifact_bytes": 693_425_484,
+        "by_kind": [
+            {
+                "http_request_count": 5_326,
+                "job_count": 24,
+                "kind": "trade",
+                "page_count": 5_325,
+                "row_count": 5_263_200,
+            },
+            {
+                "http_request_count": 5_326,
+                "job_count": 24,
+                "kind": "mark",
+                "page_count": 5_325,
+                "row_count": 5_263_200,
+            },
+            {
+                "http_request_count": 715,
+                "job_count": 24,
+                "kind": "funding",
+                "page_count": 715,
+                "row_count": 10_965,
+            },
+        ],
+        "http_request_count": 11_367,
+        "job_count": 72,
+        "page_count": 11_365,
+        "retry_count": 2,
+        "row_count": 10_537_365,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"symbol"',
+        '"instrument_id"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
     specifications = ROOT / "benchmarks" / "specifications"
     results = ROOT / "benchmarks" / "results"

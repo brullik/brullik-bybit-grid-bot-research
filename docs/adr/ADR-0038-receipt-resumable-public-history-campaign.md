@@ -51,6 +51,13 @@ The campaign root contains only `plan.json`, `plan.receipt.json`, `manifest.json
 Verification rechecks the campaign receipts, deterministic child paths, child plan and manifest
 hashes, request hashes, page/row/HTTP totals, and every completed child allowlist.
 
+`grid.phase2-public-history-campaign/v1` is the only campaign projection intended for GitHub. It
+is built after full re-verification and contains transitive hashes, immutable software identity,
+scope counts, per-kind and aggregate job/page/row/HTTP/retry counts, measured Landing bytes,
+public endpoint policy, and explicit limitations. It contains no runtime paths, symbols,
+instrument IDs, market values, device/account data, or credentials. The complete runtime plan,
+child pages/manifests, and aggregate manifest remain ignored local data.
+
 The measured error-free 15-RPS controlled-scale setting may be requested explicitly for the
 representative run, but this ADR does not raise the 10-RPS default or claim a venue rate limit.
 Adaptive response-header throttling and longer-duration variability evidence remain separate

@@ -17,6 +17,7 @@ from grid_data.history_campaign import (
     preflight_history_campaign,
     verify_completed_history_campaign,
 )
+from grid_data.history_campaign_evidence import build_history_campaign_evidence
 from grid_data.instrument_registry import build_instrument_registry
 from grid_market_store import HostSnapshot
 from jsonschema import Draft202012Validator
@@ -415,3 +416,54 @@ def test_campaign_detects_tampered_outer_or_child_artifact(tmp_path: Path) -> No
     child_manifest.write_bytes(child_manifest.read_bytes() + b" ")
     with pytest.raises(HistoryAcquisitionError, match=r"canonical|receipt"):
         verify_completed_history_campaign(child_completed.campaign_root)
+
+
+def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path: Path) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient(), FakeFundingClient())
+    payload = build_history_campaign_evidence(
+        completed.campaign_root,
+        generated_at_utc="2026-08-13T12:00:00Z",
+        software_identity="git:" + "1" * 40,
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-public-history-campaign.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(payload)
+    hash_input = dict(payload)
+    embedded = hash_input.pop("content_sha256")
+    assert embedded == canonical_sha256(hash_input)
+    assert payload["landing"]["job_count"] == 12  # type: ignore[index]
+    assert payload["landing"]["row_count"] == 16  # type: ignore[index]
+    assert payload["landing"]["retry_count"] == 0  # type: ignore[index]
+    assert payload["scope"] == {  # type: ignore[index]
+        "bucket_count": 2,
+        "end_ms": FEBRUARY_1_2026_0001_MS,
+        "kind_count": 3,
+        "month_count": 2,
+        "start_ms": JANUARY_31_2026_2358_MS,
+        "symbol_count": 2,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "aaausdt",
+        "bbbusdt",
+        "c:\\",
+        "/home/",
+        '"open"',
+        "fundingrate",
+        "api_key",
+        "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
+def test_campaign_evidence_rejects_mutable_software_identity(tmp_path: Path) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient(), FakeFundingClient())
+    with pytest.raises(HistoryCampaignError, match="software identity"):
+        build_history_campaign_evidence(
+            completed.campaign_root,
+            generated_at_utc="2026-08-13T12:00:00Z",
+            software_identity="working-tree",
+        )

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- GitHub-safe, receipt-verified public history campaign evidence with exact aggregate hashes,
+  kind/job/page/row/HTTP/retry counts, measured Landing bytes, immutable implementation identity,
+  and schema-enforced exclusion of market values, runtime paths, account data, and credentials.
 - Receipt-resumable public history campaign orchestration for up to 700 instruments and 120
   calendar months across trade, mark, and funding: deterministic month/type/eight-bucket child
   jobs, aggregate no-mutation host admission, sequential pacing, exact attempt bounds, child
