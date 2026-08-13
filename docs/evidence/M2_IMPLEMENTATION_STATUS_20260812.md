@@ -35,6 +35,8 @@ The authoritative implementation and review history is:
   catalog registration/selection evidence for the existing receipt-verified public pilot.
 - PR [#29](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/29): exact canonical
   funding physical contract and receipt-last immutable publication primitive.
+- PR [#30](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/30): predecessor-bound,
+  receipt-resumable public funding acquisition and verified Landing-to-canonical adapter.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
