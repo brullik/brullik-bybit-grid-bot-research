@@ -27,6 +27,8 @@ The authoritative implementation and review history is:
   bounded standard-request planning for blocked 1m gaps; and
 - PR [#25](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/25): whole-plan-admitted
   repair execution and immutable parent-to-child replacement lineage.
+- PR [#26](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/26): target-size
+  immutable compaction, multi-file/tail verification, and complete parent lineage.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
@@ -92,12 +94,23 @@ sole parent. The value-free replacement proof records both manifests and exact r
 Positive, blocked, substitution, parent-immutability, and idempotent-rerun fixtures pass. The real
 pilot has no genuine gap, so no synthetic result is represented as measured runtime evidence.
 
+## Immutable compaction implementation
+
+`grid-data compact` accepts one or more receipt-verified parents only when they form one exact
+month/bucket partition. It rejects duplicate/conflicting keys instead of deduplicating them,
+preflights estimated and actual memory/free-space bounds before mutation, and publishes a new
+receipt-last child only when file count is reduced. Deterministic multi-file fixtures prove ordered
+16 MiB target planning, one explicit final tail, logical input/output equality, complete parent
+lineage, unchanged parents, idempotent rerun, insufficient-resource blocking, and substitution
+detection. `grid.canonical-1m-compaction/v1` provides the value-free receipt-bound proof. A
+representative measured runtime artifact is still required before Gate 2.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
 - measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
 - measured repair execution/replacement evidence when a genuine gap is observed;
-- multi-file target-size compaction and tail policy at representative scale;
+- measured multi-file compaction/target-attainment evidence at representative scale;
 - catalog registration and reproducible range selection;
 - long-run adaptive throttling evidence and controlled scale-up; and
 - funding ingestion plus the remaining PM-owned Gate 2 acceptance checklist.

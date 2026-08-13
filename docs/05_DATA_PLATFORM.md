@@ -260,7 +260,11 @@ empty response remains blocked, and the old canonical files are never edited or 
   passed execution is still not a canonical mutation.
 - A successful repair publishes a new child dataset with the old manifest and every repair source
   hash in lineage; it never patches the parent in place.
-- Periodic compaction merges small incremental files into target-size files.
+- Periodic compaction verifies one or more immutable parents from exactly one month/bucket,
+  rejects every duplicate/conflicting key, and writes a new receipt-last child. It calibrates the
+  16 MiB ZSTD-3 row target from a bounded in-memory sample, permits only one explicit final tail,
+  records observed target classification per file, and runs only when output file count is lower
+  than input fragment count. Parents are never edited or deleted (ADR-0029).
 - Catalog statistics allow research jobs to select only required partitions.
 - Resume uses receipts, not directory guessing.
 

@@ -117,6 +117,20 @@ binds both manifests and records exact parent/repaired/replacement row accountin
 blockers, and `parent_dataset_mutated=false`. It is not catalog registration, compaction, or Gate 2
 acceptance.
 
+`grid.canonical-candle-compaction-publication/v1` combines one or more fully verified candle
+parents only when their exact schema, dataset type, UTC month, and stable bucket match. The
+complete sorted parent union must have unique keys, output must reduce fragment count, and the
+child manifest lists every ordered parent ID. A fixed-batch logical table hash proves values are
+unchanged independently of Parquet/chunk boundaries. Target sizing is calibrated from a bounded
+ZSTD-3 sample; every non-final file uses the planned row target and only the final file may be an
+explicit tail.
+
+`grid.canonical-1m-compaction/v1` is the receipt-last GitHub-safe proof. It binds capacity, every
+parent and child manifest hash, equal input/output logical hashes, file-count reduction, actual
+output bytes, 16 MiB target facts, at most one tail, complete lineage, and immutable Git software
+identity. It contains no market values, runtime paths, host identity, account data, or credentials.
+It does not register a catalog entry, delete a parent, or close Gate 2.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

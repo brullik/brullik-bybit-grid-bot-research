@@ -1,5 +1,12 @@
 """Canonical market-store physical contracts; no network or live dependencies."""
 
+from grid_market_store.compaction import (
+    COMPACTION_PUBLICATION_CONTRACT,
+    CandleCompactionPlan,
+    preflight_candle_compaction,
+    publish_compacted_candle_dataset,
+    verify_compacted_candle_dataset,
+)
 from grid_market_store.physical import (
     BUCKET_ALGORITHM_ID,
     BUCKET_COUNT,
@@ -22,6 +29,8 @@ from grid_market_store.physical import (
 )
 from grid_market_store.publication import (
     AUDIT_CONTRACT,
+    COMPACTION_AUDIT_CONTRACT,
+    COMPACTION_CALIBRATION_ALGORITHM,
     MAX_MEMORY_PERCENT,
     MIN_OPERATING_RESERVE_BYTES,
     PUBLICATION_CONTRACT,
@@ -42,6 +51,9 @@ __all__ = [
     "BUCKET_ALGORITHM_ID",
     "BUCKET_COUNT",
     "CANONICAL_LAYOUT_ID",
+    "COMPACTION_AUDIT_CONTRACT",
+    "COMPACTION_CALIBRATION_ALGORITHM",
+    "COMPACTION_PUBLICATION_CONTRACT",
     "COMPRESSION",
     "COMPRESSION_LEVEL",
     "EXACT_PHYSICAL_CONTRACT",
@@ -53,6 +65,7 @@ __all__ = [
     "TARGET_FILE_SIZE_BYTES",
     "TURNOVER_SCALE",
     "VOLUME_SCALE",
+    "CandleCompactionPlan",
     "CandleDatasetSpec",
     "CanonicalCandleBatch",
     "CapacityBudget",
@@ -65,11 +78,14 @@ __all__ = [
     "canonical_candle_schema",
     "canonical_partition_path",
     "load_committed_candle_table",
+    "preflight_candle_compaction",
     "preflight_candle_dataset",
     "publish_candle_dataset",
+    "publish_compacted_candle_dataset",
     "stable_bucket",
     "verify_canonical_candle_schema",
     "verify_committed_candle_dataset",
+    "verify_compacted_candle_dataset",
 ]
 
 __version__ = "0.2.0"

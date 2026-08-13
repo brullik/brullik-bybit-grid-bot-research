@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0029 — Target-size immutable canonical compaction](ADR-0029-target-size-immutable-canonical-compaction.md)
 - [ADR-0028 — Bounded repair execution and immutable replacement lineage](ADR-0028-bounded-repair-execution-and-immutable-replacement-lineage.md)
 - [ADR-0027 — Verified gap audit to bounded repair plan](ADR-0027-verified-gap-audit-to-bounded-repair-plan.md)
 - [ADR-0026 — Fail-closed canonical coverage audit](ADR-0026-fail-closed-canonical-coverage-audit.md)

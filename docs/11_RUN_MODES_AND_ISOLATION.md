@@ -16,8 +16,8 @@ History acquisition, research/parameter selection, strategy release, and live op
 The package boundaries are implemented. Phase 2 currently exposes stable-registry publication,
 no-mutation history preflight, bounded public 1m acquisition, completed-Landing verification, and
 receipt-last canonical publication, fail-closed coverage audit, and no-network gap-repair
-planning, receipt-resumable repair execution, and immutable replacement lineage; compaction and
-catalog commands remain in progress.
+planning, receipt-resumable repair execution, immutable replacement lineage, and target-size
+immutable compaction; catalog commands remain in progress.
 
 ## Separate startup examples
 
@@ -61,8 +61,11 @@ grid-data publish-history-repair --repair-execution <passed-execution.json> \
   --output <replacement-evidence.json>
 # Repeat with --execute only after the printed no-mutation publication preflight is accepted.
 
-# Planned canonical maintenance commands
-grid-data compact --dataset <dataset-id>
+# Immutable canonical maintenance (repeat --dataset for several same-partition fragments)
+grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --software-identity git:<full-commit-sha> --output <compaction-evidence.json>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
 
 # Research/parameter selection only
 grid-research build-features --market-dataset <dataset-id>
