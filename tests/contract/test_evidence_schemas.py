@@ -641,6 +641,112 @@ def test_phase2_fifty_by_ninety_scale_chain_is_bound_sanitized_and_fail_closed()
             assert forbidden not in rendered
 
 
+def test_phase2_measured_compaction_chain_is_complete_bound_and_sanitized() -> None:
+    specifications = ROOT / "benchmarks" / "specifications"
+    results = ROOT / "benchmarks" / "results"
+    request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "bybit-1m-history-request.schema.json"
+    )
+    pilot_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-public-1m-pilot.schema.json"
+    )
+    compaction_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-1m-compaction.schema.json"
+    )
+    parent_manifests: dict[str, str] = {}
+    all_symbols: set[str] = set()
+    parent_parquet_bytes = 0
+    evidence_paths: list[Path] = []
+
+    for group in ("g01", "g02", "g03", "g04", "g05"):
+        request_path = (
+            specifications / f"m2-trade-april-compaction-{group}-history-request-20260813.json"
+        )
+        pilot_path = results / f"m2-public-trade-april-compaction-{group}-20260813.json"
+        request = load_json(request_path)
+        pilot = load_json(pilot_path)
+        Draft202012Validator(request_schema).validate(request)
+        Draft202012Validator(
+            pilot_schema,
+            format_checker=FormatChecker(),
+        ).validate(pilot)
+        pilot_content = dict(pilot)
+        embedded_pilot_hash = pilot_content.pop("content_sha256")
+        assert embedded_pilot_hash == canonical_sha256(pilot_content)
+        assert verify_evidence(pilot_path)
+        assert pilot["landing"]["request_sha256"] == canonical_sha256(request)
+        assert pilot["canonical"]["row_count"] == 432_000
+        assert pilot["canonical"]["file_count"] == 1
+        assert pilot["canonical"]["instrument_count"] == 10
+        assert pilot["scope"]["exact_requested_coverage"] is True
+        assert pilot["scope"]["requested_minute_count"] == 432_000
+        symbols = {item["symbol"] for item in request["series"]}
+        assert len(symbols) == 10
+        assert all_symbols.isdisjoint(symbols)
+        all_symbols.update(symbols)
+        parent_manifests[pilot["canonical"]["dataset_id"]] = pilot["canonical"]["manifest_sha256"]
+        parent_parquet_bytes += pilot["canonical"]["parquet_bytes"]
+        evidence_paths.extend((request_path, pilot_path))
+
+    assert len(all_symbols) == 50
+    assert len(parent_manifests) == 5
+    compaction_path = results / "m2-trade-april-50x90-compaction-20260813.json"
+    compaction = load_json(compaction_path)
+    Draft202012Validator(
+        compaction_schema,
+        format_checker=FormatChecker(),
+    ).validate(compaction)
+    compaction_content = dict(compaction)
+    embedded_compaction_hash = compaction_content.pop("content_sha256")
+    assert embedded_compaction_hash == canonical_sha256(compaction_content)
+    assert verify_evidence(compaction_path)
+    assert compaction["status"] == "passed"
+    assert compaction["compaction"] == {
+        "conflicting_key_count": 0,
+        "duplicate_key_count": 0,
+        "input_file_count": 5,
+        "logical_table_equal": True,
+        "output_file_count": 3,
+        "output_total_bytes": 38_548_890,
+        "row_count": 2_160_000,
+        "rows_per_file_target": 1_024_000,
+        "tail_file_count": 1,
+        "target_band_non_tail_file_count": 2,
+        "target_file_bytes": 16_777_216,
+    }
+    assert (
+        compaction["bindings"]["input_table_sha256"]
+        == compaction["bindings"]["output_table_sha256"]
+    )
+    bound_parents = {
+        item["dataset_id"]: item["manifest_sha256"]
+        for item in compaction["bindings"]["parent_manifests"]
+    }
+    assert bound_parents == parent_manifests
+    assert set(compaction["lineage"]["parent_dataset_ids"]) == set(parent_manifests)
+    assert compaction["lineage"]["parent_datasets_mutated"] is False
+    assert compaction["compaction_software_identity"] == (
+        "git:a16bb3c57d17056cd7cde3ec490354b8e55d8374"
+    )
+    assert parent_parquet_bytes == 38_593_039
+    assert compaction["compaction"]["output_total_bytes"] < parent_parquet_bytes
+
+    evidence_paths.append(compaction_path)
+    for artifact_path in evidence_paths:
+        rendered = artifact_path.read_text(encoding="utf-8").lower()
+        for forbidden in (
+            "c:\\",
+            "/home/",
+            "api_key",
+            "api_secret",
+            "authorization",
+            "device_identity",
+            '"open"',
+            '"volume"',
+        ):
+            assert forbidden not in rendered
+
+
 def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-archive-coverage.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-archive-coverage.schema.json")
