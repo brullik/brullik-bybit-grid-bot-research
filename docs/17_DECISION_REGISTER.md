@@ -46,6 +46,7 @@
 | D-040 | Canonical campaign publication results enter GitHub only through a schema-bound aggregate/per-kind hash projection | accepted | Full source/canonical re-verification without paths, identities, market values, account data, credentials, or implicit Gate 2 acceptance; ADR-0040 |
 | D-041 | Multi-dataset coverage is a sequential receipt-bound aggregate of unchanged candle/funding child audits | accepted | Complete campaign membership, child content hashes, summed quality/reasons, strict blocked propagation, and no runtime identity disclosure; ADR-0041 |
 | D-042 | Complete-current Bybit linear inventory enumerates the dated normative `PreLaunch`, `Trading`, `Delivering`, and `Closed` status policy | accepted | Exact policy binding, per-filter status parity, genuine rejection remains partial, immutable older evidence, and ADR-0042 |
+| D-043 | Public candle/funding acquisition applies one receipt-evidenced global decrease-only pacer to response headers and rate-limit outcomes | accepted | 20% headroom cap, no automatic increase, 429/10006 cooldown, 403 abort/resume boundary, backward-compatible manifests, and ADR-0043 |
 
 ## Decisions requiring benchmark or owner evidence
 

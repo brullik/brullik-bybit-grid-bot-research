@@ -13,7 +13,7 @@ from grid_bybit_public.historical_catalog import (
     HistoricalCatalogError,
     HistoricalDataProduct,
 )
-from grid_bybit_public.transport import UrllibJsonTransport
+from grid_bybit_public.transport import RateLimitObservation, UrllibJsonTransport
 
 __all__ = [
     "CATALOG_ENDPOINT",
@@ -25,6 +25,7 @@ __all__ = [
     "HistoricalCatalogError",
     "HistoricalDataProduct",
     "ProductIndexSummary",
+    "RateLimitObservation",
     "TradeArchiveCoverage",
     "UrllibJsonTransport",
 ]

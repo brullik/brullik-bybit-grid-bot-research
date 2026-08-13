@@ -25,6 +25,9 @@ Funding-specific pilot evidence and a fail-closed source-chronology audit remain
 read-only commands; neither uses current undated interval metadata.
 Multi-month public acquisition is now a separate `history-campaign` coordinator over those same
 child boundaries. It has no research, catalog, live, credential, or private-endpoint dependency.
+Both candle and funding child executors apply the ADR-0043 shared decrease-only response-header
+pacer and receipt its sanitized observations; HTTP 403 aborts the resumable child rather than
+retrying through the documented IP-ban interval.
 Canonical campaign publication is a second `grid-data` coordinator: it consumes only a completed
 campaign, runs the existing receipt-last writers sequentially, and has no Bybit network client.
 

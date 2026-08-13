@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import tempfile
@@ -13,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from threading import Lock, local
+from threading import local
 from typing import Final, Literal, Protocol, cast
 
 from grid_bybit_public import BybitPublicError
@@ -27,6 +26,13 @@ from grid_market_store import (
     HostSnapshot,
     build_canonical_candle_batch,
     canonical_partition_path,
+)
+
+from grid_data.public_rate_limit import (
+    AdaptiveRateLimitAbort,
+    AdaptiveRateLimitError,
+    AdaptiveRatePacer,
+    verify_adaptive_rate_summary,
 )
 
 KlineKind = Literal["trade", "mark"]
@@ -235,21 +241,6 @@ class CompletedHistoryJob:
     manifest_sha256: str
     page_count: int
     row_count: int
-
-
-class _Pacer:
-    def __init__(self, target_rps: int) -> None:
-        self._interval_ns = math.ceil(1_000_000_000 / target_rps)
-        self._next_ns = time.perf_counter_ns()
-        self._lock = Lock()
-
-    def wait(self) -> None:
-        with self._lock:
-            scheduled = self._next_ns
-            self._next_ns += self._interval_ns
-        delay = scheduled - time.perf_counter_ns()
-        if delay > 0:
-            time.sleep(delay / 1_000_000_000)
 
 
 def _plan_tasks(spec: HistoryJobSpec) -> tuple[HistoryPageTask, ...]:
@@ -637,21 +628,24 @@ def _fetch_page(
     task: HistoryPageTask,
     *,
     client: KlineClient,
-    pacer: _Pacer,
+    pacer: AdaptiveRatePacer,
     max_attempts: int,
 ) -> dict[str, object]:
     last_error: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         pacer.wait()
         try:
-            rows = client.kline_page(
-                kind=task.kind,
-                symbol=task.symbol,
-                start_ms=task.start_ms,
-                end_ms=task.end_ms,
-                category=task.category,
-                limit=task.limit,
-            )
+            try:
+                rows = client.kline_page(
+                    kind=task.kind,
+                    symbol=task.symbol,
+                    start_ms=task.start_ms,
+                    end_ms=task.end_ms,
+                    category=task.category,
+                    limit=task.limit,
+                )
+            finally:
+                pacer.observe_client(client)
             payload = _page_payload(task, rows, attempt)
             if len(canonical_json_bytes(payload)) > MAX_PAGE_ARTIFACT_BYTES:
                 raise HistoryAcquisitionError("staged page exceeds its preflighted byte bound")
@@ -713,7 +707,7 @@ def execute_history_job(
             "acquisition job already has an active or stale run lock"
         ) from error
     thread_state = local()
-    pacer = _Pacer(plan.spec.target_rps)
+    pacer = AdaptiveRatePacer(plan.spec.target_rps)
 
     def acquire(task: HistoryPageTask) -> tuple[int, str, int]:
         client = getattr(thread_state, "client", None)
@@ -735,7 +729,12 @@ def execute_history_job(
         with ThreadPoolExecutor(max_workers=plan.spec.workers) as executor:
             futures = {executor.submit(acquire, task): task for task in plan.pending_tasks}
             for future in as_completed(futures):
-                future.result()
+                try:
+                    future.result()
+                except AdaptiveRateLimitAbort as error:
+                    raise HistoryAcquisitionError(
+                        "history acquisition stopped by the adaptive rate-limit policy"
+                    ) from error
         finish_snapshot = snapshot_provider()
         finish_now = now_ms()
         _assert_execute_snapshot(plan, finish_snapshot, now_ms=finish_now)
@@ -787,6 +786,7 @@ def execute_history_job(
                 "actual_http_requests": sum(
                     cast(int, item["attempt_count"]) for item in page_inventory
                 ),
+                "adaptive_throttling": pacer.summary(),
                 "max_attempts_per_page": plan.spec.max_attempts,
                 "max_http_requests_per_run": plan.spec.max_http_requests,
                 "target_rps": plan.spec.target_rps,
@@ -952,6 +952,22 @@ def _verify_completed_history_job(
         "target_rps": verified_spec.target_rps,
         "workers": verified_spec.workers,
     }
+    observed_request_bound = manifest.get("request_bound")
+    if not isinstance(observed_request_bound, dict):
+        raise HistoryAcquisitionError("history manifest request bound is invalid")
+    adaptive_summary = observed_request_bound.get("adaptive_throttling")
+    if adaptive_summary is not None:
+        try:
+            verify_adaptive_rate_summary(
+                adaptive_summary,
+                configured_target_rps=verified_spec.target_rps,
+                maximum_response_count=total_attempts,
+            )
+        except AdaptiveRateLimitError as error:
+            raise HistoryAcquisitionError(
+                "history adaptive throttling summary is invalid"
+            ) from error
+        expected_request_bound["adaptive_throttling"] = adaptive_summary
     host_preflight = manifest.get("host_preflight")
     if not isinstance(host_preflight, dict) or (
         not isinstance(host_preflight.get("device_identity_sha256"), str)
@@ -975,7 +991,7 @@ def _verify_completed_history_job(
         manifest.get("page_count") != len(raw_tasks)
         or manifest.get("row_count") != total_rows
         or manifest.get("empty_page_count") != empty_pages
-        or manifest.get("request_bound") != expected_request_bound
+        or observed_request_bound != expected_request_bound
         or total_attempts > verified_spec.max_http_requests
         or manifest.get("source_policy")
         != {

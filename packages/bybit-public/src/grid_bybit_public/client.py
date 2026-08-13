@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 from typing import Any, Literal, cast
 
-from grid_bybit_public.transport import JsonTransport
+from grid_bybit_public.transport import JsonTransport, RateLimitObservation
 
 
 class BybitPublicError(RuntimeError):
@@ -25,6 +25,15 @@ class BybitPublicClient:
         if not isinstance(result, dict):
             raise BybitPublicError("Bybit response has no object result")
         return result
+
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        """Consume transport metadata without exposing it through market-data contracts."""
+
+        take = getattr(self._transport, "take_rate_limit_observation", None)
+        if not callable(take):
+            return None
+        observed = take()
+        return observed if isinstance(observed, RateLimitObservation) else None
 
     def iter_instrument_pages(
         self,

@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0043 - Decrease-only global public REST throttling](ADR-0043-decrease-only-global-public-rest-throttling.md)
 - [ADR-0042 - Dated current linear-status inventory policy](ADR-0042-dated-current-linear-status-inventory-policy.md)
 - [ADR-0041 - Receipt-bound aggregate campaign coverage audit](ADR-0041-receipt-bound-aggregate-campaign-coverage-audit.md)
 - [ADR-0040 - Sanitized canonical campaign publication evidence](ADR-0040-sanitized-canonical-campaign-publication-evidence.md)

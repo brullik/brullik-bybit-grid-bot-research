@@ -35,8 +35,12 @@ durable resume, and long-run validation.
 
 ADR-0023 implements the first durable Phase 2 baseline with a global 10-RPS pacer, fixed
 non-overlapping pages, explicit bounded retries, page receipts, and receipt-based resume. It does
-not raise its operating rate automatically; adaptive response-header throttling and long-run
-qualification remain required before full-universe scale or any operating-rate increase.
+not raise its operating rate automatically. ADR-0043 extends the same global pacer with
+decrease-only response-header adaptation: low headroom caps the effective rate, 429/retCode 10006
+halve it and impose a cooldown, and HTTP 403 aborts the current run with the documented ten-minute
+resume boundary. Missing/invalid headers are counted and never interpreted as permission to
+increase. Receipt-bound long-run qualification remains required before full-universe scale or any
+operating-rate increase.
 
 ADR-0032 adds the separate funding path. Each series has one receipted predecessor query and
 fixed range pages of at most seven days/200 rows. A range response with the full requested limit
