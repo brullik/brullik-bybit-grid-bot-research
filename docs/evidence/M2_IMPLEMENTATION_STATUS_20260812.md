@@ -96,6 +96,8 @@ The authoritative implementation and review history is:
   receipt-resumable public funding source-boundary discovery with timestamp-only retention.
 - PR [#62](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/62): ADR-0049 strict,
   GitHub-safe aggregate funding source-boundary evidence projection.
+- PR [#63](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/63): receipt-verified,
+  schema-bound measured five-instrument funding source-boundary evidence.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
