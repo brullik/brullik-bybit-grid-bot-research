@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0036 - Scale-aligned candle audit series bound](ADR-0036-scale-aligned-candle-audit-series-bound.md)
 - [ADR-0035 - Funding catalog and snapshot-bound selection](ADR-0035-funding-catalog-and-snapshot-bound-selection.md)
 - [ADR-0034 - Fail-closed funding source chronology audit](ADR-0034-fail-closed-funding-chronology-audit.md)
 - [ADR-0033 - Sanitized public funding pilot evidence](ADR-0033-sanitized-public-funding-pilot-evidence.md)

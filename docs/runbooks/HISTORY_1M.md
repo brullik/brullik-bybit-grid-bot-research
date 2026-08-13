@@ -172,6 +172,11 @@ ranges. Exit code 2 means blocked evidence was written. In v1, even a fully veri
 no candle is `rest_returned_no_data` and remains unaccepted; do not edit the audit or classify it as
 no-trade manually. Repair and reason-policy changes require their own contract and review.
 
+The audit evidence accepts the same bounded 1 through 700 series as the acquisition request. This
+does not enlarge the pilot-evidence contract: `history-pilot-evidence` remains limited to 16 series
+and 1,000,000 rows. Use the complete coverage audit, not a relabelled pilot, for larger controlled
+scale steps.
+
 ## 10. Plan a blocked missing-minute repair
 
 Run this only for an immutable blocked v1 audit. The command performs no Bybit request and no
