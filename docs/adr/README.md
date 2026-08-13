@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0032 - Resumable public funding acquisition and boundary evidence](ADR-0032-resumable-public-funding-acquisition-and-boundary-evidence.md)
 - [ADR-0031 - Exact funding layout and receipt-last publication](ADR-0031-exact-funding-layout-and-receipt-last-publication.md)
 
 - [ADR-0030 — Receipt-verified DuckDB catalog and snapshot-bound selection](ADR-0030-receipt-verified-duckdb-catalog-and-snapshot-bound-selection.md)

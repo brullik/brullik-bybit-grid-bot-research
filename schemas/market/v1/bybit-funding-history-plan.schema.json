@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/bybit-funding-history-plan.schema.json",
+  "title": "Resolved Bybit public funding history plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capacity_budget", "contract", "spec", "tasks"],
+  "properties": {
+    "capacity_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_and_building_bytes", "rest_staging_bytes", "operating_reserve_bytes"],
+      "properties": {
+        "active_and_building_bytes": {"type": "integer", "minimum": 0},
+        "rest_staging_bytes": {"type": "integer", "minimum": 0},
+        "operating_reserve_bytes": {"type": "integer", "minimum": 8589934592}
+      }
+    },
+    "contract": {"const": "grid.bybit-funding-history-plan/v1"},
+    "spec": {"$ref": "#/$defs/spec"},
+    "tasks": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/task"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "symbol", "instrument_id", "launch_time_ms", "start_ms", "end_ms"],
+      "properties": {
+        "category": {"const": "linear"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "launch_time_ms": {"type": "integer", "minimum": 0},
+        "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+        "end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000}
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "series", "request_sha256", "instrument_evidence_sha256", "capacity_evidence_sha256", "page_span_minutes", "page_limit", "workers", "target_rps", "max_attempts", "max_http_requests"],
+      "properties": {
+        "job_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+        "series": {"type": "array", "minItems": 1, "maxItems": 700, "items": {"$ref": "#/$defs/series"}},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "page_span_minutes": {"type": "integer", "minimum": 1, "maximum": 10080},
+        "page_limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 32},
+        "target_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 5},
+        "max_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "scope", "category", "symbol", "instrument_id", "start_ms", "end_ms", "limit"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0},
+        "scope": {"enum": ["boundary", "range"]},
+        "category": {"const": "linear"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 0},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 200}
+      }
+    }
+  }
+}

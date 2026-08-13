@@ -52,6 +52,22 @@ def test_history_acquisition_is_public_one_minute_only() -> None:
     assert "recent-trade" not in source_path.read_text(encoding="utf-8").lower()
 
 
+def test_funding_acquisition_is_public_history_only() -> None:
+    source_path = ROOT / "apps" / "data" / "src" / "grid_data" / "funding_acquisition.py"
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    endpoint_literals = {
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and node.value.startswith("/v5/")
+    }
+    assert endpoint_literals == {"/v5/market/funding/history"}
+    source = source_path.read_text(encoding="utf-8").lower()
+    assert "api_key" not in source
+    assert "api_secret" not in source
+
+
 def test_market_store_has_no_network_research_private_or_live_import() -> None:
     imported = imports_under(ROOT / "packages" / "market-store" / "src")
     forbidden_prefixes = (

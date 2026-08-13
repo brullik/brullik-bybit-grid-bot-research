@@ -18,7 +18,8 @@ no-mutation history preflight, bounded public 1m acquisition, completed-Landing 
 receipt-last canonical publication, fail-closed coverage audit, and no-network gap-repair
 planning, receipt-resumable repair execution, immutable replacement lineage, and target-size
 immutable compaction plus receipt-verified DuckDB catalog registration and snapshot-bound range
-selection.
+selection. A separate public funding path now includes predecessor-bound, receipt-resumable
+acquisition and exact receipt-last canonical publication.
 
 ## Separate startup examples
 
@@ -36,6 +37,16 @@ grid-data publish-history-1m --job-root <completed-job-root> \
   --store-root <local-path> --software-identity git:<full-commit-sha>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data verify-canonical-candle <committed-dataset-root>
+grid-data funding-history --request <funding-request.json> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --staging-root <local-path>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data verify-funding-history <completed-funding-job-root>
+grid-data publish-funding-history --job-root <completed-funding-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --software-identity git:<full-commit-sha>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data verify-canonical-funding <committed-funding-dataset-root>
 grid-data history-pilot-evidence --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --software-identity git:<full-commit-sha> \

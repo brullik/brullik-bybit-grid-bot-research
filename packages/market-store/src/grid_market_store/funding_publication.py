@@ -488,6 +488,7 @@ def verify_committed_funding_dataset(dataset_root: Path) -> PublishedDataset:
     receipt = _load_receipt(receipt_path)
     if (
         root.name != manifest.dataset_id
+        or not DATASET_ID_RE.fullmatch(manifest.dataset_id)
         or receipt.dataset_id != manifest.dataset_id
         or receipt.committed_at_ms != manifest.committed_at_ms
         or receipt.manifest_sha256 != sha256_file(manifest_path)

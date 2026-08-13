@@ -207,6 +207,12 @@ Funding files use `grid.canonical-funding-layout/v1`: UTC month plus
 16 MiB target, and ZSTD level 3. Backtests join funding by the exact economic application
 interval, not nearest-row convenience. See ADR-0031.
 
+`grid.bybit-funding-history-request/v1` names only symbols and requested bounds. Its resolved plan
+adds stable IDs, dated launch bounds, one predecessor task per series, and fixed requested-range
+pages. Page artifacts preserve normalized exact rate/timestamp pairs and reject a saturated
+response. The acquisition manifest binds all page receipts and a canonical predecessor aggregate;
+see ADR-0032.
+
 ## Dataset manifest
 
 Required fields:

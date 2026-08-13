@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Public-only funding acquisition with one receipted predecessor per series, fixed unsaturated
+  range pages, bounded retries/concurrency/capacity, durable resume, exact normalization, boundary
+  aggregate evidence, and a verified Landing-to-canonical adapter.
 - Exact canonical funding Arrow/Parquet contract with Decimal128(38,18) rates,
   settlement-derived interval semantics, minute/eight-bucket partitioning, ZSTD-3, no-rounding
   conversion, and receipt-last immutable publication with independent tamper/orphan verification.

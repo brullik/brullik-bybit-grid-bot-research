@@ -35,12 +35,15 @@ The authoritative implementation and review history is:
   catalog registration/selection evidence for the existing receipt-verified public pilot.
 - PR [#29](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/29): exact canonical
   funding physical contract and receipt-last immutable publication primitive.
+- PR [#30](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/30): predecessor-bound,
+  receipt-resumable public funding acquisition and verified Landing-to-canonical adapter.
 
-The next funding increment freezes `grid.canonical-funding-layout/v1`: exact signed
-Decimal128(38, 18), minute-aligned settlement keys, settlement-derived interval semantics,
-month/eight-bucket partitioning, ZSTD-3, and receipt-last immutable publication. It rejects use of
-today's undated instrument interval as historical evidence. Public resumable acquisition,
-predecessor evidence, and a measured funding pilot remain pending; Gate 2 is not accepted.
+The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
+minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
+partitioning, ZSTD-3, receipt-last publication, and a separate public acquisition contract. Every
+series captures a receipted predecessor, range pages are fixed and resumable, and saturated
+200-row responses fail closed. A measured funding pilot, funding-specific coverage/repair,
+compaction, and catalog evidence remain pending; Gate 2 is not accepted.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
