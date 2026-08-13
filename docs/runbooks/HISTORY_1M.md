@@ -627,3 +627,11 @@ Exit code 2 means the receipt-bound negative evidence was written successfully b
 children remain blocked. Inspect aggregate reason counts, then reproduce only the corresponding
 private child audits when detailed repair or dated cadence evidence is needed. Never convert a
 blocked aggregate to passed by editing the output or weakening ADR-0026/ADR-0034.
+
+## 20. Adaptive public REST pacing
+
+Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
+an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header
+observations and every decrease. HTTP 429 or retCode 10006 slows the whole child job; HTTP 403
+aborts the run and must not be resumed for at least the reported ten-minute boundary. Verified
+page receipts remain reusable after that stop.

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Decrease-only global public REST throttling for candle/funding acquisition: sanitized Bybit
+  response-header observations, 20% headroom adaptation, 429/10006 cooldown and rate reduction,
+  HTTP-403 run abort, no automatic increase, and backward-compatible receipt-bound manifest facts.
 - Receipt-verified current-inventory policy evidence from public mainnet: all four normative
   status partitions accepted, a passed 1,015-instrument complete-current summary, and a separate
   blocked three-snapshot summary proving that two older partial observations remain immutable.

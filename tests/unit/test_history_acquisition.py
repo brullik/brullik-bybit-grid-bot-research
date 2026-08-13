@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from grid_bybit_public import BybitPublicError
+from grid_bybit_public import BybitPublicError, RateLimitObservation
+from grid_bybit_public.transport import TransportError
 from grid_data.history_acquisition import (
     MAX_PAGE_ARTIFACT_BYTES,
     STAGING_METADATA_BYTES,
@@ -16,6 +17,7 @@ from grid_data.history_acquisition import (
     execute_history_job,
     load_completed_history_batch,
     preflight_history_job,
+    verify_completed_history_job,
 )
 from grid_data.host_probe import probe_host_snapshot
 from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostSnapshot
@@ -86,6 +88,60 @@ class AlwaysFailClient(FakeKlineClient):
             )
         )
         raise BybitPublicError("injected persistent failure")
+
+
+class RateAwareKlineClient(FakeKlineClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self._observation: RateLimitObservation | None = None
+
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        rows = super().kline_page(**kwargs)
+        self._observation = RateLimitObservation(
+            http_status=200,
+            bybit_ret_code=0,
+            header_state="complete",
+            limit=10,
+            remaining=2,
+            reset_at_ms=0,
+        )
+        return rows
+
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = self._observation
+        self._observation = None
+        return observed
+
+
+class IpBannedKlineClient(FakeKlineClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self._observation: RateLimitObservation | None = None
+
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        self.calls.append(
+            (
+                kwargs["symbol"],
+                kwargs["start_ms"],
+                kwargs["end_ms"],
+                kwargs["kind"],
+                kwargs["limit"],
+            )
+        )
+        self._observation = RateLimitObservation(
+            http_status=403,
+            bybit_ret_code=None,
+            header_state="absent",
+            limit=None,
+            remaining=None,
+            reset_at_ms=None,
+        )
+        raise TransportError("Bybit HTTP error 403")
+
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = self._observation
+        self._observation = None
+        return observed
 
 
 def series(
@@ -205,6 +261,22 @@ def test_fixed_page_plan_is_no_mutation_and_completed_job_loads_exact_batch(tmp_
     )
     assert manifest["request_bound"] == {
         "actual_http_requests": 4,
+        "adaptive_throttling": {
+            "automatic_increase_count": 0,
+            "complete_header_observation_count": 0,
+            "configured_target_rps": 96,
+            "cooldown_event_count": 0,
+            "final_effective_rps": 96,
+            "header_absent_observation_count": 0,
+            "invalid_header_observation_count": 0,
+            "low_headroom_event_count": 0,
+            "maximum_cooldown_ms": 0,
+            "minimum_effective_rps": 96,
+            "policy": "bybit-v5-response-header-decrease-only-v1",
+            "rate_limit_event_count": 0,
+            "rate_reduction_count": 0,
+            "response_observation_count": 0,
+        },
         "max_attempts_per_page": 1,
         "max_http_requests_per_run": 10,
         "target_rps": 96,
@@ -274,6 +346,72 @@ def test_transient_retry_is_bounded_and_recorded(tmp_path: Path) -> None:
     manifest = json.loads(completed.manifest_path.read_text(encoding="utf-8"))
     assert len(client.calls) == 2
     assert manifest["pages"][0]["attempt_count"] == 2
+
+
+def test_response_header_observation_reduces_shared_rate_and_is_receipted(
+    tmp_path: Path,
+) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS),),
+        workers=1,
+        target_rps=15,
+        max_attempts=1,
+        max_http_requests=1,
+    )
+    plan = preflight_history_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=1),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+    )
+
+    completed = execute(plan, RateAwareKlineClient())
+    manifest = json.loads(completed.manifest_path.read_text(encoding="utf-8"))
+    adaptive = manifest["request_bound"]["adaptive_throttling"]
+
+    assert adaptive["configured_target_rps"] == 15
+    assert adaptive["final_effective_rps"] == 8
+    assert adaptive["minimum_effective_rps"] == 8
+    assert adaptive["complete_header_observation_count"] == 1
+    assert adaptive["low_headroom_event_count"] == 1
+    assert adaptive["rate_reduction_count"] == 1
+    assert adaptive["automatic_increase_count"] == 0
+    assert verify_completed_history_job(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+
+
+def test_http_403_aborts_application_retries_and_preserves_resumable_job(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS),),
+        workers=1,
+        target_rps=15,
+        max_attempts=3,
+        max_http_requests=3,
+    )
+    plan = preflight_history_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=1),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+    )
+    client = IpBannedKlineClient()
+    monkeypatch.setattr("grid_data.history_acquisition.time.sleep", lambda _seconds: None)
+
+    with pytest.raises(HistoryAcquisitionError, match="adaptive rate-limit policy"):
+        execute(plan, client)
+
+    assert len(client.calls) == 1
+    assert plan.paths.plan_path.is_file()
+    assert not plan.paths.receipt_path.exists()
+    assert not plan.paths.run_lock.exists()
 
 
 def test_empty_pages_are_explicit_coverage_evidence(tmp_path: Path) -> None:

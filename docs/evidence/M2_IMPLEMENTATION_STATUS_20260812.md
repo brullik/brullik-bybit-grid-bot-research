@@ -72,6 +72,8 @@ The authoritative implementation and review history is:
   response-partition validation.
 - PR [#51](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/51): receipt-verified
   complete-current mainnet inventory evidence plus preserved cumulative partial-snapshot evidence.
+- PR [#52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52): shared
+  decrease-only public REST response-header throttling and resumable IP-ban abort behavior.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -613,6 +615,29 @@ This implementation contains no public or private Bybit client and cannot create
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime
 campaign belongs in a subsequent evidence commit using the immutable merged publisher identity.
+
+## Decrease-only public REST throttling
+
+ADR-0043 extends the existing global child-job pacer without changing request identities, page
+ownership, retry ceilings, source validation, or campaign serialization. Each thread-local public
+transport exposes a sanitized `X-Bapi-Limit*` observation after its one HTTP attempt. Waiting
+workers share one condition-based schedule, so a low-headroom or rate-limit response affects the
+whole child before later launch slots are claimed.
+
+The policy never increases configured RPS. Complete headers at or below 20% remaining capacity
+cap effective RPS at 80% of the reported limit. HTTP 429 and retCode 10006 halve effective RPS and
+apply the valid reset/one-second cooldown. HTTP 403 records Bybit's ten-minute resume boundary and
+aborts all waiting work; verified pages and the immutable plan remain resumable. Missing or
+invalid headers are counted, not treated as unlimited capacity.
+
+New candle/funding Landing manifests include exact policy/rate/observation/reduction/cooldown
+facts under optional backward-compatible `request_bound.adaptive_throttling`; all existing v1
+receipts without the extension still verify. Tests prove low-headroom reduction, no recovery to a
+higher rate, 403 abort after one application attempt, resumable plan preservation, malformed
+summary rejection, and unchanged candle/funding schemas. A measured long-duration public run
+under the merged implementation remains required before full-history scale. The implementation,
+ADR, and fault-injection proof are tracked in
+[PR #52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52).
 
 ## Still required before Gate 2
 

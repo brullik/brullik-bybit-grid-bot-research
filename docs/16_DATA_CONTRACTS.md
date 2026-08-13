@@ -94,8 +94,12 @@ strings, request identity, row hash/count, and attempt count. The
 `grid.bybit-1m-history-acquisition/v1` manifest inventories every page and is committed by a
 separate `grid.history-acquisition-receipt/v1` written last. A valid Landing receipt is input
 evidence for canonical publication, not a canonical dataset completion marker. Canonical candle
-rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance cannot collide
-between otherwise similar jobs.
+and funding manifests may additionally carry the backward-compatible ADR-0043
+`adaptive_throttling` summary under `request_bound`. It binds classified response-header counts,
+the configured/final/minimum global rate, reductions, cooldowns, and zero automatic increases.
+Legacy v1 manifests without that optional object remain valid; new executions always write it.
+Canonical candle rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance
+cannot collide between otherwise similar jobs.
 
 `grid.public-history-campaign-request/v1` expresses up to 700 named symbols, at most 120 calendar
 months, one or more of trade/mark/funding, and explicit bounded paging/concurrency settings. It
