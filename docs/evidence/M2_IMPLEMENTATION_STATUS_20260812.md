@@ -826,7 +826,8 @@ rules. The receipt-last detailed result is private because it contains exact ser
 observed time bounds. Read-only verification is independent of current free-space/memory write
 gates. A synthetic repaired child passes with zero chronology blockers while the original blocked
 audit remains byte-identical. Catalog transition, a public sanitized measured projection, and
-Gate 2 acceptance remain separate.
+Gate 2 acceptance remain separate. The implementation, ADR, schema, and synthetic proof are
+tracked in [PR #73](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/73).
 
 ## Still required before Gate 2
 
