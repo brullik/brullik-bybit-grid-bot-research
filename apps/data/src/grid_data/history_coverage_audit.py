@@ -169,6 +169,7 @@ def build_completed_history_coverage_audit(
     canonical = _canonical_table(published)
     source_parity = canonical.equals(verified.batch.table)
     plan = _object(verified.completed_history.plan_path, name="history plan")
+    planned_series = _series(plan)
     registry_by_id = {
         snapshot.instrument_id: snapshot for snapshot in verified.instrument_registry.snapshots
     }
@@ -180,12 +181,17 @@ def build_completed_history_coverage_audit(
     missing_total = 0
     duplicate_total = 0
     unexpected_total = 0
-    for series in _series(plan):
+    quarantined_missing_keys: set[tuple[int, int]] = set()
+    quarantined_source_keys = verified.completed_history.quarantined_source_keys
+    if quarantined_source_keys is None:  # pragma: no cover - semantic loading is mandatory above
+        raise HistoryAcquisitionError("coverage audit requires quarantined source-key evidence")
+    for series in planned_series:
         mask = pc.equal(canonical.column("instrument_id"), series.instrument_id)
         raw_times = cast(list[int], pc.filter(canonical.column("open_time_ms"), mask).to_pylist())
         times = sorted(raw_times)
         unique_times = sorted(set(times))
         in_range = [value for value in unique_times if series.start_ms <= value <= series.end_ms]
+        in_range_set = set(in_range)
         expected = ((series.end_ms - series.start_ms) // MINUTE_MS) + 1
         gaps = _gap_ranges(in_range, start_ms=series.start_ms, end_ms=series.end_ms)
         missing = sum(item["minute_count"] for item in gaps)
@@ -201,6 +207,13 @@ def build_completed_history_coverage_audit(
             {"instrument_id": series.instrument_id, **item} for item in gaps
         ]
         all_ranges.extend(ranges_with_identity)
+        quarantined_missing_keys.update(
+            (instrument_id, open_time_ms)
+            for instrument_id, open_time_ms in quarantined_source_keys
+            if instrument_id == series.instrument_id
+            and series.start_ms <= open_time_ms <= series.end_ms
+            and open_time_ms not in in_range_set
+        )
         summaries.append(
             {
                 "duplicate_key_count": duplicates,
@@ -227,6 +240,20 @@ def build_completed_history_coverage_audit(
     lifecycle_failures = sum(
         not cast(bool, item["within_registry_lifecycle_bounds"]) for item in summaries
     )
+    if any(
+        sum(
+            key[0] == series.instrument_id and series.start_ms <= key[1] <= series.end_ms
+            for series in planned_series
+        )
+        != 1
+        for key in set(quarantined_source_keys)
+    ):
+        raise HistoryAcquisitionError(
+            "quarantined source key must belong to exactly one requested series"
+        )
+    rest_missing_total = missing_total - len(quarantined_missing_keys)
+    if rest_missing_total < 0:  # pragma: no cover - guarded by exact gap membership
+        raise HistoryAcquisitionError("quarantined missing-minute accounting is inconsistent")
     passed = bool(
         source_parity
         and observed_total == canonical.num_rows == expected_total
@@ -235,6 +262,7 @@ def build_completed_history_coverage_audit(
         and unexpected_total == 0
         and unrequested_rows == 0
         and lifecycle_failures == 0
+        and verified.completed_history.quarantined_row_count == 0
     )
     payload: dict[str, object] = {
         "audit_software_identity": audit_software_identity,
@@ -261,6 +289,14 @@ def build_completed_history_coverage_audit(
             "Current registry lifecycle bounds do not prove a complete dated historical universe.",
             "REST-returned gaps remain unaccepted and block completion until a separate policy "
             "or repair resolves them.",
+            *(
+                [
+                    "Quarantined source rows remain unaccepted and require separate source "
+                    "reconciliation; ordinary REST gap repair is not eligible."
+                ]
+                if verified.completed_history.quarantined_row_count
+                else []
+            ),
             "This audit does not repair data, compact files, register a catalog entry, or close "
             "Gate 2.",
         ],
@@ -277,10 +313,25 @@ def build_completed_history_coverage_audit(
         },
         "reason_policy": {
             "accepted_reason_codes": [],
-            "observed_reason_counts": (
-                {"rest_returned_no_data": missing_total} if missing_total else {}
-            ),
-            "unaccepted_reason_codes": ["rest_returned_no_data"] if missing_total else [],
+            "observed_reason_counts": {
+                **(
+                    {"quarantined_source_row": verified.completed_history.quarantined_row_count}
+                    if verified.completed_history.quarantined_row_count
+                    else {}
+                ),
+                **({"rest_returned_no_data": rest_missing_total} if rest_missing_total else {}),
+            },
+            "unaccepted_reason_codes": [
+                reason
+                for reason, count in (
+                    (
+                        "quarantined_source_row",
+                        verified.completed_history.quarantined_row_count,
+                    ),
+                    ("rest_returned_no_data", rest_missing_total),
+                )
+                if count
+            ],
             "unknown_reason_count": 0,
         },
         "series": summaries,

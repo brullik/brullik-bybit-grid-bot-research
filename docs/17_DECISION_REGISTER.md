@@ -53,6 +53,10 @@
 | D-047 | One campaign invocation admits one receipt-verified registry/capacity snapshot and reuses it for every child plan | accepted | Child paths and hashes remain exact; every new execute/resume invocation reloads and reverifies inputs; ADR-0047 |
 | D-048 | Full-history funding begins only at the second source-observed settlement after a bounded receipt-resumable backward scan | accepted | The oldest observed event is predecessor-only; registry launch time/current cadence never fabricate boundary evidence; ADR-0048 |
 | D-049 | Funding source-boundary results enter GitHub only through a strict aggregate hash/count projection | accepted | Runtime symbols, IDs, rates, observed settlement times, paths, and private facts remain excluded; response accounting must cover every completed page; ADR-0049 |
+| D-050 | Narrow exact OHLC envelope violations remain receipt-bound in Landing quarantine and are never admitted to canonical candles | accepted | Re-derived classification, exact source retention, immutable counts/hashes, and blocked canonical coverage; ADR-0050 |
+| D-051 | GitHub candle source-quality evidence contains only verified aggregate quarantine counts and binding hashes | accepted | Exact rows, timestamps, identities, paths, and market values remain local; ADR-0051 |
+| D-052 | Funding campaigns consume only a receipt-verified discovered source boundary and query the predecessor exactly once | accepted | Boundary/request/registry identity equality, clipped series, and no launch-time or current-cadence inference; ADR-0052 |
+| D-053 | Coverage audits classify receipt-bound quarantined candle rows separately and ordinary gap repair rejects them | accepted | Exact runtime key matching, sanitized aggregate reasons, no double-counted missing minute, and ADR-0053 |
 
 ## Decisions requiring benchmark or owner evidence
 

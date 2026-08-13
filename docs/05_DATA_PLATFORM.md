@@ -339,11 +339,17 @@ rows. V1 accepts no absence reason; a verified REST response with no candle is r
 `rest_returned_no_data` and blocks. Exact historical lifecycle-bound discovery remains a separate
 requirement, so a passing bounded audit is not full-universe completeness.
 
+ADR-0053 makes that reason exact when ADR-0050 quarantine is present. A receipt-bound source row
+excluded for an OHLC envelope violation is `quarantined_source_row`, not
+`rest_returned_no_data`; it remains a blocker even if its key is otherwise covered. Exact keys
+stay in runtime verification, while aggregate campaign evidence may expose only the reason count.
+
 ADR-0027 implements deterministic repair planning without downloading or mutating data. It
 recomputes a receipt-verified blocked audit, permits only `rest_returned_no_data` missing-minute
 blockers, and emits one standard bounded history request per complete contiguous gap. The plan
 binds the original Landing and canonical manifests, every embedded request hash, and the planner's
-Git commit.
+Git commit. A quarantined source row is explicitly ineligible for this same-endpoint repair path
+and requires separate reviewed source reconciliation.
 
 ADR-0028 executes that plan only after every standard request and their aggregate staging budget
 pass a no-mutation preflight. Each task retains the existing page receipts and resume behavior;

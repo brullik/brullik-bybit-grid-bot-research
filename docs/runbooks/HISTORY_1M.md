@@ -172,6 +172,12 @@ ranges. Exit code 2 means blocked evidence was written. In v1, even a fully veri
 no candle is `rest_returned_no_data` and remains unaccepted; do not edit the audit or classify it as
 no-trade manually. Repair and reason-policy changes require their own contract and review.
 
+A receipt-bound row excluded by the narrow ADR-0050 OHLC quarantine is reported as
+`quarantined_source_row`, not `rest_returned_no_data`. It remains blocked and is not eligible for
+ordinary same-endpoint gap repair. Preserve the local Landing job and escalate to a separate
+source-reconciliation decision; do not disclose the exact row, key, symbol, or timestamp in
+GitHub evidence.
+
 The audit evidence accepts the same bounded 1 through 700 series as the acquisition request. This
 does not enlarge the pilot-evidence contract: `history-pilot-evidence` remains limited to 16 series
 and 1,000,000 rows. Use the complete coverage audit, not a relabelled pilot, for larger controlled

@@ -117,14 +117,15 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "quarantined_source_row": {"type": "integer", "minimum": 1},
             "rest_returned_no_data": {"type": "integer", "minimum": 1}
           }
         },
         "unaccepted_reason_codes": {
           "type": "array",
-          "maxItems": 1,
+          "maxItems": 2,
           "uniqueItems": true,
-          "items": {"const": "rest_returned_no_data"}
+          "items": {"enum": ["quarantined_source_row", "rest_returned_no_data"]}
         },
         "unknown_reason_count": {"const": 0}
       }

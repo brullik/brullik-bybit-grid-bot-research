@@ -202,7 +202,9 @@ Per-series facts include lifecycle bounds, missing contiguous ranges, duplicates
 timestamps, and observed rows; dataset facts also include rows outside every request. The complete
 gap-range list is hash-bound while only 20 diagnostic samples are embedded. In v1,
 `rest_returned_no_data` is observed but never accepted: any gap blocks status and cannot be
-silently classified as a no-trade interval.
+silently classified as a no-trade interval. ADR-0053 additionally records a receipt-verified
+returned-but-quarantined candle as `quarantined_source_row`, removes its missing key from the
+REST-no-data reason count, and still blocks. Exact quarantine keys remain runtime-only.
 
 `grid.bybit-1m-gap-repair-plan/v1` is a receipt-last, no-network plan derived from a recomputed,
 receipt-verified blocked coverage audit. It is valid only when missing minutes classified as
@@ -211,6 +213,8 @@ manifest, canonical manifest, planner Git identity, and one exact standard
 `grid.bybit-1m-history-request/v1` per contiguous gap. The complete plan is limited to 1,000 tasks
 and 100,000 maximum HTTP attempts. It authorizes neither request execution nor mutation of a
 committed canonical dataset; repaired publication needs explicit immutable replacement lineage.
+`quarantined_source_row` is never eligible for this ordinary repair plan because repeating the
+same source endpoint does not reconcile a stable semantic defect.
 
 `grid.bybit-1m-gap-repair-execution/v1` re-verifies that complete chain, preflights every embedded
 standard request under one aggregate staging bound, and inventories the independently receipted
