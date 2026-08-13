@@ -39,6 +39,8 @@ The authoritative implementation and review history is:
   receipt-resumable public funding acquisition and verified Landing-to-canonical adapter.
 - PR [#31](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/31): funding-specific,
   GitHub-safe pilot evidence with exact Landing/Parquet and predecessor-interval verification.
+- PR [#32](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/32): receipt-verified,
+  measured public funding pilot evidence and its sanitized acceptance assertions.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
