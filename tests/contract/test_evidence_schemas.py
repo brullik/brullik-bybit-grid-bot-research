@@ -592,6 +592,56 @@ def test_100x31_canonical_campaign_evidence_is_bound_and_sanitized() -> None:
         assert forbidden not in rendered
 
 
+def test_100x31_integrity_fastpath_evidence_is_bound_measured_and_sanitized() -> None:
+    artifact = (
+        ROOT / "benchmarks/results/"
+        "m2-canonical-history-campaign-100x31-integrity-fastpath-20260813.json"
+    )
+    baseline = load_json(
+        ROOT / "benchmarks/results/m2-canonical-history-campaign-100x31-20260813.json"
+    )
+    schema = load_json(ROOT / "schemas/evidence/v1/phase2-history-campaign-publication.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "beb8e6dc9f989404b56d6705dcc3c458c7e1b3613a91d9555423d96ce8707406"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["bindings"] == baseline["bindings"]
+    assert payload["canonical"] == baseline["canonical"]
+    assert payload["scope"] == baseline["scope"]
+    assert payload["process"]["evidence_builder_software_identity"] == (
+        "git:10031a3e9603d031f7d806adc0d5fe20307d501e"
+    )
+    assert payload["process"]["initial_source_semantic_admission_required"] is True
+    assert payload["process"]["source_reverification_mode"] == (
+        "receipt-integrity-without-row-decode-v1"
+    )
+    assert payload["verification"] == {
+        "completed_publication_verification_elapsed_ms": 88_566,
+        "source_reverification_mode": "receipt-integrity-without-row-decode-v1",
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"source_job_root"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_representative_campaign_coverage_audit_is_bound_and_sanitized() -> None:
     artifact = ROOT / "benchmarks/results/m2-history-campaign-coverage-audit-20260813.json"
     schema = load_json(ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json")
