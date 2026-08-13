@@ -67,6 +67,14 @@ from grid_data.funding_repair_execution import (
     verify_funding_repair_execution,
 )
 from grid_data.funding_repair_plan import build_funding_repair_plan
+from grid_data.funding_repair_publication import (
+    build_funding_repair_execution_public_evidence,
+    build_funding_repair_replacement_evidence,
+    preflight_repaired_funding_publication,
+    publish_preflighted_funding_repair,
+    verify_funding_repair_execution_public_evidence,
+    verify_funding_repair_replacement_evidence,
+)
 from grid_data.funding_request import resolve_funding_request
 from grid_data.funding_source_boundary import (
     execute_funding_source_boundary,
@@ -527,6 +535,42 @@ def parser() -> argparse.ArgumentParser:
         ),
     )
     funding_repair_execute.set_defaults(handler=_execute_funding_repair)
+
+    funding_repair_public_evidence = commands.add_parser(
+        "funding-repair-execution-evidence",
+        help="publish identifier- and value-free aggregate evidence for a verified execution",
+    )
+    funding_repair_public_evidence.add_argument("--repair-execution", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--repair-plan", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--coverage-audit", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--job-root", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--instrument-registry", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--store-root", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--repair-staging-root", type=Path, required=True)
+    funding_repair_public_evidence.add_argument("--output", type=Path, required=True)
+    funding_repair_public_evidence.set_defaults(handler=_funding_repair_execution_evidence)
+
+    funding_repair_publish = commands.add_parser(
+        "publish-funding-repair",
+        help="preflight or publish a passed funding repair as a new immutable child dataset",
+    )
+    funding_repair_publish.add_argument("--repair-execution", type=Path, required=True)
+    funding_repair_publish.add_argument("--repair-plan", type=Path, required=True)
+    funding_repair_publish.add_argument("--coverage-audit", type=Path, required=True)
+    funding_repair_publish.add_argument("--job-root", type=Path, required=True)
+    funding_repair_publish.add_argument("--instrument-registry", type=Path, required=True)
+    funding_repair_publish.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_publish.add_argument("--store-root", type=Path, required=True)
+    funding_repair_publish.add_argument("--repair-staging-root", type=Path, required=True)
+    funding_repair_publish.add_argument("--software-identity", required=True)
+    funding_repair_publish.add_argument("--output", type=Path, required=True)
+    funding_repair_publish.add_argument(
+        "--execute",
+        action="store_true",
+        help="publish repair child and lineage evidence; omitted is no-mutation preflight",
+    )
+    funding_repair_publish.set_defaults(handler=_publish_funding_repair)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -1530,6 +1574,119 @@ def _execute_funding_repair(args: argparse.Namespace) -> int:
     )
     print(json.dumps(summary))
     return 0 if payload["status"] == "passed" else 2
+
+
+def _funding_repair_execution_evidence(args: argparse.Namespace) -> int:
+    verified = verify_funding_repair_execution(
+        args.repair_execution,
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+    )
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    if output.exists() or receipt.exists():
+        payload = verify_funding_repair_execution_public_evidence(output, verified)
+        artifact = output
+    else:
+        preflight_evidence(output)
+        payload = build_funding_repair_execution_public_evidence(
+            verified,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "limits": payload["limits"],
+                "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+                "status": payload["status"],
+                "storage_policy": payload["storage_policy"],
+            }
+        )
+    )
+    return 0
+
+
+def _publish_funding_repair(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_repaired_funding_publication(
+        args.repair_execution,
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    published = None
+    evidence = None
+    if existing_evidence:
+        if not plan.existing_commit or not verify_evidence(output):
+            raise ValueError("funding repair evidence conflicts with an uncommitted publication")
+        published = verify_committed_funding_dataset(plan.paths.dataset_root)
+        evidence = verify_funding_repair_replacement_evidence(
+            output,
+            resolved,
+            published,
+        )
+    else:
+        preflight_evidence(output)
+    summary = {
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "existing_evidence": existing_evidence,
+        "parent_dataset_id": resolved.parent.manifest.dataset_id,
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "repaired_row_count": resolved.repaired_row_count,
+        "required_free_bytes": plan.required_free_bytes,
+        "restated_interval_count": resolved.restated_interval_count,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if published is not None and evidence is not None:
+        artifact = output
+    else:
+        published = publish_preflighted_funding_repair(
+            resolved,
+            lambda: probe_host_snapshot(args.store_root),
+            lambda: time.time_ns() // 1_000_000,
+        )
+        evidence = build_funding_repair_replacement_evidence(
+            resolved,
+            published,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "replacement_row_count": published.manifest.row_count,
+            "status": evidence["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0
 
 
 def _publish_history_1m(args: argparse.Namespace) -> int:

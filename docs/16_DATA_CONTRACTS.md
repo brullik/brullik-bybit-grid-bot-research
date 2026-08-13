@@ -274,6 +274,24 @@ is `blocked`; the parent and original audit are unchanged. Rates are excluded, b
 instrument/range identities make the execution record private and not GitHub-eligible; see
 ADR-0056.
 
+`grid.bybit-funding-repair-execution-public/v1` is a receipt-last GitHub-safe projection of that
+private execution. It binds the private artifact plus parent/audit/plan/registry/capacity hashes
+and publishes only aggregate request, task, candidate, missing, observed, and unexpected counts.
+Its exact schema excludes task records, dataset/instrument identifiers, settlement timestamps,
+market values, runtime paths, account data, and credentials.
+
+`grid.canonical-funding-repair-publication/v1` consumes only a complete `passed` execution. It
+requires the parent and repair rows to share one exact funding schema and month/bucket, rejects
+overlap and duplicates, recomputes interval minutes over the complete sorted union, and preserves
+the existing first-event predecessor boundary. The receipt-last child has one immutable parent
+and binds every upstream manifest and the full publisher Git identity.
+
+`grid.canonical-funding-repair-replacement/v1` is the value- and identifier-free public lineage
+proof. It binds parent, plan, execution, replacement, registry, and capacity hashes; exact row
+accounting; source-confirmed inserted-settlement and restated-interval counts; zero key blockers;
+and `parent_dataset_mutated=false`. It does not update the original audit, accept a cadence
+policy, register the child, or close Gate 2; see ADR-0057.
+
 `grid.canonical-dataset-catalog/v1` is a DuckDB-backed logical metadata projection. It stores only
 complete receipt-verified dataset, parent, schema, evidence/build/software, file/hash/count/bounds,
 month/bucket, gap/conflict-summary, and logical receipt/object identities. A monotonically

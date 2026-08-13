@@ -379,6 +379,14 @@ or unexpected results remain blocked. The rate-free execution record is still pr
 contains instrument and settlement identities. Parent publication and the original blocked audit
 remain unchanged.
 
+ADR-0057 permits a separate immutable repair child only after that execution passes. The adapter
+re-verifies the entire private chain, rejects overlap and partition/schema mismatch, combines the
+parent with exact source-confirmed rows, and recomputes funding intervals from adjacent observed
+settlements. It preserves the parent's first-event boundary evidence and writes through the same
+fresh-host, atomic-directory, completion-receipt-last funding primitive. The parent and blocked
+audit remain immutable. Separate receipt-last public projections expose only hashes and aggregate
+counts, never instrument identities, settlement timestamps, funding rates, or runtime paths.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.

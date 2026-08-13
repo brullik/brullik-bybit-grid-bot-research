@@ -114,6 +114,8 @@ The authoritative implementation and review history is:
   funding repair discovery execution with exact candidate confirmation and private evidence.
 - PR [#71](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/71): bounded retry
   classification for TLS record/read failures observed during the candle-only full-history resume.
+- PR [#72](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/72): passed-only
+  immutable funding repair publication and identifier/value-free execution evidence.
 
 ADR-0048 now defines the fail-closed source-boundary discovery required after the first
 five-instrument full-lifecycle execution reached a funding month with no registry-bounded
@@ -807,6 +809,16 @@ remain unchanged.
 The execution implementation, contract, ADR, and synthetic exact/empty/resume proofs are tracked
 in [PR #70](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/70).
 
+ADR-0057 adds the passed-only immutable publication boundary and a separate sanitized execution
+projection. Publication re-verifies the complete private chain, rejects parent overlap and
+partition/schema mismatch, recomputes interval minutes over the exact parent-plus-source-confirmed
+union, preserves the parent's first-event boundary evidence, and creates one receipt-last child
+whose sole parent remains byte-identical. Its public proofs contain hashes and aggregate counts
+but no instrument identity, settlement timestamp, funding rate, runtime path, account data, or
+credential. The original blocked audit remains unchanged and a post-publication audit is still
+required. The implementation and synthetic proofs are tracked in
+[PR #72](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/72).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
@@ -817,6 +829,6 @@ in [PR #70](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/70).
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - further controlled scale-up and dated evidence/policy for the seven blocked July funding
   cadence transitions; and
-- funding repair immutable publication and sanitized execution evidence, measured ADR-0054
-  funding-compaction evidence, and the remaining PM-owned Gate 2 acceptance checklist; planning
-  and compaction implementation alone are not measured acceptance.
+- measured funding repair publication/execution evidence when a genuine candidate exists,
+  measured ADR-0054 funding-compaction evidence, and the remaining PM-owned Gate 2 acceptance
+  checklist; implementation alone is not measured acceptance.
