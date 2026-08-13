@@ -222,6 +222,92 @@ def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redac
             assert forbidden not in rendered
 
 
+def test_funding_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
+    specifications = ROOT / "benchmarks" / "specifications"
+    results = ROOT / "benchmarks" / "results"
+    request_path = specifications / "m2-canonical-funding-catalog-selection-20260813.json"
+    registration_path = results / "m2-canonical-funding-catalog-registration-20260813.json"
+    selection_path = results / "m2-canonical-funding-catalog-selection-20260813.json"
+    pilot_path = results / "m2-public-funding-canonical-pilot-20260813.json"
+    coverage_path = results / "m2-canonical-funding-coverage-audit-20260813.json"
+    request = load_json(request_path)
+    registration = load_json(registration_path)
+    selection = load_json(selection_path)
+    pilot = load_json(pilot_path)
+    coverage = load_json(coverage_path)
+
+    Draft202012Validator(
+        load_json(
+            ROOT / "schemas" / "market" / "v1" / "canonical-dataset-selection-request.schema.json"
+        )
+    ).validate(request)
+    Draft202012Validator(
+        load_json(
+            ROOT
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-dataset-catalog-registration.schema.json"
+        ),
+        format_checker=FormatChecker(),
+    ).validate(registration)
+    Draft202012Validator(
+        load_json(ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-selection.schema.json"),
+        format_checker=FormatChecker(),
+    ).validate(selection)
+
+    for artifact_path, payload in (
+        (registration_path, registration),
+        (selection_path, selection),
+    ):
+        hash_input = dict(payload)
+        embedded_hash = hash_input.pop("content_sha256")
+        assert embedded_hash == canonical_sha256(hash_input)
+        assert verify_evidence(artifact_path)
+
+    assert selection["request"] == request
+    assert selection["request_sha256"] == canonical_sha256(request)
+    assert registration["catalog"] == {
+        "backend": "duckdb",
+        "content_sha256": selection["catalog"]["content_sha256"],
+        "dataset_count": 2,
+        "file_count": 2,
+        "revision": selection["catalog"]["revision"],
+        "schema_version": 1,
+    }
+    assert registration["datasets"][0]["dataset_type"] == "funding_event"
+    assert registration["datasets"][0]["manifest_sha256"] == pilot["canonical"]["manifest_sha256"]
+    assert (
+        coverage["bindings"]["canonical_manifest_sha256"]
+        == registration["datasets"][0]["manifest_sha256"]
+    )
+    assert selection["selected_dataset_manifests"] == [
+        {
+            "dataset_id": registration["datasets"][0]["dataset_id"],
+            "manifest_sha256": registration["datasets"][0]["manifest_sha256"],
+        }
+    ]
+    assert selection["selection"] == {
+        "object_count": 1,
+        "selected_row_inventory": pilot["canonical"]["row_count"],
+        "selected_size_bytes": pilot["canonical"]["parquet_bytes"],
+    }
+    assert selection["objects"][0]["file_sha256"] in selection["objects"][0]["object_key"]
+    for artifact_path in (registration_path, selection_path, request_path):
+        rendered = artifact_path.read_text(encoding="utf-8").lower()
+        for forbidden in (
+            "c:\\",
+            "api_key",
+            "api_secret",
+            "authorization",
+            "device_identity",
+            '"funding_rate"',
+            '"open"',
+            '"volume"',
+        ):
+            assert forbidden not in rendered
+
+
 def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-archive-coverage.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-archive-coverage.schema.json")
