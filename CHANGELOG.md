@@ -9,6 +9,9 @@ All notable project-governance and architecture changes are recorded here.
 - Schema-bound GitHub-safe canonical campaign publication evidence that re-verifies every source
   and canonical receipt/file while exposing only aggregate/per-kind counts, Parquet bytes,
   resource bounds, immutable Git identities, and transitive hashes.
+- Receipt-verified representative canonical campaign evidence: 72 immutable trade/mark/funding
+  datasets, 10,537,365 rows, 72 Parquet files, 187,352,531 bytes, independent aggregate
+  verification, and an idempotent replay with 72 reused commits and zero pending datasets.
 - Receipt-resumable canonical publication for a completed public history campaign: bounded
   one-child-at-a-time preflight, sequential candle/funding writers, immutable child-receipt reuse,
   receipt-last aggregate lineage verification, and no network/credential/live dependency.
