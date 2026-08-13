@@ -17,6 +17,7 @@ import pyarrow.parquet as pq  # type: ignore[import-untyped]
 from grid_contracts.canonical import canonical_sha256
 from grid_contracts.market import DatasetFile, DatasetManifest, DatasetStatus, DatasetType
 
+from grid_market_store.funding_publication import verify_committed_funding_dataset
 from grid_market_store.physical import BUCKET_COUNT, stable_bucket
 from grid_market_store.publication import (
     DATASET_ID_RE,
@@ -33,10 +34,16 @@ CATALOG_SELECTION_CONTRACT: Final = "grid.canonical-dataset-selection/v1"
 CATALOG_SCHEMA_VERSION: Final = 1
 GIT_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 PARTITION_RE: Final = re.compile(
-    r"^dataset=(trade_kline_1m|mark_kline_1m)/schema=(v1)/"
+    r"^dataset=(trade_kline_1m|mark_kline_1m|funding_event)/schema=(v1)/"
     r"year=([0-9]{4})/month=(0[1-9]|1[0-2])/bucket=(0[0-7])$"
 )
-SUPPORTED_CANDLE_TYPES: Final = frozenset({DatasetType.TRADE_KLINE_1M, DatasetType.MARK_KLINE_1M})
+SUPPORTED_DATASET_TYPES: Final = frozenset(
+    {
+        DatasetType.TRADE_KLINE_1M,
+        DatasetType.MARK_KLINE_1M,
+        DatasetType.FUNDING_EVENT,
+    }
+)
 
 
 class CatalogError(RuntimeError):
@@ -145,8 +152,8 @@ class CatalogSelectionRequest:
         if not SHA256_RE.fullmatch(self.catalog_content_sha256):
             raise CatalogError("selection catalog digest must be lowercase SHA-256")
         _validate_dataset_ids(self.dataset_ids)
-        if self.dataset_type not in SUPPORTED_CANDLE_TYPES:
-            raise CatalogError("selection requires one supported canonical candle type")
+        if self.dataset_type not in SUPPORTED_DATASET_TYPES:
+            raise CatalogError("selection requires one supported canonical dataset type")
         if (
             isinstance(self.start_time_ms, bool)
             or isinstance(self.end_time_ms, bool)
@@ -206,7 +213,7 @@ def _validate_catalog_record(record: CatalogDatasetRecord) -> None:
     if not DATASET_ID_RE.fullmatch(record.dataset_id):
         raise CatalogError("catalog contains an unsafe dataset ID")
     if (
-        record.dataset_type not in SUPPORTED_CANDLE_TYPES
+        record.dataset_type not in SUPPORTED_DATASET_TYPES
         or record.status is not DatasetStatus.COMPLETE
     ):
         raise CatalogError("catalog contains an unsupported or incomplete dataset")
@@ -332,7 +339,7 @@ def _safe_catalog_paths(store_root: Path, catalog_path: Path) -> tuple[Path, Pat
 def _partition_facts(manifest: DatasetManifest) -> tuple[str, int, int, int]:
     parents = {PurePosixPath(item.path).parent.as_posix() for item in manifest.files}
     if len(parents) != 1:
-        raise CatalogError("cataloged candle dataset must have one canonical partition")
+        raise CatalogError("cataloged dataset must have one canonical partition")
     partition_path = next(iter(parents))
     match = PARTITION_RE.fullmatch(partition_path)
     if match is None:
@@ -355,17 +362,22 @@ def _file_record(
         or item.min_instrument_id is None
         or item.max_instrument_id is None
     ):
-        raise CatalogError("canonical candle files require non-empty key statistics")
+        raise CatalogError("canonical files require non-empty key statistics")
+    time_column = (
+        "funding_time_ms"
+        if published.manifest.dataset_type is DatasetType.FUNDING_EVENT
+        else "open_time_ms"
+    )
     keys = pq.read_table(
         published.dataset_root / item.path,
-        columns=["instrument_id", "open_time_ms"],
+        columns=["instrument_id", time_column],
     )
     if keys.num_rows != item.row_count:
         raise CatalogError("catalog key read conflicts with the verified manifest")
     first_instrument_id = cast(int, keys.column("instrument_id")[0].as_py())
-    first_time_ms = cast(int, keys.column("open_time_ms")[0].as_py())
+    first_time_ms = cast(int, keys.column(time_column)[0].as_py())
     last_instrument_id = cast(int, keys.column("instrument_id")[-1].as_py())
-    last_time_ms = cast(int, keys.column("open_time_ms")[-1].as_py())
+    last_time_ms = cast(int, keys.column(time_column)[-1].as_py())
     return CatalogFileRecord(
         ordinal=ordinal,
         dataset_relative_path=item.path,
@@ -385,20 +397,26 @@ def _file_record(
 
 
 def _record_from_store(store_root: Path, dataset_id: str) -> CatalogDatasetRecord:
+    dataset_root = store_root / "datasets" / dataset_id
     try:
-        published = verify_committed_candle_dataset(store_root / "datasets" / dataset_id)
-    except (OSError, PublicationError) as error:
-        raise CatalogError("canonical dataset receipt or file binding does not verify") from error
+        published = verify_committed_candle_dataset(dataset_root)
+    except (OSError, PublicationError):
+        try:
+            published = verify_committed_funding_dataset(dataset_root)
+        except (OSError, PublicationError) as error:
+            raise CatalogError(
+                "canonical dataset receipt or file binding does not verify"
+            ) from error
     manifest = published.manifest
     if manifest.dataset_id != dataset_id:
         raise CatalogError("dataset directory identity conflicts with its manifest")
     if (
         manifest.status is not DatasetStatus.COMPLETE
-        or manifest.dataset_type not in SUPPORTED_CANDLE_TYPES
+        or manifest.dataset_type not in SUPPORTED_DATASET_TYPES
     ):
-        raise CatalogError("catalog v1 accepts only complete canonical candle datasets")
+        raise CatalogError("catalog v1 accepts only complete canonical datasets")
     if manifest.min_time_ms is None or manifest.max_time_ms is None:
-        raise CatalogError("canonical candle manifest requires time bounds")
+        raise CatalogError("canonical manifest requires time bounds")
     partition_path, year, month, bucket = _partition_facts(manifest)
     files = tuple(
         _file_record(published, item, ordinal=index) for index, item in enumerate(manifest.files)

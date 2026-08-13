@@ -25,7 +25,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"}
     },
-    "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m"]},
+    "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m", "funding_event"]},
     "end_time_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
     "instrument_filter": {
       "oneOf": [

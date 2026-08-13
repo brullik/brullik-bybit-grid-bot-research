@@ -150,6 +150,13 @@ selected datasets and produces hash-bound store-relative object keys. It rejects
 missing month/bucket partitions, ancestor-plus-child inputs, and overlapping key ranges. It proves
 deterministic range pruning only; separate coverage acceptance remains mandatory.
 
+ADR-0035 extends these catalog contracts with `funding_event`. Funding registration invokes the
+strict funding receipt/manifest/audit/Parquet verifier and extracts first/last keys from
+`instrument_id, funding_time_ms`; candle behavior is unchanged. A selection request still carries
+exactly one dataset type, so candle and funding IDs cannot be mixed. Funding catalog/selection
+evidence contains only metadata, hashes, and store-relative objects and does not imply chronology
+coverage, compaction, repair, scale qualification, or Gate 2.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

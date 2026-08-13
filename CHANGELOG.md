@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Backward-compatible funding registration and snapshot-bound selection in the receipt-verified
+  DuckDB catalog, with strict funding verification/key extraction, type-specific partitions, and
+  rejection of mixed candle/funding selection requests.
 - Fail-closed funding source-chronology audit with exact Landing/Parquet parity, complete range-page
   tiling, private predecessor/internal interval recomputation, stable observed-cadence policy,
   hash-bound anomaly inventory, and explicit blocking of empty windows or undated cadence changes.

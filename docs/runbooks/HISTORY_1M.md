@@ -283,6 +283,8 @@ reason, or close Gate 2.
 ## 14. Register datasets and select a reproducible range
 
 Catalog registration is a separate transition after canonical publication, repair, or compaction.
+It accepts receipt-verified canonical trade/mark 1m and funding datasets. Every registration is
+dataset-type aware, while each selection request must name exactly one dataset type.
 The catalog must live inside the market-store root. Include every unregistered parent together
 with a child so lineage is complete. First run without `--execute`:
 
@@ -335,6 +337,13 @@ The output contains only canonical store-relative object keys and hashes, never 
 market values. A changed catalog snapshot, missing month/bucket, parent plus child, overlapping key
 range, or substituted dataset/file fails closed. Selection is not a coverage audit: research must
 still require the applicable PM-owned gap/lifecycle evidence before treating the range as complete.
+
+For funding, register `funding-<exact-id>` with the same command and build the request with
+`"dataset_type": "funding_event"`, exact funding dataset IDs, and funding settlement time bounds.
+The selected files use `funding_time_ms` internally, but the request fields remain
+`start_time_ms`/`end_time_ms`. Never combine funding and candle dataset IDs in one request. A
+successful funding selection proves only receipt-bound pruning; bind the separate funding
+chronology/lifecycle evidence before research consumption.
 
 ## 15. Acquire and publish canonical funding
 
@@ -413,7 +422,8 @@ admission. Repeat with `--execute` only after review, then independently verify:
 An empty entire requested series, missing predecessor, non-minute settlement, duplicate key,
 saturated response, altered page, stale lock/building output, or conflicting dataset identity
 fails closed. Successful publication does not yet prove full funding coverage, perform funding
-repair/compaction/catalog registration, or close Gate 2.
+repair/compaction/catalog registration, or close Gate 2. Section 14 describes the now-supported
+funding registration/selection transition after publication.
 
 ## 16. Publish sanitized funding pilot evidence to GitHub
 

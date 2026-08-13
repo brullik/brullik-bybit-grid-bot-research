@@ -19,7 +19,8 @@ receipt-last canonical publication, fail-closed coverage audit, and no-network g
 planning, receipt-resumable repair execution, immutable replacement lineage, and target-size
 immutable compaction plus receipt-verified DuckDB catalog registration and snapshot-bound range
 selection. A separate public funding path now includes predecessor-bound, receipt-resumable
-acquisition and exact receipt-last canonical publication.
+acquisition, exact receipt-last canonical publication, fail-closed source-chronology audit, and
+single-type registration/selection through the same receipt-verified catalog.
 Funding-specific pilot evidence and a fail-closed source-chronology audit remain separate
 read-only commands; neither uses current undated interval metadata.
 
@@ -79,7 +80,7 @@ grid-data publish-history-repair --repair-execution <passed-execution.json> \
   --output <replacement-evidence.json>
 # Repeat with --execute only after the printed no-mutation publication preflight is accepted.
 
-# Immutable canonical maintenance (repeat --dataset for several same-partition fragments)
+# Immutable canonical maintenance (trade/mark compaction; registration also accepts funding)
 grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
   --capacity-evidence <capacity.json> --store-root <local-path> \
   --software-identity git:<full-commit-sha> --output <compaction-evidence.json>

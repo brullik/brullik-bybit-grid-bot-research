@@ -301,7 +301,7 @@ A lightweight metadata catalog—initially SQLite or DuckDB—stores:
 - code/version identity;
 - completion receipt location.
 
-The catalog contains metadata, not the full candle corpus.
+The catalog contains metadata, not the market-value corpus.
 
 ADR-0030 implements the first catalog boundary with DuckDB. Registration accepts only complete,
 receipt-verified canonical trade/mark 1m datasets, requires complete registered parent lineage,
@@ -315,3 +315,10 @@ DuckDB file bytes. Range-selection requests bind that exact revision/hash and ex
 there is no implicit `latest`. Selection re-verifies manifests/files, requires the requested
 month/bucket set, rejects ancestor-plus-child and overlapping key ranges, and returns only
 store-relative object keys. Selection proves pruning, not gap-free coverage.
+
+ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
+`funding_event` datasets. Funding registration reads first/last keys from
+`instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.
+Selection remains bound to exactly one dataset type, so funding and candle dataset IDs cannot be
+mixed in one request. Funding registration/selection does not admit chronology evidence or imply
+complete lifecycle coverage.
