@@ -351,6 +351,100 @@ def test_representative_canonical_campaign_evidence_is_bound_and_sanitized() -> 
         assert forbidden not in rendered
 
 
+def test_representative_campaign_coverage_audit_is_bound_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks/results/m2-history-campaign-coverage-audit-20260813.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["status"] == "passed"
+    assert len(payload["child_results"]) == 72
+    assert [item["sequence"] for item in payload["child_results"]] == list(range(72))
+    assert all(item["status"] == "passed" for item in payload["child_results"])
+    assert payload["inventory"] == {
+        "blocked_count": 0,
+        "by_kind": [
+            {
+                "blocked_count": 0,
+                "dataset_count": 24,
+                "kind": "trade",
+                "passed_count": 24,
+                "row_count": 5_263_200,
+            },
+            {
+                "blocked_count": 0,
+                "dataset_count": 24,
+                "kind": "mark",
+                "passed_count": 24,
+                "row_count": 5_263_200,
+            },
+            {
+                "blocked_count": 0,
+                "dataset_count": 24,
+                "kind": "funding",
+                "passed_count": 24,
+                "row_count": 10_965,
+            },
+        ],
+        "dataset_count": 72,
+        "passed_count": 72,
+        "row_count": 10_537_365,
+    }
+    assert payload["quality"] == {
+        "candle": {
+            "conflicting_key_count": 0,
+            "duplicate_key_count": 0,
+            "expected_minute_count": 10_526_400,
+            "gap_range_count": 0,
+            "lifecycle_failure_count": 0,
+            "missing_minute_count": 0,
+            "observed_row_count": 10_526_400,
+            "unexpected_timestamp_count": 0,
+            "unrequested_row_count": 0,
+        },
+        "funding": {
+            "boundary_page_count": 120,
+            "duplicate_key_count": 0,
+            "empty_range_page_count": 0,
+            "internal_interval_mismatch_count": 0,
+            "interval_change_count": 0,
+            "lifecycle_failure_count": 0,
+            "observed_event_count": 10_965,
+            "predecessor_interval_mismatch_count": 0,
+            "range_page_count": 595,
+            "unexpected_timestamp_count": 0,
+            "unrequested_row_count": 0,
+        },
+    }
+    assert payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {},
+        "unaccepted_reason_codes": [],
+        "unknown_reason_count": 0,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"source_job_root"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
     specifications = ROOT / "benchmarks" / "specifications"
     results = ROOT / "benchmarks" / "results"

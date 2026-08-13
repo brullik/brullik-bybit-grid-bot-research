@@ -557,6 +557,25 @@ accepted. Measured execution belongs in a subsequent evidence PR using the merge
 The aggregate coordinator, schema, governance decision, and blocker-propagation tests are tracked
 in [PR #48](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/48).
 
+The receipt-verified representative aggregate audit completed all 72 children in 835.100 seconds
+and returned `passed`: 24/24 trade, 24/24 mark, and 24/24 funding datasets passed with zero
+blocked children. Candle quality proves 10,526,400 expected and observed minutes, exact
+source/canonical equality for every child, and zero missing minutes, gap ranges, duplicates,
+conflicts, lifecycle failures, unexpected timestamps, or unrequested rows. Funding quality proves
+120 predecessor pages, 595 range pages, 10,965 events, and zero empty windows, cadence changes,
+predecessor/internal interval mismatches, lifecycle failures, duplicates, unexpected timestamps,
+or unrequested rows. No reason code was observed or accepted.
+
+The [sanitized aggregate audit](../../benchmarks/results/m2-history-campaign-coverage-audit-20260813.json)
+has artifact SHA-256
+`98d6b6d36e9cbd94ac1e76e1061a38a42a04e7565ee4828b2cd436888ccb92c8`, content SHA-256
+`b37ad854b2f447de1144e53c0f01741937c34c0cf868e2d43a8a9c9c40381d3f`, and auditor identity
+`git:04296296916335797ba97716700103993a1bafdd`. Its 72 child content hashes bind the private
+diagnostic results without publishing symbols, instrument/dataset identities, market values,
+event timestamps, runtime paths, account data, or credentials. This closes representative
+multi-year publication/coverage evidence only; it does not erase the separate April 50x90 funding
+cadence blocker, prove a complete historical universe, or close Gate 2.
+
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime

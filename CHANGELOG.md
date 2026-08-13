@@ -9,6 +9,9 @@ All notable project-governance and architecture changes are recorded here.
 - Receipt-bound aggregate coverage auditing for canonical history campaigns: sequential unchanged
   candle/funding child audits, complete child content-hash membership, summed quality/reason
   counters, strict blocker propagation, and a GitHub-safe identity/value-free result.
+- Receipt-verified representative aggregate coverage evidence: all 72 canonical datasets passed,
+  with 10,526,400 complete candle minutes, 10,965 chronology-consistent funding events, zero
+  quality/reason blockers, and 72 sanitized child content-hash bindings.
 - Schema-bound GitHub-safe canonical campaign publication evidence that re-verifies every source
   and canonical receipt/file while exposing only aggregate/per-kind counts, Parquet bytes,
   resource bounds, immutable Git identities, and transitive hashes.
