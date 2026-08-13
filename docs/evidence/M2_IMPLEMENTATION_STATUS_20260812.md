@@ -554,6 +554,8 @@ aggregate membership, runs one child at a time, retains detailed child payloads 
 and publishes their content hashes plus aggregate per-kind quality and reason counts. Any child
 blocker produces aggregate `blocked`; no gap, empty-window, lifecycle, or cadence reason is newly
 accepted. Measured execution belongs in a subsequent evidence PR using the merged auditor identity.
+The aggregate coordinator, schema, governance decision, and blocker-propagation tests are tracked
+in [PR #48](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/48).
 
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
