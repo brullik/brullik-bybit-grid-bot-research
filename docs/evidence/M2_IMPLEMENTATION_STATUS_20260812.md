@@ -457,6 +457,16 @@ strategy truth. The implementation does not publish canonical datasets, accept a
 reason, repair or compact data, update the catalog, or close Gate 2. A measured representative
 multi-year campaign remains the next controlled-scale evidence step.
 
+The first execution attempt completed 51 of 72 child jobs before Bybit closed one HTTPS
+connection without a response during the June 2025 trade child. The aggregate receipt was not
+written, completed children and page receipts were preserved, and no stale run lock remained.
+That negative evidence exposed a narrow stdlib boundary: `RemoteDisconnected` escaped the
+transport wrapper and therefore did not consume the child's explicit application retry. The
+transport now wraps direct connection/protocol failures as retryable `TransportError` values;
+bounded fault-injection tests cover disconnect-then-success, exhausted disconnect/reset, and the
+unchanged immediate failure for non-retryable HTTP responses. The unchanged campaign can resume
+without refetching its verified children.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a

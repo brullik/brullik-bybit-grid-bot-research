@@ -10,6 +10,12 @@ All notable project-governance and architecture changes are recorded here.
   calendar months across trade, mark, and funding: deterministic month/type/eight-bucket child
   jobs, aggregate no-mutation host admission, sequential pacing, exact attempt bounds, child
   receipt reuse, receipt-last aggregate verification, and no credential/tick/live dependency.
+
+### Fixed
+
+- Public REST transport now classifies direct stdlib connection/protocol failures such as
+  `RemoteDisconnected`, `IncompleteRead`, and connection resets as bounded retryable transport
+  errors. Non-retryable HTTP responses remain immediate failures.
 - Immutable receipt-verified instrument timeline with stable cross-snapshot identities, strict
   point-in-time selection, separate ex-post lifecycle coverage, fail-closed conflict/partial-source
   accounting, and a bounded GitHub-safe summary that never exposes future snapshot fields.
