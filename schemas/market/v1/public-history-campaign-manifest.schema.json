@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/public-history-campaign-manifest.schema.json",
+  "title": "Completed public history campaign manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "campaign_id",
+    "campaign_plan_sha256",
+    "campaign_request_sha256",
+    "capacity_evidence_sha256",
+    "completed_at_ms",
+    "contract",
+    "http_request_count",
+    "instrument_evidence_sha256",
+    "job_count",
+    "jobs",
+    "page_count",
+    "row_count",
+    "source_policy",
+    "status"
+  ],
+  "properties": {
+    "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "campaign_request_sha256": {"$ref": "#/$defs/sha256"},
+    "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "completed_at_ms": {"type": "integer", "minimum": 0},
+    "contract": {"const": "grid.public-history-campaign-manifest/v1"},
+    "http_request_count": {"type": "integer", "minimum": 0},
+    "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+    "jobs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2880,
+      "items": {"$ref": "#/$defs/job"}
+    },
+    "page_count": {"type": "integer", "minimum": 1},
+    "row_count": {"type": "integer", "minimum": 0},
+    "source_policy": {"$ref": "#/$defs/sourcePolicy"},
+    "status": {"const": "complete"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sourcePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["funding", "mark", "trade", "tick_rows_requested"],
+      "properties": {
+        "funding": {"const": "/v5/market/funding/history"},
+        "mark": {"const": "/v5/market/mark-price-kline"},
+        "trade": {"const": "/v5/market/kline"},
+        "tick_rows_requested": {"const": false}
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_http_requests",
+        "job_id",
+        "job_manifest_sha256",
+        "job_plan_sha256",
+        "job_root",
+        "kind",
+        "page_count",
+        "row_count",
+        "sequence"
+      ],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 0},
+        "job_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+        "job_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "job_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "job_root": {
+          "type": "string",
+          "pattern": "^\\.(?:landing|funding-landing)/[a-z0-9][a-z0-9._-]+--[0-9a-f]{16}$"
+        },
+        "kind": {"enum": ["trade", "mark", "funding"]},
+        "page_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 2879}
+      }
+    }
+  }
+}

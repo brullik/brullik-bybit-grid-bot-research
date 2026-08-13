@@ -23,6 +23,8 @@ acquisition, exact receipt-last canonical publication, fail-closed source-chrono
 single-type registration/selection through the same receipt-verified catalog.
 Funding-specific pilot evidence and a fail-closed source-chronology audit remain separate
 read-only commands; neither uses current undated interval metadata.
+Multi-month public acquisition is now a separate `history-campaign` coordinator over those same
+child boundaries. It has no research, catalog, live, credential, or private-endpoint dependency.
 
 ## Separate startup examples
 
@@ -40,6 +42,11 @@ grid-data history-1m --request <request.json> --instrument-registry <registry.js
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data verify-history-1m <completed-job-root>
+grid-data history-campaign --request <campaign-request.json> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --staging-root <local-path>
+# Repeat with --execute only after aggregate no-mutation preflight; children run sequentially.
+grid-data verify-history-campaign <completed-campaign-root>
 grid-data publish-history-1m --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --software-identity git:<full-commit-sha>

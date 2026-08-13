@@ -91,6 +91,20 @@ evidence for canonical publication, not a canonical dataset completion marker. C
 rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance cannot collide
 between otherwise similar jobs.
 
+`grid.public-history-campaign-request/v1` expresses up to 700 named symbols, at most 120 calendar
+months, one or more of trade/mark/funding, and explicit bounded paging/concurrency settings. It
+must select `registry-lifecycle-intersection-v1`; the resulting clipping is ex-post source
+acquisition scope and cannot be used as point-in-time strategy metadata.
+
+`grid.public-history-campaign-plan/v1` binds the exact request, registry/capacity hashes, public
+endpoint policy, and every deterministic dataset/month/eight-bucket child request and plan hash.
+Aggregate preflight accounts for all incomplete child Landing bounds before mutation, while
+execution is sequential so per-child pacers do not multiply the configured RPS.
+`grid.public-history-campaign-manifest/v1` is written with a separate
+`grid.history-campaign-receipt/v1` only after every child completion receipt verifies. It records
+only aggregate job/page/row/HTTP counts and child hashes/relative roots; it is runtime acquisition
+evidence, not canonical publication, accepted coverage, or Gate 2 evidence. See ADR-0038.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle

@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0038 - Receipt-resumable public history campaign](ADR-0038-receipt-resumable-public-history-campaign.md)
 - [ADR-0037 - Point-in-time instrument timeline and ex-post lifecycle coverage](ADR-0037-point-in-time-instrument-timeline.md)
 - [ADR-0036 - Scale-aligned candle audit series bound](ADR-0036-scale-aligned-candle-audit-series-bound.md)
 - [ADR-0035 - Funding catalog and snapshot-bound selection](ADR-0035-funding-catalog-and-snapshot-bound-selection.md)

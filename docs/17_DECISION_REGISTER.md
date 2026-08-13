@@ -41,6 +41,7 @@
 | D-035 | Funding coverage audits exact source/canonical parity and stable predecessor-derived cadence; empty windows or undated cadence changes block | accepted | Funding is sparse, current interval metadata is not historical evidence, complete anomaly hashing, and ADR-0034 |
 | D-036 | The receipt-verified canonical catalog admits `funding_event` while every snapshot-bound selection remains single-type | accepted | Shared revision/hash semantics, strict funding verifier and key column, no mixed candle/funding request, and ADR-0035 |
 | D-037 | Instrument metadata accumulates in an immutable timeline with point-in-time selection separated from ex-post lifecycle coverage | accepted | Later snapshot fields never enter earlier decisions; lifecycle conflicts and partial inventories remain blockers; ADR-0037 |
+| D-038 | Multi-month public history acquisition is a receipt-resumable sequential campaign of immutable month/type/eight-bucket child jobs | accepted | Aggregate preflight, deterministic membership, exact child attempt bounds, no pacer multiplication, and ADR-0038 |
 
 ## Decisions requiring benchmark or owner evidence
 

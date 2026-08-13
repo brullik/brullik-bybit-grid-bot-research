@@ -172,6 +172,36 @@ def test_instrument_timeline_summary_matches_schema_hash_receipt_and_redaction()
         assert forbidden not in rendered
 
 
+def test_representative_multi_year_campaign_request_is_bounded_and_sanitized() -> None:
+    artifact = (
+        ROOT
+        / "benchmarks"
+        / "specifications"
+        / "m2-representative-5x24-history-campaign-request-20260813.json"
+    )
+    schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "public-history-campaign-request.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema).validate(payload)
+    assert payload["kinds"] == ["trade", "mark", "funding"]
+    assert payload["symbols"] == ["BTCUSDT", "UNIUSDT", "FILUSDT", "CHZUSDT", "SUIUSDT"]
+    assert (payload["end_ms"] - payload["start_ms"]) // 60_000 + 1 == 1_052_640
+    assert payload["target_rps"] == 15
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        "instrument_id",
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_catalog_evidence_chain_matches_schema_hash_receipts_and_redaction() -> None:
     specifications = ROOT / "benchmarks" / "specifications"
     results = ROOT / "benchmarks" / "results"

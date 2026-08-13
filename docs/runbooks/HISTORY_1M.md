@@ -484,3 +484,55 @@ interval mismatch, or change in observed cadence is hash-bound and blocks. Do no
 dated evidence or an explicit governance decision. A passing bounded audit still does not prove an
 independent venue ledger, full lifecycle/history, repair, compaction, catalog readiness, scale, or
 Gate 2.
+
+## 18. Run a resumable multi-month campaign
+
+Use a campaign only after the single-job path and the preceding controlled-scale step verify. The
+request names symbols and a common inclusive range; it never contains `instrument_id`. Example:
+
+```json
+{
+  "contract": "grid.public-history-campaign-request/v1",
+  "campaign_id": "m2-representative-5x24",
+  "kinds": ["trade", "mark", "funding"],
+  "symbols": ["BTCUSDT", "UNIUSDT", "FILUSDT", "CHZUSDT", "SUIUSDT"],
+  "start_ms": 1704067200000,
+  "end_ms": 1767225540000,
+  "lifecycle_policy": "registry-lifecycle-intersection-v1",
+  "history_page_limit": 1000,
+  "funding_page_limit": 200,
+  "funding_page_span_minutes": 10080,
+  "workers": 24,
+  "target_rps": 15,
+  "max_attempts": 3
+}
+```
+
+The 15-RPS value is an explicit measured controlled-scale setting, not a new default or venue
+limit. First run aggregate no-mutation preflight:
+
+```powershell
+.venv\Scripts\grid-data.exe history-campaign `
+  --request benchmarks\specifications\m2-representative-5x24-history-campaign-request-20260813.json `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --staging-root data\history
+```
+
+Review the deterministic plan hash, job/page counts, fresh host identity, aggregate required free
+space, and peak memory. Repeat with `--execute` only if all pass. Children run sequentially and
+emit progress JSON; interruption preserves their verified pages. Repeating the identical command
+downloads only missing pages, while a completed campaign performs no public request.
+
+Verify the printed root independently:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-history-campaign `
+  data\history\.campaigns\m2-representative-5x24--<plan-prefix>
+```
+
+The campaign clips each series to the verified current registry launch/delivery interval. This is
+only ex-post acquisition scoping: do not expose present-day lifecycle/status/tick metadata to a
+historical decision. Campaign completion is Landing evidence only. Publish and audit each child
+through the existing canonical boundaries before claiming coverage; partial inventory, missing
+candles, funding cadence changes, and Gate 2 remain fail-closed.

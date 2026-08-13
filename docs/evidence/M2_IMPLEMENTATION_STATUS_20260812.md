@@ -56,6 +56,11 @@ The authoritative implementation and review history is:
   ADR-0036 candle-audit schema-bound correction.
 - PR [#39](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/39): receipt-verified
   measured multi-parent April trade compaction with target-band and immutable-lineage evidence.
+- PR [#40](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/40): immutable
+  point-in-time instrument timeline with separate ex-post lifecycle coverage and sanitized
+  partial-inventory evidence.
+- PR [#41](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/41): receipt-resumable
+  multi-month public history campaigns with aggregate preflight and deterministic child reuse.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -419,12 +424,45 @@ or tick row was downloaded. Two recent snapshots establish the append-only mecha
 lifecycle consistency; they do not provide point-in-time metadata for decisions before
 2026-08-12 or close Gate 2.
 
+## Resumable multi-year campaign implementation
+
+ADR-0038 and `grid-data history-campaign` now turn one bounded request into deterministic
+trade/mark/funding children grouped by UTC month and `instrument_id mod 8`. Campaign preflight
+verifies the registry and capacity evidence, preflights every child without mutation, and admits
+the run only when fresh free space covers active-plus-building, the operating reserve, and the
+conservative remaining Landing bound for all incomplete children. Children execute sequentially,
+so their independent pacers cannot multiply the configured rate.
+
+The committed next-step
+[request](../../benchmarks/specifications/m2-representative-5x24-history-campaign-request-20260813.json)
+selects five long-lived, varied bucket-5 instruments over all of 2024-2025: 1,052,640 requested
+minutes per instrument and each candle family. A fresh no-mutation preflight on the current laptop
+resolved 72 child jobs and 11,365 public pages, with a 146,800,640-byte peak-memory bound and a
+109,094,771,418-byte aggregate free-space requirement. It passed the evidence-based NVMe, memory,
+and free-space gates. The deterministic campaign plan SHA-256 is
+`ab32162397e396975071ee3a64cdc372b58938c3f1865439b9e93501611d8f4e`; the request SHA-256 is
+`2c93143e6cec6bf402994cb23dac98ff25bffd3b8319e19de029f5ec378fc120`. This is planning evidence
+only: no campaign directory or public request was created by that preflight.
+
+The plan is receipt-committed before child mutation. A rerun reuses every verified page and
+completed child; the aggregate manifest receipt is written last only after every child manifest,
+plan hash, request hash, relative root, allowlist, and page/row/HTTP total verifies. The request is
+limited to 700 symbols and 120 calendar months and derives exact per-child HTTP ceilings. It uses
+only unauthenticated public kline, mark-price-kline, and funding-history endpoints and explicitly
+records that tick rows were not requested.
+
+`registry-lifecycle-intersection-v1` clips source acquisition to current receipt-verified
+launch/delivery evidence. That is an ex-post data-quality bound, not historical point-in-time
+strategy truth. The implementation does not publish canonical datasets, accept a gap/cadence
+reason, repair or compact data, update the catalog, or close Gate 2. A measured representative
+multi-year campaign remains the next controlled-scale evidence step.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods and a
   resolution for the partial source inventory; the current timeline begins on 2026-08-12;
-- measured coverage-audit evidence for the representative multi-year and full-history controlled
-  scales;
+- execution, canonical publication, and coverage-audit evidence for the representative multi-year
+  and full-history controlled scales;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;

@@ -31,7 +31,7 @@ durable resume, and long-run validation.
 ADR-0023 implements the first durable Phase 2 baseline with a global 10-RPS pacer, fixed
 non-overlapping pages, explicit bounded retries, page receipts, and receipt-based resume. It does
 not raise its operating rate automatically; adaptive response-header throttling and long-run
-qualification remain required before a larger campaign.
+qualification remain required before full-universe scale or any operating-rate increase.
 
 ADR-0032 adds the separate funding path. Each series has one receipted predecessor query and
 fixed range pages of at most seven days/200 rows. A range response with the full requested limit
@@ -43,6 +43,15 @@ ADR-0034 adds a read-only funding chronology audit: exact source/canonical parit
 tiling, predecessor/internal interval recomputation, and stable observed cadence. Empty pages and
 cadence changes remain blocked without dated evidence; current interval metadata is never used as
 historical truth.
+
+ADR-0038 adds the multi-job orchestration boundary without weakening those child contracts. One
+campaign request is deterministically split by dataset type, UTC month, and the accepted eight
+buckets. All children are preflighted before mutation; aggregate admission reserves the complete
+remaining Landing bound once alongside active-plus-building and the operating reserve. Children
+run sequentially so their pacers cannot multiply the target RPS. The campaign plan is committed
+before the first child, each existing child receipt is reused, and an aggregate manifest receipt
+is written only after all child allowlists and hashes verify. Registry lifecycle intersection is
+ex-post acquisition scoping, not point-in-time research metadata.
 
 ## Data layers
 

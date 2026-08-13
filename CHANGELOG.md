@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-resumable public history campaign orchestration for up to 700 instruments and 120
+  calendar months across trade, mark, and funding: deterministic month/type/eight-bucket child
+  jobs, aggregate no-mutation host admission, sequential pacing, exact attempt bounds, child
+  receipt reuse, receipt-last aggregate verification, and no credential/tick/live dependency.
 - Immutable receipt-verified instrument timeline with stable cross-snapshot identities, strict
   point-in-time selection, separate ex-post lifecycle coverage, fail-closed conflict/partial-source
   accounting, and a bounded GitHub-safe summary that never exposes future snapshot fields.
