@@ -102,6 +102,13 @@ validates but does not retain exact rates, and admits the second-oldest observed
 after retaining the oldest as predecessor evidence. Its measured five-instrument result and
 GitHub-safe aggregate projection remain pending a post-merge run; Gate 2 remains closed.
 
+ADR-0049 defines that GitHub-safe projection. Its builder re-verifies the complete private
+ADR-0048 receipt chain and requires classified response observations to cover every completed
+page, then retains only aggregate counts, requested scan bounds, hashes, and immutable code
+identities. Measured evidence remains a separate post-merge artifact; exact symbols, instrument
+IDs, rates, observed settlement timestamps, runtime paths, account data, and credentials remain
+excluded.
+
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
 partitioning, ZSTD-3, receipt-last publication, and a separate public acquisition contract. Every

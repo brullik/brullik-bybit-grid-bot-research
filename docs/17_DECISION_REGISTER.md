@@ -52,6 +52,7 @@
 | D-046 | Completed canonical campaign reuse and evidence may reverify Landing through the full receipt/hash chain without decoding rows | accepted | First publication and coverage retain semantic admission; every source byte/receipt/fact and canonical dataset still verifies; ADR-0046 |
 | D-047 | One campaign invocation admits one receipt-verified registry/capacity snapshot and reuses it for every child plan | accepted | Child paths and hashes remain exact; every new execute/resume invocation reloads and reverifies inputs; ADR-0047 |
 | D-048 | Full-history funding begins only at the second source-observed settlement after a bounded receipt-resumable backward scan | accepted | The oldest observed event is predecessor-only; registry launch time/current cadence never fabricate boundary evidence; ADR-0048 |
+| D-049 | Funding source-boundary results enter GitHub only through a strict aggregate hash/count projection | accepted | Runtime symbols, IDs, rates, observed settlement times, paths, and private facts remain excluded; response accounting must cover every completed page; ADR-0049 |
 
 ## Decisions requiring benchmark or owner evidence
 

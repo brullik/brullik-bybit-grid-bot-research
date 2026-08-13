@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-funding-source-boundary.schema.json",
+  "title": "Sanitized Phase 2 public funding source-boundary evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "adaptive_throttling",
+    "bindings",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "landing",
+    "limitations",
+    "process",
+    "result",
+    "scope",
+    "source_policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "adaptive_throttling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_increase_count",
+        "completed_page_response_coverage_complete",
+        "complete_header_observation_count",
+        "configured_target_rps",
+        "cooldown_event_count",
+        "final_effective_rps",
+        "header_absent_observation_count",
+        "invalid_header_observation_count",
+        "low_headroom_event_count",
+        "maximum_cooldown_ms",
+        "minimum_effective_rps",
+        "policy",
+        "rate_limit_event_count",
+        "rate_reduction_count",
+        "response_observation_count",
+        "transport_attempt_accounting_complete",
+        "transport_attempt_count",
+        "transport_attempt_without_response_count"
+      ],
+      "properties": {
+        "automatic_increase_count": {"const": 0},
+        "completed_page_response_coverage_complete": {"const": true},
+        "complete_header_observation_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "configured_target_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "cooldown_event_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "final_effective_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "header_absent_observation_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "invalid_header_observation_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "low_headroom_event_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "maximum_cooldown_ms": {"type": "integer", "minimum": 0, "maximum": 600000},
+        "minimum_effective_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "policy": {"const": "bybit-v5-response-header-decrease-only-v1"},
+        "rate_limit_event_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "rate_reduction_count": {"type": "integer", "minimum": 0, "maximum": 1792000},
+        "response_observation_count": {"type": "integer", "minimum": 1, "maximum": 1792000},
+        "transport_attempt_accounting_complete": {"const": true},
+        "transport_attempt_count": {"type": "integer", "minimum": 1, "maximum": 1792000},
+        "transport_attempt_without_response_count": {"type": "integer", "minimum": 0, "maximum": 1792000}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary_manifest_sha256", "boundary_plan_sha256", "boundary_request_sha256", "instrument_registry_sha256"],
+      "properties": {
+        "boundary_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_request_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-funding-source-boundary/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "landing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "http_attempt_count", "page_count", "retry_count"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 2, "maximum": 71680000},
+        "http_attempt_count": {"type": "integer", "minimum": 1, "maximum": 1792000},
+        "page_count": {"type": "integer", "minimum": 1, "maximum": 358400},
+        "retry_count": {"type": "integer", "minimum": 0, "maximum": 1792000}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aggregate_receipt_verified", "deterministic_resume_supported", "discovery_software_identity", "evidence_software_identity", "page_receipts_verified"],
+      "properties": {
+        "aggregate_receipt_verified": {"const": true},
+        "deterministic_resume_supported": {"const": true},
+        "discovery_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "evidence_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "page_receipts_verified": {"const": true}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_start_proven_count", "predecessor_proven_count"],
+      "properties": {
+        "canonical_start_proven_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "predecessor_proven_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["end_ms", "start_ms", "symbol_count"],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "source_policy": {
+      "const": {
+        "authentication": "none",
+        "base_url": "https://api.bybit.com",
+        "endpoint": "/v5/market/funding/history",
+        "private_endpoints_called": false,
+        "retained_source_fields": ["fundingRateTimestamp"],
+        "source_rates_validated_not_retained": true
+      }
+    },
+    "status": {"const": "verified-public-funding-source-boundary"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_funding_rates": false,
+        "evidence_contains_instrument_identifiers": false,
+        "evidence_contains_observed_settlement_timestamps": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

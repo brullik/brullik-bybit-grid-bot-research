@@ -149,9 +149,17 @@ class CompletedFundingBoundary:
     manifest_path: Path
     receipt_path: Path
     manifest_sha256: str
+    plan_sha256: str
+    request_sha256: str
+    registry_sha256: str
+    software_identity: str
+    scan_start_ms: int
+    scan_end_ms: int
     symbol_count: int
     page_count: int
     event_count: int
+    http_attempt_count: int
+    adaptive_throttling: dict[str, object]
 
 
 def _integer(name: str, value: object, *, minimum: int, maximum: int) -> int:
@@ -885,7 +893,15 @@ def verify_completed_funding_source_boundary(job_root: Path) -> CompletedFunding
         manifest_path=root / "manifest.json",
         receipt_path=root / "completion-receipt.json",
         manifest_sha256=manifest_sha,
+        plan_sha256=plan_sha,
+        request_sha256=cast(str, plan["request_sha256"]),
+        registry_sha256=cast(str, plan["registry_sha256"]),
+        software_identity=cast(str, plan["software_identity"]),
+        scan_start_ms=cast(int, cast(dict[str, object], plan["request"])["start_ms"]),
+        scan_end_ms=cast(int, cast(dict[str, object], plan["request"])["end_ms"]),
         symbol_count=len(series),
         page_count=len(pages),
         event_count=total_events,
+        http_attempt_count=total_attempts,
+        adaptive_throttling=adaptive_summary,
     )
