@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from threading import local
 from typing import Any
 
 import pytest
-from grid_bybit_public import BybitPublicError
+from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_contracts.canonical import canonical_sha256
 from grid_data.evidence import publish_evidence
 from grid_data.history_acquisition import HistoryAcquisitionError
@@ -31,6 +32,7 @@ class FakeKlineClient:
     def __init__(self, *, fail_once: bool = False) -> None:
         self.fail_once = fail_once
         self.calls: list[tuple[str, int, int, str]] = []
+        self._thread_state = local()
 
     def kline_page(
         self,
@@ -43,6 +45,7 @@ class FakeKlineClient:
         limit: int = 1000,
     ) -> tuple[tuple[str, ...], ...]:
         del category, limit
+        self._thread_state.observation = RateLimitObservation(200, 0, "absent", None, None, None)
         self.calls.append((symbol, start_ms, end_ms, kind))
         if self.fail_once:
             self.fail_once = False
@@ -55,10 +58,16 @@ class FakeKlineClient:
             rows.append(row)
         return tuple(rows)
 
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = getattr(self._thread_state, "observation", None)
+        self._thread_state.observation = None
+        return observed
+
 
 class FakeFundingClient:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int, int, int]] = []
+        self._thread_state = local()
 
     def funding_page(
         self,
@@ -70,6 +79,7 @@ class FakeFundingClient:
         limit: int = 200,
     ) -> tuple[dict[str, str], ...]:
         del category
+        self._thread_state.observation = RateLimitObservation(200, 0, "absent", None, None, None)
         self.calls.append((symbol, start_ms, end_ms, limit))
         if limit != 1:
             return ()
@@ -81,6 +91,11 @@ class FakeFundingClient:
             },
         )
 
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = getattr(self._thread_state, "observation", None)
+        self._thread_state.observation = None
+        return observed
+
 
 class NeverKlineClient(FakeKlineClient):
     def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
@@ -90,6 +105,22 @@ class NeverKlineClient(FakeKlineClient):
 class NeverFundingClient(FakeFundingClient):
     def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
         raise AssertionError(f"completed campaign called funding client: {kwargs}")
+
+
+class UnobservedKlineClient:
+    def __init__(self) -> None:
+        self._delegate = FakeKlineClient()
+
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        return self._delegate.kline_page(**kwargs)
+
+
+class UnobservedFundingClient:
+    def __init__(self) -> None:
+        self._delegate = FakeFundingClient()
+
+    def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
+        return self._delegate.funding_page(**kwargs)
 
 
 def inventory_record(
@@ -424,6 +455,7 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
         completed.campaign_root,
         generated_at_utc="2026-08-13T12:00:00Z",
         software_identity="git:" + "1" * 40,
+        require_complete_throttling_evidence=True,
     )
     schema = json.loads(
         (ROOT / "schemas/evidence/v1/phase2-public-history-campaign.schema.json").read_text(
@@ -437,6 +469,33 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
     assert payload["landing"]["job_count"] == 12  # type: ignore[index]
     assert payload["landing"]["row_count"] == 16  # type: ignore[index]
     assert payload["landing"]["retry_count"] == 0  # type: ignore[index]
+    assert payload["adaptive_throttling"] == {  # type: ignore[index]
+        "automatic_increase_count": 0,
+        "child_job_count": 12,
+        "complete_header_observation_count": 0,
+        "configured_target_rps": 96,
+        "cooldown_event_count": 0,
+        "header_absent_observation_count": payload["landing"]["http_request_count"],  # type: ignore[index]
+        "invalid_header_observation_count": 0,
+        "low_headroom_event_count": 0,
+        "maximum_child_final_effective_rps": 96,
+        "maximum_cooldown_ms": 0,
+        "minimum_child_effective_rps": 96,
+        "minimum_child_final_effective_rps": 96,
+        "policy": "bybit-v5-response-header-decrease-only-v1",
+        "rate_limit_event_count": 0,
+        "rate_reduction_count": 0,
+        "response_observation_count": payload["landing"]["http_request_count"],  # type: ignore[index]
+        "response_observation_coverage_complete": True,
+        "unobserved_http_response_count": 0,
+    }
+    assert payload["timing"] == {  # type: ignore[index]
+        "campaign_completed_at_ms": 1_002,
+        "campaign_elapsed_ms": 0,
+        "campaign_started_at_ms": 1_002,
+        "summed_child_elapsed_ms": 0,
+        "timed_child_count": 12,
+    }
     assert payload["scope"] == {  # type: ignore[index]
         "bucket_count": 2,
         "end_ms": FEBRUARY_1_2026_0001_MS,
@@ -466,4 +525,17 @@ def test_campaign_evidence_rejects_mutable_software_identity(tmp_path: Path) -> 
             completed.campaign_root,
             generated_at_utc="2026-08-13T12:00:00Z",
             software_identity="working-tree",
+        )
+
+
+def test_campaign_evidence_strict_throttling_rejects_unobserved_responses(
+    tmp_path: Path,
+) -> None:
+    completed = execute(preflight(tmp_path), UnobservedKlineClient(), UnobservedFundingClient())
+    with pytest.raises(HistoryCampaignError, match="one observation per HTTP request"):
+        build_history_campaign_evidence(
+            completed.campaign_root,
+            generated_at_utc="2026-08-13T12:00:00Z",
+            software_identity="git:" + "1" * 40,
+            require_complete_throttling_evidence=True,
         )

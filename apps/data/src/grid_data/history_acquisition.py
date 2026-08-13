@@ -799,6 +799,7 @@ def execute_history_job(
                 "interval": "1",
                 "tick_rows_requested": False,
             },
+            "started_at_ms": start_now,
             "status": "complete",
         }
         _publish_artifact(plan.paths.manifest_path, manifest)
@@ -891,6 +892,23 @@ def _verify_completed_history_job(
         or manifest.get("capacity_evidence_sha256") != raw_spec.get("capacity_evidence_sha256")
     ):
         raise HistoryAcquisitionError("history manifest identity does not bind the plan")
+    started_at_ms = manifest.get("started_at_ms")
+    completed_at_ms = manifest.get("completed_at_ms")
+    if (
+        isinstance(completed_at_ms, bool)
+        or not isinstance(completed_at_ms, int)
+        or completed_at_ms < 0
+        or (
+            started_at_ms is not None
+            and (
+                isinstance(started_at_ms, bool)
+                or not isinstance(started_at_ms, int)
+                or started_at_ms < 0
+                or started_at_ms > completed_at_ms
+            )
+        )
+    ):
+        raise HistoryAcquisitionError("history manifest execution timestamps are invalid")
     raw_pages = manifest.get("pages")
     if not isinstance(raw_pages, list) or len(raw_pages) != len(raw_tasks):
         raise HistoryAcquisitionError("history manifest page inventory is incomplete")

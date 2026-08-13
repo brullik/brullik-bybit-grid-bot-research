@@ -74,6 +74,8 @@ The authoritative implementation and review history is:
   complete-current mainnet inventory evidence plus preserved cumulative partial-snapshot evidence.
 - PR [#52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52): shared
   decrease-only public REST response-header throttling and resumable IP-ban abort behavior.
+- PR [#53](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/53): receipt-bound
+  child execution timing and strict GitHub-safe long-run adaptive-throttling qualification.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -638,6 +640,15 @@ summary rejection, and unchanged candle/funding schemas. A measured long-duratio
 under the merged implementation remains required before full-history scale. The implementation,
 ADR, and fault-injection proof are tracked in
 [PR #52](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/52).
+
+ADR-0044 adds the evidence boundary needed for that measured run. New child manifests bind their
+execution start while legacy v1 manifests remain valid. The campaign evidence builder aggregates
+only re-verified child timing and adaptive summaries, and strict mode refuses publication unless
+every child is timed and classified observations exactly cover the verified HTTP-attempt count.
+The projection contains no response headers, request identities, symbols, market values, runtime
+paths, host identity, credentials, or private endpoint results. Implementation and review are
+tracked in [PR #53](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/53); measured
+long-run evidence remains a subsequent PR and does not close Gate 2.
 
 ## Still required before Gate 2
 

@@ -40,7 +40,9 @@ decrease-only response-header adaptation: low headroom caps the effective rate, 
 halve it and impose a cooldown, and HTTP 403 aborts the current run with the documented ten-minute
 resume boundary. Missing/invalid headers are counted and never interpreted as permission to
 increase. Receipt-bound long-run qualification remains required before full-universe scale or any
-operating-rate increase.
+operating-rate increase. ADR-0044 makes that qualification reproducible: new child manifests bind
+execution start/completion, and the strict campaign evidence projection requires one sanitized
+adaptive observation for every verified HTTP attempt without publishing response or market data.
 
 ADR-0032 adds the separate funding path. Each series has one receipted predecessor query and
 fixed range pages of at most seven days/200 rows. A range response with the full requested limit
