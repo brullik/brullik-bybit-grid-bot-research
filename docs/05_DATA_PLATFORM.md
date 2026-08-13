@@ -364,6 +364,13 @@ schema and sorted unique keys, checks settlement intervals across former parent 
 reduces at least two files to one receipt-last child. Compaction preserves existing chronology
 status; it never converts a blocked funding reason into acceptance.
 
+ADR-0055 adds the first funding-specific repair boundary as discovery-only planning. It
+recomputes a blocked ADR-0034 audit and admits only a complete set of isolated integer-multiple
+`C, N*C, C` interval sandwiches when no other blocker exists. Candidate timestamps are derived
+from adjacent source-observed settlements and embedded in bounded standard funding requests;
+current interval metadata is never used, no request is executed, and the audit remains blocked.
+Real plans contain exact settlement identities and stay in private runtime storage.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
@@ -373,6 +380,8 @@ status; it never converts a blocked funding reason into acceptance.
   passed execution is still not a canonical mutation.
 - A successful repair publishes a new child dataset with the old manifest and every repair source
   hash in lineage; it never patches the parent in place.
+- Funding repair planning is discovery-only: exact candidate settlements must later be returned
+  by the public source before a separately implemented immutable funding child can be proposed.
 - Periodic compaction verifies one or more immutable parents from exactly one month/bucket,
   rejects every duplicate/conflicting key, and writes a new receipt-last child. It calibrates the
   16 MiB ZSTD-3 row target from a bounded in-memory sample, permits only one explicit final tail,

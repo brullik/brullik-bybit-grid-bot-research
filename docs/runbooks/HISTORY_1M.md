@@ -576,6 +576,33 @@ dated evidence or an explicit governance decision. A passing bounded audit still
 independent venue ledger, full lifecycle/history, repair, compaction, catalog readiness, scale, or
 Gate 2.
 
+### Plan private funding repair discovery
+
+Only a receipt-verified blocked audit whose sole reason is `unexplained_interval_change` can be
+considered. Run the planner with the merge commit that contains ADR-0055:
+
+```powershell
+.venv\Scripts\grid-data.exe plan-funding-repair `
+  --coverage-audit reports\private\funding-coverage-audit.json `
+  --job-root data\history\.funding-landing\funding-<job>--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --planner-software-identity git:<full-planner-merge-commit-sha> `
+  --output reports\private\funding-repair-plan.json
+```
+
+The command re-verifies and recomputes the complete audit, executes no market request, and does
+not alter Landing or canonical data. It succeeds only when every changed interval edge belongs to
+an isolated integer-multiple `C, N*C, C` pattern and no empty window or other quality blocker
+exists. Embedded requests identify candidate settlements for later exact public-source
+confirmation; the original audit remains blocked and no schedule is accepted.
+
+Keep the generated plan and receipt private because they contain exact instrument and settlement
+identities. Commit only the implementation, schema, ADR, tests, and a later sanitized aggregate
+proof. Funding repair execution and immutable child publication are separate transitions and are
+not yet authorized by a successful plan.
+
 ## 18. Run a resumable multi-month campaign
 
 Use a campaign only after the single-job path and the preceding controlled-scale step verify. The

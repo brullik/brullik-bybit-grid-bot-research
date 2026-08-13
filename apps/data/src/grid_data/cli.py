@@ -61,6 +61,7 @@ from grid_data.funding_publication import (
     preflight_completed_funding_publication,
     publish_preflighted_funding,
 )
+from grid_data.funding_repair_plan import build_funding_repair_plan
 from grid_data.funding_request import resolve_funding_request
 from grid_data.funding_source_boundary import (
     execute_funding_source_boundary,
@@ -480,6 +481,22 @@ def parser() -> argparse.ArgumentParser:
     funding_coverage_audit.add_argument("--audit-software-identity", required=True)
     funding_coverage_audit.add_argument("--output", type=Path, required=True)
     funding_coverage_audit.set_defaults(handler=_audit_funding_history)
+
+    funding_repair_plan = commands.add_parser(
+        "plan-funding-repair",
+        help=(
+            "plan bounded source discovery for isolated funding chronology gaps without "
+            "accepting cadence changes"
+        ),
+    )
+    funding_repair_plan.add_argument("--coverage-audit", type=Path, required=True)
+    funding_repair_plan.add_argument("--job-root", type=Path, required=True)
+    funding_repair_plan.add_argument("--instrument-registry", type=Path, required=True)
+    funding_repair_plan.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_plan.add_argument("--store-root", type=Path, required=True)
+    funding_repair_plan.add_argument("--planner-software-identity", required=True)
+    funding_repair_plan.add_argument("--output", type=Path, required=True)
+    funding_repair_plan.set_defaults(handler=_plan_funding_repair)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -1375,6 +1392,34 @@ def _audit_funding_history(args: argparse.Namespace) -> int:
         )
     )
     return 0 if audit.passed else 2
+
+
+def _plan_funding_repair(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    plan = build_funding_repair_plan(
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        planner_software_identity=args.planner_software_identity,
+    )
+    artifact, receipt = publish_evidence(output, plan.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "candidate_settlement_count": plan.candidate_count,
+                "dataset_id": plan.payload["dataset_id"],
+                "planned_max_http_requests": plan.planned_max_http_requests,
+                "receipt": str(receipt),
+                "status": plan.payload["status"],
+                "task_count": plan.task_count,
+            }
+        )
+    )
+    return 0
 
 
 def _publish_history_1m(args: argparse.Namespace) -> int:

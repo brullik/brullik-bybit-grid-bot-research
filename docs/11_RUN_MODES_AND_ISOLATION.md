@@ -104,6 +104,14 @@ grid-data publish-history-repair --repair-execution <passed-execution.json> \
   --output <replacement-evidence.json>
 # Repeat with --execute only after the printed no-mutation publication preflight is accepted.
 
+# Funding chronology repair starts as private discovery-only planning.
+grid-data plan-funding-repair --coverage-audit <blocked-funding-audit.json> \
+  --job-root <completed-funding-job-root> --instrument-registry <registry.json> \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --planner-software-identity git:<planner-commit-sha> \
+  --output <private-funding-repair-plan.json>
+# This executes no market request and does not accept cadence or mutate canonical data.
+
 # Immutable canonical maintenance (trade/mark compaction)
 grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
   --capacity-evidence <capacity.json> --store-root <local-path> \

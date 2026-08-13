@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-funding-repair-plan.schema.json",
+  "title": "Bounded Bybit funding repair discovery plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "content_sha256",
+    "contract",
+    "dataset_id",
+    "generated_at_utc",
+    "inference_policy",
+    "limits",
+    "mutation_policy",
+    "planner_software_identity",
+    "status",
+    "tasks"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_manifest_sha256",
+        "chronology_anomaly_records_sha256",
+        "coverage_audit_artifact_sha256",
+        "coverage_audit_content_sha256",
+        "funding_manifest_sha256"
+      ],
+      "properties": {
+        "canonical_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "chronology_anomaly_records_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.bybit-funding-repair-plan/v1"},
+    "dataset_id": {"type": "string", "pattern": "^funding-[0-9a-f]{24}$"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inference_policy": {
+      "const": {
+        "audit_remains_blocked": true,
+        "candidate_requires_exact_source_confirmation": true,
+        "current_instrument_interval_used": false,
+        "empty_source_windows_supported": false,
+        "isolated_integer_multiple_sandwich_required": true,
+        "schedule_change_accepted": false
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_settlement_count",
+        "explained_interval_change_count",
+        "max_repair_candidates",
+        "max_repair_http_requests",
+        "max_repair_tasks",
+        "planned_max_http_requests",
+        "task_count"
+      ],
+      "properties": {
+        "candidate_settlement_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "explained_interval_change_count": {"type": "integer", "minimum": 2},
+        "max_repair_candidates": {"const": 1000},
+        "max_repair_http_requests": {"const": 100000},
+        "max_repair_tasks": {"const": 1000},
+        "planned_max_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "task_count": {"type": "integer", "minimum": 1, "maximum": 1000}
+      }
+    },
+    "mutation_policy": {
+      "const": {
+        "canonical_dataset_mutated": false,
+        "market_requests_executed": false,
+        "repair_candidates_accepted": false,
+        "standard_funding_requests_embedded_only": true
+      }
+    },
+    "planner_software_identity": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    },
+    "status": {"const": "discovery-planned"},
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/task"}
+    }
+  },
+  "$defs": {
+    "fundingRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "job_id",
+        "max_attempts",
+        "max_http_requests",
+        "page_limit",
+        "page_span_minutes",
+        "series",
+        "target_rps",
+        "workers"
+      ],
+      "properties": {
+        "contract": {"const": "grid.bybit-funding-history-request/v1"},
+        "job_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 5},
+        "max_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "page_limit": {"type": "integer", "minimum": 2, "maximum": 200},
+        "page_span_minutes": {"type": "integer", "minimum": 1, "maximum": 10080},
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["end_ms", "start_ms", "symbol"],
+            "properties": {
+              "end_ms": {"$ref": "#/$defs/minute"},
+              "start_ms": {"$ref": "#/$defs/minute"},
+              "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+            }
+          }
+        },
+        "target_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 32}
+      }
+    },
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "positiveMinuteCount": {"type": "integer", "minimum": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_settlement_count",
+        "candidate_settlement_times_ms",
+        "end_ms",
+        "expected_interval_minutes",
+        "instrument_id",
+        "observed_gap_interval_minutes",
+        "page_count",
+        "predecessor_settlement_ms",
+        "request",
+        "request_sha256",
+        "sequence",
+        "start_ms",
+        "symbol"
+      ],
+      "properties": {
+        "candidate_settlement_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "candidate_settlement_times_ms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {"$ref": "#/$defs/minute"}
+        },
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "expected_interval_minutes": {"$ref": "#/$defs/positiveMinuteCount"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "observed_gap_interval_minutes": {"$ref": "#/$defs/positiveMinuteCount"},
+        "page_count": {"type": "integer", "minimum": 2},
+        "predecessor_settlement_ms": {"$ref": "#/$defs/minute"},
+        "request": {"$ref": "#/$defs/fundingRequest"},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 999},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    }
+  }
+}

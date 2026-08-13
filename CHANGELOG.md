@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0055 fail-closed funding repair discovery planning: a receipt-verified blocked audit may
+  produce bounded ordinary public funding requests only when every interval change is an isolated
+  integer-multiple `C, N*C, C` sandwich; candidates remain private, unaccepted, and unexecuted.
 - ADR-0052 funding source-boundary admission: campaign preflight re-verifies ADR-0048 receipts,
   requires exact registry/symbol/range/identity compatibility, clips each funding series to its
   proven start, and binds the exact oldest predecessor into the first child boundary request.
