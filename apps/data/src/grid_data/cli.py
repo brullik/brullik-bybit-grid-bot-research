@@ -49,6 +49,12 @@ from grid_data.funding_acquisition import (
     preflight_funding_job,
     verify_completed_funding_job,
 )
+from grid_data.funding_compaction import (
+    build_funding_compaction_evidence,
+    preflight_funding_compaction,
+    publish_preflighted_funding_compaction,
+    verify_funding_compaction_evidence,
+)
 from grid_data.funding_coverage_audit import build_completed_funding_coverage_audit
 from grid_data.funding_pilot_evidence import build_funding_pilot_evidence
 from grid_data.funding_publication import (
@@ -604,6 +610,27 @@ def parser() -> argparse.ArgumentParser:
         help="publish compacted Parquet and evidence; omitted is no-mutation preflight",
     )
     compact.set_defaults(handler=_compact_history)
+
+    funding_compact = commands.add_parser(
+        "compact-funding",
+        help="preflight or compact immutable canonical funding fragments into a new child",
+    )
+    funding_compact.add_argument(
+        "--dataset",
+        action="append",
+        required=True,
+        help="parent funding dataset ID; repeat for each immutable fragment",
+    )
+    funding_compact.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_compact.add_argument("--store-root", type=Path, required=True)
+    funding_compact.add_argument("--software-identity", required=True)
+    funding_compact.add_argument("--output", type=Path, required=True)
+    funding_compact.add_argument(
+        "--execute",
+        action="store_true",
+        help="publish compacted funding Parquet and evidence; omitted is no-mutation preflight",
+    )
+    funding_compact.set_defaults(handler=_compact_funding)
 
     catalog_register = commands.add_parser(
         "catalog-register",
@@ -1706,6 +1733,75 @@ def _compact_history(args: argparse.Namespace) -> int:
             lambda: time.time_ns() // 1_000_000,
         )
         evidence = build_compaction_evidence(
+            resolved,
+            published,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "output_file_count": len(published.manifest.files),
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "status": evidence["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _compact_funding(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_funding_compaction(
+        tuple(args.dataset),
+        args.capacity_evidence,
+        args.store_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    published = None
+    evidence = None
+    if existing_evidence:
+        if not plan.existing_commit or not verify_evidence(output):
+            raise ValueError(
+                "funding compaction evidence conflicts with an uncommitted publication"
+            )
+        published = verify_committed_funding_dataset(plan.paths.dataset_root)
+        evidence = verify_funding_compaction_evidence(output, resolved, published)
+    else:
+        preflight_evidence(output)
+    summary = {
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "existing_evidence": existing_evidence,
+        "expected_output_file_count": 1,
+        "input_file_count": resolved.input_file_count,
+        "parent_dataset_ids": list(plan.spec.parent_dataset_ids),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if published is not None and evidence is not None:
+        artifact = output
+    else:
+        published = publish_preflighted_funding_compaction(
+            resolved,
+            lambda: probe_host_snapshot(args.store_root),
+            lambda: time.time_ns() // 1_000_000,
+        )
+        evidence = build_funding_compaction_evidence(
             resolved,
             published,
             generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),

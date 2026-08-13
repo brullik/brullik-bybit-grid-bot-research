@@ -104,10 +104,14 @@ grid-data publish-history-repair --repair-execution <passed-execution.json> \
   --output <replacement-evidence.json>
 # Repeat with --execute only after the printed no-mutation publication preflight is accepted.
 
-# Immutable canonical maintenance (trade/mark compaction; registration also accepts funding)
+# Immutable canonical maintenance (trade/mark compaction)
 grid-data compact --dataset <dataset-id> [--dataset <dataset-id> ...] \
   --capacity-evidence <capacity.json> --store-root <local-path> \
   --software-identity git:<full-commit-sha> --output <compaction-evidence.json>
+# Repeat with --execute only after the printed no-mutation preflight is accepted.
+grid-data compact-funding --dataset <funding-id> [--dataset <funding-id> ...] \
+  --capacity-evidence <capacity.json> --store-root <local-path> \
+  --software-identity git:<full-commit-sha> --output <funding-compaction-evidence.json>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data catalog-register --dataset <dataset-id> [--dataset <lineage-parent-id> ...] \
   --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \

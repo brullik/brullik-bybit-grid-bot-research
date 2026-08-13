@@ -358,6 +358,12 @@ a deterministic new dataset identity, records the old dataset as its sole parent
 complete requested key union, and writes a receipt-last value-free replacement proof. A repeated
 empty response remains blocked, and the old canonical files are never edited or deleted.
 
+ADR-0054 provides the corresponding immutable maintenance boundary for sparse funding fragments.
+It accepts only receipt-verified parents from one month/bucket, verifies exact Decimal128 funding
+schema and sorted unique keys, checks settlement intervals across former parent boundaries, and
+reduces at least two files to one receipt-last child. Compaction preserves existing chronology
+status; it never converts a blocked funding reason into acceptance.
+
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.

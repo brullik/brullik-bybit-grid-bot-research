@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0054 - Immutable canonical funding compaction](ADR-0054-immutable-canonical-funding-compaction.md)
 - [ADR-0053 - Quarantine-aware coverage and repair admission](ADR-0053-quarantine-aware-coverage-and-repair-admission.md)
 - [ADR-0052 - Receipt-bound funding source-boundary admission](ADR-0052-receipt-bound-funding-source-boundary-admission.md)
 - [ADR-0051 - Sanitized candle source-quality evidence](ADR-0051-sanitized-candle-source-quality-evidence.md)
