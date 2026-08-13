@@ -78,6 +78,8 @@ The authoritative implementation and review history is:
   child execution timing and strict GitHub-safe long-run adaptive-throttling qualification.
 - PR [#54](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/54): measured
   transport-attempt versus HTTP-response accounting correction for strict qualification.
+- PR [#55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55): receipt-verified
+  100-instrument x 31-day public long-run throttling and resume evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -660,6 +662,25 @@ or protocol failures. A client that returns a completed page without an observat
 closed. The correction and its tests are tracked in
 [PR #54](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/54).
 
+The corrected strict builder independently verified and published
+[`m2-public-history-long-run-100x31-20260813.json`](../../benchmarks/results/m2-public-history-long-run-100x31-20260813.json).
+It binds 100 instruments, all 31 days of July 2026, all eight buckets, and trade/mark/funding
+public sources. The 24 receipt-committed child jobs contain 9,600 pages, 8,938,466 rows, and
+591,702,449 Landing bytes. There were 9,621 bounded transport attempts: 9,600 completed page
+responses were classified and 21 attempts produced no response before retry. All classified
+responses had absent rate headers; malformed headers, rate-limit events, rate reductions,
+cooldowns, and automatic increases were zero. The configured, minimum, and final rate remained
+15 RPS.
+
+Summed child execution time was 849,023 ms (14:09). Campaign wall span was 2,643,108 ms (44:03),
+including two process/resume boundaries and their full receipt re-verification. The final strict
+evidence pass required another measured 233.6 seconds. This qualifies the ADR-0043/0045 adaptive
+accounting at this controlled scale and demonstrates deterministic resume, while also exposing
+small-file re-verification as the next measured local optimization target. It is Landing evidence
+only: canonical publication/audit, broader historical scale, Gate 2, and private/live permissions
+remain unchanged. The result and exact contract assertions are tracked in
+[PR #55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
@@ -668,5 +689,5 @@ closed. The correction and its tests are tracked in
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
-- long-run adaptive throttling evidence and controlled scale-up; and
+- further controlled scale-up plus canonical publication/audit of the 100 x 31-day campaign; and
 - funding repair/compaction and the remaining PM-owned Gate 2 acceptance checklist.

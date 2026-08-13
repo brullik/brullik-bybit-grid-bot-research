@@ -317,6 +317,108 @@ def test_representative_multi_year_campaign_evidence_is_bound_and_sanitized() ->
         assert forbidden not in rendered
 
 
+def test_long_run_throttling_campaign_evidence_is_bound_complete_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks/results/m2-public-history-long-run-100x31-20260813.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/phase2-public-history-campaign.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["bindings"]["campaign_manifest_sha256"] == (
+        "a87ef79466ea579c847e500d84d84a3681d45f05d74d301f6a685cca6e358033"
+    )
+    assert payload["scope"] == {
+        "bucket_count": 8,
+        "end_ms": 1_785_542_340_000,
+        "kind_count": 3,
+        "month_count": 1,
+        "start_ms": 1_782_864_000_000,
+        "symbol_count": 100,
+    }
+    assert payload["landing"] == {
+        "artifact_bytes": 591_702_449,
+        "by_kind": [
+            {
+                "http_request_count": 4_500,
+                "job_count": 8,
+                "kind": "trade",
+                "page_count": 4_500,
+                "row_count": 4_464_000,
+            },
+            {
+                "http_request_count": 4_521,
+                "job_count": 8,
+                "kind": "mark",
+                "page_count": 4_500,
+                "row_count": 4_464_000,
+            },
+            {
+                "http_request_count": 600,
+                "job_count": 8,
+                "kind": "funding",
+                "page_count": 600,
+                "row_count": 10_466,
+            },
+        ],
+        "http_request_count": 9_621,
+        "job_count": 24,
+        "page_count": 9_600,
+        "retry_count": 21,
+        "row_count": 8_938_466,
+    }
+    assert payload["adaptive_throttling"] == {
+        "automatic_increase_count": 0,
+        "child_job_count": 24,
+        "complete_header_observation_count": 0,
+        "completed_page_response_coverage_complete": True,
+        "configured_target_rps": 15,
+        "cooldown_event_count": 0,
+        "header_absent_observation_count": 9_600,
+        "invalid_header_observation_count": 0,
+        "low_headroom_event_count": 0,
+        "maximum_child_final_effective_rps": 15,
+        "maximum_cooldown_ms": 0,
+        "minimum_child_effective_rps": 15,
+        "minimum_child_final_effective_rps": 15,
+        "policy": "bybit-v5-response-header-decrease-only-v1",
+        "rate_limit_event_count": 0,
+        "rate_reduction_count": 0,
+        "response_observation_classification_complete": True,
+        "response_observation_count": 9_600,
+        "transport_attempt_accounting_complete": True,
+        "transport_attempt_count": 9_621,
+        "transport_attempt_without_response_count": 21,
+    }
+    assert payload["timing"] == {
+        "campaign_completed_at_ms": 1_786_639_371_670,
+        "campaign_elapsed_ms": 2_643_108,
+        "campaign_started_at_ms": 1_786_636_728_562,
+        "summed_child_elapsed_ms": 849_023,
+        "timed_child_count": 24,
+    }
+    assert payload["process"]["software_identity"] == (
+        "git:580394c4f51c2aeef2a05fd83c90cedb735953b4"
+    )
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+        '"symbol"',
+        '"instrument_id"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_representative_canonical_campaign_evidence_is_bound_and_sanitized() -> None:
     artifact = ROOT / "benchmarks/results/m2-canonical-history-campaign-5x24-20260813.json"
     schema = load_json(ROOT / "schemas/evidence/v1/phase2-history-campaign-publication.schema.json")
