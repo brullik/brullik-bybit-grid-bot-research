@@ -119,7 +119,9 @@ evidence, not canonical publication, accepted coverage, or Gate 2 evidence. See 
 `grid.phase2-public-history-campaign/v1` may carry the ADR-0044 `timing` and
 `adaptive_throttling` projections. They are optional so immutable legacy evidence still validates.
 The strict builder mode requires every child to contain both inputs and proves that classified
-observations exactly cover the campaign's verified HTTP-attempt total.
+observations cover every completed page response. ADR-0045 separately exposes the verified
+transport-attempt total and the count of bounded attempts that produced no response observation;
+it never invents response headers for a connection/protocol failure.
 
 `grid.phase2-public-history-campaign/v1` is the GitHub-safe projection of one fully re-verified
 campaign. It binds campaign/request/registry/capacity hashes, immutable implementation identity,

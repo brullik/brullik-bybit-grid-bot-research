@@ -554,8 +554,9 @@ instrument identities, and market values.
 
 Use `--require-complete-throttling-evidence` for every long-run qualification. It fails if a child
 lacks receipt-bound execution timing, mixes legacy/current summaries, or has fewer sanitized
-response observations than verified HTTP attempts. Ordinary projection without this flag remains
-available only to reproduce immutable legacy campaigns.
+response observations than completed pages. Transport attempts that fail before an HTTP response
+are counted separately and do not masquerade as missing headers. Ordinary projection without this
+flag remains available only to reproduce immutable legacy campaigns.
 
 For a campaign executed entirely by an ADR-0044 implementation, qualify it explicitly:
 

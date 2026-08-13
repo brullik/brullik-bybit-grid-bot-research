@@ -84,6 +84,7 @@ def _adaptive_summary(
 ) -> dict[str, object] | None:
     verified: list[dict[str, object]] = []
     missing_count = 0
+    completed_page_response_coverage_complete = True
     for manifest in child_manifests:
         request_bound = manifest.get("request_bound")
         if not isinstance(request_bound, dict):
@@ -104,6 +105,10 @@ def _adaptive_summary(
                 "verified child adaptive throttling summary is invalid"
             ) from error
         verified.append(summary)
+        page_count = _integer(manifest, "page_count")
+        response_count = cast(int, summary["response_observation_count"])
+        if response_count < page_count:
+            completed_page_response_coverage_complete = False
     if missing_count == len(child_manifests):
         if require_complete:
             raise HistoryCampaignError("complete throttling evidence requires every child summary")
@@ -128,14 +133,15 @@ def _adaptive_summary(
     observed = totals["response_observation_count"]
     if observed > total_http_requests:
         raise HistoryCampaignError("adaptive observations exceed verified HTTP requests")
-    unobserved = total_http_requests - observed
-    if require_complete and unobserved:
+    attempts_without_response = total_http_requests - observed
+    if require_complete and not completed_page_response_coverage_complete:
         raise HistoryCampaignError(
-            "complete throttling evidence requires one observation per HTTP request"
+            "complete throttling evidence requires every completed page response to be observed"
         )
     return {
         **totals,
         "child_job_count": len(verified),
+        "completed_page_response_coverage_complete": (completed_page_response_coverage_complete),
         "configured_target_rps": configured_target_rps,
         "maximum_child_final_effective_rps": max(
             cast(int, summary["final_effective_rps"]) for summary in verified
@@ -150,8 +156,10 @@ def _adaptive_summary(
             cast(int, summary["final_effective_rps"]) for summary in verified
         ),
         "policy": ADAPTIVE_RATE_POLICY,
-        "response_observation_coverage_complete": unobserved == 0,
-        "unobserved_http_response_count": unobserved,
+        "response_observation_classification_complete": True,
+        "transport_attempt_accounting_complete": True,
+        "transport_attempt_count": total_http_requests,
+        "transport_attempt_without_response_count": attempts_without_response,
     }
 
 
