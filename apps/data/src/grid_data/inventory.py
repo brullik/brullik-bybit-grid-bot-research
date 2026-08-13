@@ -3,17 +3,27 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
-from grid_bybit_public import BybitPublicClient, BybitPublicError
+from grid_bybit_public import BybitPublicError
 from grid_contracts.canonical import canonical_sha256
 
-STATUSES = ("Trading", "PreLaunch", "Settling", "Delivering", "Closed")
+INSTRUMENT_STATUS_POLICY = "bybit-v5-linear-status-enum-2026-08-13"
+INSTRUMENT_STATUS_DOCUMENTATION = "https://bybit-exchange.github.io/docs/v5/enum#status"
+STATUSES = ("PreLaunch", "Trading", "Delivering", "Closed")
 
 
-def build_public_inventory(client: BybitPublicClient) -> dict[str, Any]:
+class InstrumentPageClient(Protocol):
+    def iter_instrument_pages(
+        self,
+        *,
+        status: str | None = None,
+    ) -> Iterator[tuple[Mapping[str, Any], ...]]: ...
+
+
+def build_public_inventory(client: InstrumentPageClient) -> dict[str, Any]:
     records: dict[tuple[str, str, str], Mapping[str, Any]] = {}
     status_queries: dict[str, dict[str, Any]] = {}
     for status in STATUSES:
@@ -27,6 +37,11 @@ def build_public_inventory(client: BybitPublicClient) -> dict[str, Any]:
                     symbol = _required_text(item, "symbol")
                     source_symbol_id = str(item.get("symbolId", ""))
                     actual_status = _required_text(item, "status")
+                    if actual_status != status:
+                        raise ValueError(
+                            "Bybit instrument status filter returned a row outside the "
+                            f"requested {status!r} partition: {actual_status!r}"
+                        )
                     key = (symbol, source_symbol_id, actual_status)
                     records[key] = item
         except BybitPublicError as error:
@@ -70,9 +85,13 @@ def build_public_inventory(client: BybitPublicClient) -> dict[str, Any]:
         ),
         "records": normalized,
         "source": {
-            "endpoint": "/v5/market/instruments-info",
             "category": "linear",
+            "endpoint": "/v5/market/instruments-info",
             "page_limit": 1000,
+            "status_policy": {
+                "documentation": INSTRUMENT_STATUS_DOCUMENTATION,
+                "identity": INSTRUMENT_STATUS_POLICY,
+            },
             "statuses": list(STATUSES),
         },
         "summary": summary,

@@ -46,6 +46,12 @@ the internal `instrument_id`; rows are sorted and unique by that ID. The registr
 decimal metadata and maps source zero delivery/funding sentinels to null. This is a
 dated snapshot, not permission to apply current status to past decisions.
 
+New public inventories bind `bybit-v5-linear-status-enum-2026-08-13` and independently enumerate
+the current normative `PreLaunch`, `Trading`, `Delivering`, and `Closed` partitions. Complete means
+all four queries succeeded and every returned row matched its requested partition. It is
+complete-current endpoint evidence, not historical point-in-time completeness. Older partial
+artifacts remain immutable; see ADR-0042.
+
 ## Instrument timeline and lifecycle coverage
 
 `grid.instrument-timeline/v1` aggregates one or more receipt-verified instrument registries in

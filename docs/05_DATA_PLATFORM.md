@@ -15,6 +15,11 @@ Tick-level public-trade archive bodies are not a V1 source and are neither downl
 
 Source provenance is retained per file/range. A value from one source cannot silently overwrite a conflicting value from another source.
 
+Current instrument inventory uses the dated ADR-0042 status policy: separate `PreLaunch`,
+`Trading`, `Delivering`, and `Closed` queries, matching the normative Bybit V5 enum verified on
+2026-08-13. Every policy query and returned status partition must agree before an observation is
+labelled complete-current. This does not backfill historical point-in-time metadata.
+
 Current instrument `launchTime` is a probe bound, not proof of source availability. Before a
 canonical range is committed, the downloader records the actual earliest/latest response and an
 explicit reason for every lifecycle/source mismatch. Empty ranges are evidence, never fabricated
