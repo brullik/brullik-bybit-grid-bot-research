@@ -18,7 +18,7 @@ from grid_bybit_public import (
     UrllibJsonTransport,
 )
 from grid_contracts.canonical import sha256_file
-from grid_market_store import verify_committed_candle_dataset
+from grid_market_store import verify_committed_candle_dataset, verify_compacted_candle_dataset
 
 from grid_data import __version__
 from grid_data.archive_inventory import (
@@ -31,6 +31,12 @@ from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
     verify_completed_history_job,
+)
+from grid_data.history_compaction import (
+    build_compaction_evidence,
+    preflight_history_compaction,
+    publish_preflighted_compaction,
+    verify_compaction_evidence,
 )
 from grid_data.history_coverage_audit import build_completed_history_coverage_audit
 from grid_data.history_pilot_evidence import build_history_pilot_evidence
@@ -294,6 +300,27 @@ def parser() -> argparse.ArgumentParser:
         help="publish replacement Parquet and lineage evidence; omitted is preflight",
     )
     repair_publish.set_defaults(handler=_publish_history_repair)
+
+    compact = commands.add_parser(
+        "compact",
+        help="preflight or compact immutable canonical fragments into a new child dataset",
+    )
+    compact.add_argument(
+        "--dataset",
+        action="append",
+        required=True,
+        help="parent dataset ID; repeat for each immutable fragment",
+    )
+    compact.add_argument("--capacity-evidence", type=Path, required=True)
+    compact.add_argument("--store-root", type=Path, required=True)
+    compact.add_argument("--software-identity", required=True)
+    compact.add_argument("--output", type=Path, required=True)
+    compact.add_argument(
+        "--execute",
+        action="store_true",
+        help="publish compacted Parquet and evidence; omitted is no-mutation preflight",
+    )
+    compact.set_defaults(handler=_compact_history)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -712,6 +739,74 @@ def _publish_history_repair(args: argparse.Namespace) -> int:
             "manifest_sha256": published.receipt.manifest_sha256,
             "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
             "replacement_row_count": published.manifest.row_count,
+            "status": evidence["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _compact_history(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_history_compaction(
+        tuple(args.dataset),
+        args.capacity_evidence,
+        args.store_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    published = None
+    evidence = None
+    if existing_evidence:
+        if not plan.existing_commit or not verify_evidence(output):
+            raise ValueError("compaction evidence conflicts with an uncommitted publication")
+        published = verify_compacted_candle_dataset(plan.paths.dataset_root)
+        evidence = verify_compaction_evidence(output, resolved, published)
+    else:
+        preflight_evidence(output)
+    summary = {
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "existing_evidence": existing_evidence,
+        "expected_output_file_count": plan.expected_output_file_count,
+        "input_file_count": plan.input_file_count,
+        "parent_dataset_ids": list(plan.spec.parent_dataset_ids),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "required_free_bytes": plan.required_free_bytes,
+        "rows_per_file_target": plan.rows_per_file_target,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if published is not None and evidence is not None:
+        artifact = output
+    else:
+        published = publish_preflighted_compaction(
+            resolved,
+            lambda: probe_host_snapshot(args.store_root),
+            lambda: time.time_ns() // 1_000_000,
+        )
+        evidence = build_compaction_evidence(
+            resolved,
+            published,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "output_file_count": len(published.manifest.files),
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
             "status": evidence["status"],
         }
     )

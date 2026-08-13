@@ -7,6 +7,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Final, cast
 
@@ -32,11 +33,14 @@ from grid_market_store.physical import (
 )
 
 AUDIT_CONTRACT: Final = "grid.canonical-candle-audit/v1"
+COMPACTION_AUDIT_CONTRACT: Final = "grid.canonical-candle-compaction-audit/v1"
+COMPACTION_CALIBRATION_ALGORITHM: Final = "zstd3-prefix-sample-rowgroup-ceil-v1"
 PUBLICATION_CONTRACT: Final = "grid.canonical-candle-publication/v1"
 MIN_OPERATING_RESERVE_BYTES: Final = 8 * 1024**3
 MAX_MEMORY_PERCENT: Final = 70
 MAX_PREFLIGHT_AGE_MS: Final = 60_000
 ROW_GROUP_ROWS: Final = 128_000
+LOGICAL_HASH_BATCH_ROWS: Final = 65_536
 DATASET_ID_RE: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
 ALLOWED_STORAGE_KINDS: Final = frozenset({"nvme", "ssd"})
@@ -185,6 +189,9 @@ class _ParquetFacts:
     max_time_ms: int
     min_instrument_id: int
     max_instrument_id: int
+    instrument_ids: frozenset[int]
+    first_key: tuple[int, int]
+    last_key: tuple[int, int]
 
 
 def _table_sha256(table: pa.Table) -> str:
@@ -205,6 +212,27 @@ def _table_sha256(table: pa.Table) -> str:
                 else:
                     digest.update(buffer.size.to_bytes(8, "big"))
                     digest.update(memoryview(buffer))
+    return digest.hexdigest()
+
+
+def _logical_table_sha256(table: pa.Table) -> str:
+    """Hash logical Arrow values in fixed-size batches, independent of file/chunk layout."""
+
+    digest = hashlib.sha256()
+    schema = table.schema.serialize().to_pybytes()
+    digest.update(len(schema).to_bytes(8, "big"))
+    digest.update(schema)
+    digest.update(table.num_rows.to_bytes(8, "big"))
+    for offset in range(0, table.num_rows, LOGICAL_HASH_BATCH_ROWS):
+        sink = pa.BufferOutputStream()
+        with pa.ipc.new_stream(sink, table.schema) as writer:
+            writer.write_table(
+                table.slice(offset, LOGICAL_HASH_BATCH_ROWS),
+                max_chunksize=LOGICAL_HASH_BATCH_ROWS,
+            )
+        payload = sink.getvalue()
+        digest.update(payload.size.to_bytes(8, "big"))
+        digest.update(memoryview(payload))
     return digest.hexdigest()
 
 
@@ -410,6 +438,9 @@ def _parquet_facts(
             raise PublicationError("Parquet canonical keys are not strictly sorted and unique")
     times = cast(dict[str, int], pc.min_max(open_times).as_py())
     instruments = cast(dict[str, int], pc.min_max(instrument_ids).as_py())
+    unique_instruments = cast(list[int], pc.unique(instrument_ids).to_pylist())
+    first_key = (cast(int, instrument_ids[0].as_py()), cast(int, open_times[0].as_py()))
+    last_key = (cast(int, instrument_ids[-1].as_py()), cast(int, open_times[-1].as_py()))
     return _ParquetFacts(
         row_count=keys.num_rows,
         row_group_count=row_group_count,
@@ -418,6 +449,9 @@ def _parquet_facts(
         max_time_ms=times["max"],
         min_instrument_id=instruments["min"],
         max_instrument_id=instruments["max"],
+        instrument_ids=frozenset(unique_instruments),
+        first_key=first_key,
+        last_key=last_key,
     )
 
 
@@ -657,25 +691,42 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         raise PublicationError("completion receipt does not bind the manifest")
     if manifest.dataset_type not in (DatasetType.TRADE_KLINE_1M, DatasetType.MARK_KLINE_1M):
         raise PublicationError("publication verifier supports only canonical candle datasets")
-    if len(manifest.files) != 1:
-        raise PublicationError("bounded candle publication must contain exactly one Parquet file")
+    if not manifest.files:
+        raise PublicationError("committed candle dataset must contain Parquet files")
     audit_sha = sha256_file(audit_path)
     if manifest.audit_report_sha256 != (audit_sha,):
         raise PublicationError("manifest does not bind the canonical audit")
     audit = _load_json_object(audit_path)
     if canonical_json_bytes(audit) != audit_path.read_bytes():
         raise PublicationError("audit is not canonical JSON")
-    expected_quality_checks = {
-        "canonical_schema_verified": True,
-        "file_hash_recorded": True,
-        "parquet_footer_verified": True,
-        "single_partition": True,
-        "sorted_unique_keys": True,
-        "upstream_coverage_evidence_bound": True,
-    }
+    audit_contract = audit.get("audit_contract")
+    if audit_contract == AUDIT_CONTRACT:
+        if len(manifest.files) != 1:
+            raise PublicationError(
+                "bounded candle publication must contain exactly one Parquet file"
+            )
+        expected_quality_checks = {
+            "canonical_schema_verified": True,
+            "file_hash_recorded": True,
+            "parquet_footer_verified": True,
+            "single_partition": True,
+            "sorted_unique_keys": True,
+            "upstream_coverage_evidence_bound": True,
+        }
+    elif audit_contract == COMPACTION_AUDIT_CONTRACT:
+        expected_quality_checks = {
+            "canonical_schema_verified": True,
+            "file_hashes_recorded": True,
+            "globally_sorted_unique_keys": True,
+            "logical_table_sha256_preserved": True,
+            "parent_datasets_unchanged": True,
+            "parquet_footers_verified": True,
+            "single_partition": True,
+        }
+    else:
+        raise PublicationError("unsupported canonical candle audit contract")
     if (
-        audit.get("audit_contract") != AUDIT_CONTRACT
-        or audit.get("dataset_id") != manifest.dataset_id
+        audit.get("dataset_id") != manifest.dataset_id
         or audit.get("dataset_type") != manifest.dataset_type.value
         or audit.get("layout_contract") != CANONICAL_LAYOUT_ID
         or audit.get("quality_checks") != expected_quality_checks
@@ -683,7 +734,8 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         raise PublicationError("canonical audit identity does not match the manifest")
     expected_files = {"audit.json", "manifest.json", "completion-receipt.json"}
     expected_directories: set[str] = set()
-    verified_facts: _ParquetFacts | None = None
+    verified_facts: list[_ParquetFacts] = []
+    partition_paths: set[str] = set()
     for item in manifest.files:
         path = _safe_dataset_file(root, item.path)
         if (
@@ -692,20 +744,22 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
             or sha256_file(path) != item.sha256
         ):
             raise PublicationError(f"dataset file hash or size mismatch: {item.path}")
-        verified_facts = _parquet_facts(
+        facts = _parquet_facts(
             path,
             manifest.dataset_type,
             expected_rows=item.row_count,
         )
         if (
-            item.min_time_ms != verified_facts.min_time_ms
-            or item.max_time_ms != verified_facts.max_time_ms
-            or item.min_instrument_id != verified_facts.min_instrument_id
-            or item.max_instrument_id != verified_facts.max_instrument_id
+            item.min_time_ms != facts.min_time_ms
+            or item.max_time_ms != facts.max_time_ms
+            or item.min_instrument_id != facts.min_instrument_id
+            or item.max_instrument_id != facts.max_instrument_id
         ):
             raise PublicationError(f"dataset file key statistics mismatch: {item.path}")
+        verified_facts.append(facts)
         expected_files.add(item.path)
         parent = PurePosixPath(item.path).parent
+        partition_paths.add(parent.as_posix())
         while parent != PurePosixPath("."):
             expected_directories.add(parent.as_posix())
             parent = parent.parent
@@ -715,43 +769,65 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
     actual_directories = {path.relative_to(root).as_posix() for path in entries if path.is_dir()}
     if actual_directories != expected_directories:
         raise PublicationError("committed dataset contains orphan or missing directories")
-    if verified_facts is None:
-        raise PublicationError("committed dataset has no verified Parquet facts")
-    item = manifest.files[0]
+    if len(partition_paths) != 1:
+        raise PublicationError("committed candle dataset must contain one month/bucket partition")
+    if tuple(item.path for item in manifest.files) != tuple(
+        sorted(item.path for item in manifest.files)
+    ):
+        raise PublicationError("manifest Parquet inventory must be path-sorted")
+    for left, right in pairwise(verified_facts):
+        if left.last_key >= right.first_key:
+            raise PublicationError("Parquet files are not globally sorted with unique keys")
+    row_count = sum(item.row_count for item in manifest.files)
+    instrument_ids = frozenset().union(*(item.instrument_ids for item in verified_facts))
+    min_time_ms = min(item.min_time_ms for item in verified_facts)
+    max_time_ms = max(item.max_time_ms for item in verified_facts)
     if (
-        manifest.row_count != verified_facts.row_count
-        or manifest.instrument_count != verified_facts.instrument_count
-        or manifest.min_time_ms != verified_facts.min_time_ms
-        or manifest.max_time_ms != verified_facts.max_time_ms
+        manifest.row_count != row_count
+        or manifest.instrument_count != len(instrument_ids)
+        or manifest.min_time_ms != min_time_ms
+        or manifest.max_time_ms != max_time_ms
     ):
         raise PublicationError("manifest aggregate statistics do not match Parquet")
-    expected_file_target = {
-        "classification": _target_classification(item.size_bytes),
-        "observed_bytes": item.size_bytes,
-        "target_bytes": TARGET_FILE_SIZE_BYTES,
-    }
-    expected_parquet = {
-        "compression": COMPRESSION,
-        "compression_level": COMPRESSION_LEVEL,
-        "row_group_count": verified_facts.row_group_count,
-        "row_group_rows": ROW_GROUP_ROWS,
-    }
-    digest_fields = (
-        audit.get("capacity_evidence_sha256"),
-        audit.get("coverage_evidence_sha256"),
-        audit.get("input_table_sha256"),
-        audit.get("request_sha256"),
-    )
-    if (
-        audit.get("file_target") != expected_file_target
-        or audit.get("parquet") != expected_parquet
-        or audit.get("partition_path") != PurePosixPath(item.path).parent.as_posix()
-        or audit.get("coverage_evidence_sha256") not in manifest.source_evidence_sha256
-        or any(
-            not isinstance(value, str) or not SHA256_RE.fullmatch(value) for value in digest_fields
+    partition_path = next(iter(partition_paths))
+    if audit_contract == AUDIT_CONTRACT:
+        item = manifest.files[0]
+        expected_file_target = {
+            "classification": _target_classification(item.size_bytes),
+            "observed_bytes": item.size_bytes,
+            "target_bytes": TARGET_FILE_SIZE_BYTES,
+        }
+        expected_parquet = {
+            "compression": COMPRESSION,
+            "compression_level": COMPRESSION_LEVEL,
+            "row_group_count": verified_facts[0].row_group_count,
+            "row_group_rows": ROW_GROUP_ROWS,
+        }
+        digest_fields = (
+            audit.get("capacity_evidence_sha256"),
+            audit.get("coverage_evidence_sha256"),
+            audit.get("input_table_sha256"),
+            audit.get("request_sha256"),
         )
-    ):
-        raise PublicationError("canonical audit facts do not match Parquet or manifest")
+        if (
+            audit.get("file_target") != expected_file_target
+            or audit.get("parquet") != expected_parquet
+            or audit.get("partition_path") != partition_path
+            or audit.get("coverage_evidence_sha256") not in manifest.source_evidence_sha256
+            or any(
+                not isinstance(value, str) or not SHA256_RE.fullmatch(value)
+                for value in digest_fields
+            )
+        ):
+            raise PublicationError("canonical audit facts do not match Parquet or manifest")
+    else:
+        _verify_compaction_audit(
+            audit,
+            manifest,
+            verified_facts,
+            partition_path=partition_path,
+            root=root,
+        )
     return PublishedDataset(
         dataset_root=root,
         manifest_path=manifest_path,
@@ -760,6 +836,142 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         manifest=manifest,
         receipt=receipt,
     )
+
+
+def _verify_compaction_audit(
+    audit: dict[str, object],
+    manifest: DatasetManifest,
+    facts: list[_ParquetFacts],
+    *,
+    partition_path: str,
+    root: Path,
+) -> None:
+    raw_compaction = audit.get("compaction")
+    raw_calibration = audit.get("calibration")
+    raw_files = audit.get("files")
+    raw_parents = audit.get("parent_manifests")
+    if (
+        not manifest.parent_dataset_ids
+        or len(manifest.parent_dataset_ids) != len(set(manifest.parent_dataset_ids))
+        or manifest.dataset_id in manifest.parent_dataset_ids
+        or any(not DATASET_ID_RE.fullmatch(value) for value in manifest.parent_dataset_ids)
+    ):
+        raise PublicationError("compaction parent dataset lineage is missing or unsafe")
+    if (
+        not isinstance(raw_compaction, dict)
+        or not isinstance(raw_calibration, dict)
+        or not isinstance(raw_files, list)
+        or not isinstance(raw_parents, list)
+    ):
+        raise PublicationError("compaction audit inventories are missing")
+    rows_per_file = raw_compaction.get("rows_per_file_target")
+    if isinstance(rows_per_file, bool) or not isinstance(rows_per_file, int) or rows_per_file <= 0:
+        raise PublicationError("compaction rows-per-file target is invalid")
+    sample_rows = raw_calibration.get("sample_row_count")
+    sample_bytes = raw_calibration.get("sample_compressed_bytes")
+    if (
+        raw_calibration.get("algorithm") != COMPACTION_CALIBRATION_ALGORITHM
+        or raw_calibration.get("maximum_sample_rows") != 1_000_000
+        or isinstance(sample_rows, bool)
+        or not isinstance(sample_rows, int)
+        or not 0 < sample_rows <= 1_000_000
+        or isinstance(sample_bytes, bool)
+        or not isinstance(sample_bytes, int)
+        or sample_bytes <= 0
+    ):
+        raise PublicationError("compaction calibration facts are invalid")
+    raw_rows_per_file = max(1, (TARGET_FILE_SIZE_BYTES * sample_rows) // sample_bytes)
+    calibrated_rows_per_file = max(
+        ROW_GROUP_ROWS,
+        ((raw_rows_per_file + ROW_GROUP_ROWS - 1) // ROW_GROUP_ROWS) * ROW_GROUP_ROWS,
+    )
+    if rows_per_file != calibrated_rows_per_file:
+        raise PublicationError("compaction row target does not match its calibration facts")
+    expected_files = []
+    tail_count = 0
+    target_band_non_tail = 0
+    for index, (item, item_facts) in enumerate(zip(manifest.files, facts, strict=True)):
+        is_last = index == len(manifest.files) - 1
+        is_tail = is_last and item.row_count < rows_per_file
+        if not is_last and item.row_count != rows_per_file:
+            raise PublicationError("only the final compacted file may be a row-count tail")
+        if is_last and item.row_count > rows_per_file:
+            raise PublicationError("compacted tail exceeds the rows-per-file target")
+        classification = _target_classification(item.size_bytes)
+        tail_count += int(is_tail)
+        target_band_non_tail += int(not is_tail and classification == "target-band")
+        expected_files.append(
+            {
+                "classification": classification,
+                "is_tail": is_tail,
+                "observed_bytes": item.size_bytes,
+                "path": item.path,
+                "row_count": item.row_count,
+            }
+        )
+        if item_facts.row_count != item.row_count:
+            raise PublicationError("compaction file inventory row count mismatch")
+    expected_compaction = {
+        "input_file_count": raw_compaction.get("input_file_count"),
+        "output_file_count": len(manifest.files),
+        "output_total_bytes": sum(item.size_bytes for item in manifest.files),
+        "rows_per_file_target": rows_per_file,
+        "tail_file_count": tail_count,
+        "target_band_non_tail_file_count": target_band_non_tail,
+        "target_file_bytes": TARGET_FILE_SIZE_BYTES,
+    }
+    input_file_count = raw_compaction.get("input_file_count")
+    if (
+        isinstance(input_file_count, bool)
+        or not isinstance(input_file_count, int)
+        or input_file_count < 2
+        or input_file_count <= len(manifest.files)
+        or raw_compaction != expected_compaction
+        or raw_files != expected_files
+    ):
+        raise PublicationError("compaction audit file and target facts do not match output")
+    expected_parents = [
+        {"dataset_id": dataset_id, "manifest_sha256": raw.get("manifest_sha256")}
+        for dataset_id, raw in zip(manifest.parent_dataset_ids, raw_parents, strict=False)
+        if isinstance(raw, dict) and raw.get("dataset_id") == dataset_id
+    ]
+    if (
+        len(expected_parents) != len(manifest.parent_dataset_ids)
+        or raw_parents != expected_parents
+        or any(
+            not isinstance(item["manifest_sha256"], str)
+            or not SHA256_RE.fullmatch(item["manifest_sha256"])
+            for item in expected_parents
+        )
+    ):
+        raise PublicationError("compaction parent-manifest inventory does not match lineage")
+    expected_parquet = {
+        "compression": COMPRESSION,
+        "compression_level": COMPRESSION_LEVEL,
+        "row_group_count": sum(item.row_group_count for item in facts),
+        "row_group_rows": ROW_GROUP_ROWS,
+    }
+    output_tables = [pq.read_table(root / item.path) for item in manifest.files]
+    output_table = pa.concat_tables(output_tables).combine_chunks()
+    output_hash = _logical_table_sha256(output_table)
+    digest_fields = (
+        audit.get("capacity_evidence_sha256"),
+        audit.get("coverage_evidence_sha256"),
+        audit.get("input_table_sha256"),
+        audit.get("output_table_sha256"),
+        audit.get("request_sha256"),
+    )
+    if (
+        audit.get("parquet") != expected_parquet
+        or audit.get("partition_path") != partition_path
+        or audit.get("coverage_evidence_sha256") not in manifest.source_evidence_sha256
+        or audit.get("input_table_sha256") != output_hash
+        or audit.get("output_table_sha256") != output_hash
+        or any(
+            not isinstance(value, str) or not SHA256_RE.fullmatch(value) for value in digest_fields
+        )
+    ):
+        raise PublicationError("compaction audit hashes or Parquet facts do not match output")
 
 
 def load_committed_candle_table(dataset_root: Path) -> tuple[PublishedDataset, pa.Table]:

@@ -33,6 +33,7 @@
 | D-027 | Canonical 1m requested-range audit requires exact Landing parity and accepts no missing-minute reason in v1 | accepted | Gap hashes/samples, lifecycle bounds, negative evidence, and fail-closed Gate 2 separation; ADR-0026 |
 | D-028 | A gap repair plan is derived only from a recomputed blocked audit and embeds bounded standard history requests without network or canonical mutation | accepted | Complete gap accounting, Git/hash bindings, standard executor compatibility, and immutable replacement separation; ADR-0027 |
 | D-029 | Repair executes only after whole-plan admission; exact returned gaps create a new receipt-last child dataset with explicit parent lineage | accepted | Standard resumable tasks, repeated-empty blocking, exact key-union proof, unchanged parent hashes, and ADR-0028 |
+| D-030 | Canonical compaction creates a receipt-last child from one same-partition parent union and exposes observed 16 MiB target/tail facts | accepted | Duplicate rejection, deterministic calibration, logical-hash parity, complete parent lineage, and ADR-0029 |
 
 ## Decisions requiring benchmark or owner evidence
 

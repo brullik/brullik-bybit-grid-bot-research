@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/canonical-1m-compaction.schema.json",
+  "title": "Immutable canonical one-minute compaction proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "calibration",
+    "compaction",
+    "compaction_software_identity",
+    "content_sha256",
+    "contract",
+    "generated_at_utc",
+    "limitations",
+    "lineage",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capacity_evidence_sha256",
+        "compacted_manifest_sha256",
+        "input_table_sha256",
+        "output_table_sha256",
+        "parent_manifests"
+      ],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "compacted_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "input_table_sha256": {"$ref": "#/$defs/sha256"},
+        "output_table_sha256": {"$ref": "#/$defs/sha256"},
+        "parent_manifests": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dataset_id", "manifest_sha256"],
+            "properties": {
+              "dataset_id": {"$ref": "#/$defs/datasetId"},
+              "manifest_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "maximum_sample_rows",
+        "sample_compressed_bytes",
+        "sample_row_count"
+      ],
+      "properties": {
+        "algorithm": {"const": "zstd3-prefix-sample-rowgroup-ceil-v1"},
+        "maximum_sample_rows": {"const": 1000000},
+        "sample_compressed_bytes": {"type": "integer", "minimum": 1},
+        "sample_row_count": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "compaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflicting_key_count",
+        "duplicate_key_count",
+        "input_file_count",
+        "logical_table_equal",
+        "output_file_count",
+        "output_total_bytes",
+        "row_count",
+        "rows_per_file_target",
+        "tail_file_count",
+        "target_band_non_tail_file_count",
+        "target_file_bytes"
+      ],
+      "properties": {
+        "conflicting_key_count": {"const": 0},
+        "duplicate_key_count": {"const": 0},
+        "input_file_count": {"type": "integer", "minimum": 2},
+        "logical_table_equal": {"const": true},
+        "output_file_count": {"type": "integer", "minimum": 1},
+        "output_total_bytes": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1},
+        "rows_per_file_target": {"type": "integer", "minimum": 1},
+        "tail_file_count": {"type": "integer", "minimum": 0, "maximum": 1},
+        "target_band_non_tail_file_count": {"type": "integer", "minimum": 0},
+        "target_file_bytes": {"const": 16777216}
+      }
+    },
+    "compaction_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.canonical-1m-compaction/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compacted_dataset_id",
+        "parent_dataset_ids",
+        "parent_datasets_mutated"
+      ],
+      "properties": {
+        "compacted_dataset_id": {
+          "type": "string",
+          "pattern": "^(trade|mark)-1m-compact-[0-9a-f]{24}$"
+        },
+        "parent_dataset_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/datasetId"}
+        },
+        "parent_datasets_mutated": {"const": false}
+      }
+    },
+    "status": {"const": "passed"},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "market_values_included": false,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "datasetId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

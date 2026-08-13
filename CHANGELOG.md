@@ -6,6 +6,8 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Fail-closed, target-size immutable canonical compaction with deterministic multi-file/tail
+  semantics, complete parent lineage, logical hash parity, and receipt-last public evidence.
 - Whole-plan-admitted, receipt-resumable public 1m repair execution plus fail-closed repeated-empty
   evidence, exact gap closure, immutable parent-to-child replacement lineage, and a value-free
   post-publication proof; no parent Parquet file is edited or deleted.

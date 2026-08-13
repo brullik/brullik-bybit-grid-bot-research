@@ -124,7 +124,8 @@ writes the completion receipt last. Repeating an identical publication returns t
 verified commit. A conflicting identity or incomplete directory fails closed and is not deleted.
 
 Canonical publication does not accept missing lifecycle ranges. Gap/lifecycle classification,
-repair, compaction, and catalog registration remain later Phase 2 steps; Gate 2 remains closed.
+repair, immutable compaction, and catalog registration are separate Phase 2 transitions; Gate 2
+remains closed.
 
 ## 8. Publish a sanitized pilot evidence summary to GitHub
 
@@ -243,3 +244,38 @@ original requested minute, and prints the deterministic child ID and parent ID. 
 that the new manifest has exactly the printed parent, and retain the old dataset unchanged. This
 does not compact files, register the child in a catalog, change the accepted gap-reason policy, or
 close Gate 2.
+
+## 13. Compact immutable same-partition fragments
+
+Use compaction only when two or more receipt-verified files collectively describe one candle kind,
+schema, UTC month, and stable bucket. Repeat `--dataset` for each immutable fragment. Parent order
+on the command line does not affect identity; the command sorts and binds every parent ID and
+manifest hash.
+
+Run without `--execute` first:
+
+```powershell
+.venv\Scripts\grid-data.exe compact `
+  --dataset trade-1m-<fragment-a> `
+  --dataset trade-1m-<fragment-b> `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --software-identity git:<compactor-commit-sha> `
+  --output data\evidence\m2-canonical-compaction-<date>.json
+```
+
+Review the input/output file counts, rows-per-file target, planned peak memory, and required free
+space. Preflight verifies each parent, estimates the uncompressed parent footprint before loading
+the bounded month/bucket union, rejects duplicate/conflicting keys, and refuses a rewrite that does
+not reduce file count. It performs no filesystem mutation.
+
+Repeat the exact command with `--execute`. Publication takes a new host snapshot, re-verifies every
+parent, writes ordered hash-named ZSTD-3 files in a same-volume building directory, atomically
+publishes the child, and writes its completion receipt last. Only the final output may be a tail;
+the audit records actual bytes and target classification for every file. The public evidence binds
+equal logical input/output hashes and `parent_datasets_mutated=false` without containing candle
+values or local paths.
+
+Do not delete the parents after compaction. Parent retention/garbage collection requires a future
+catalog reachability policy. Compaction does not register the child, accept a missing-minute
+reason, or close Gate 2.
