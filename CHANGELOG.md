@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0057 immutable funding repair publication and sanitized execution evidence: passed-only
+  exact parent-plus-confirmed-row union, recomputed adjacent settlement intervals, receipt-last
+  child lineage, unchanged parent/audit, and GitHub-safe identifier/value-free projections.
 - ADR-0056 bounded funding repair discovery execution: no-mutation whole-plan preflight,
   sequential standard public funding Landing jobs, exact candidate confirmation, receipt-based
   resume, private rate-free execution evidence, and unchanged canonical parent/audit.
