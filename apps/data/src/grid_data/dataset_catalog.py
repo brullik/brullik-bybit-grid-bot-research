@@ -98,7 +98,7 @@ def build_catalog_registration_evidence(
             "The catalog is a rebuildable metadata index; verified dataset receipts remain "
             "authoritative.",
             "A not-assessed gap status is not historical completeness or Gate 2 acceptance.",
-            "This evidence contains no candle values, credentials, account data, host identity, "
+            "This evidence contains no market values, credentials, account data, host identity, "
             "or absolute paths.",
         ],
         "registration": {

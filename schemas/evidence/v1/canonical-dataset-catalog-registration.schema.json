@@ -70,7 +70,7 @@
         "audit_report_count": {"type": "integer", "minimum": 1},
         "conflict_count": {"const": 0},
         "dataset_id": {"$ref": "#/$defs/datasetId"},
-        "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m"]},
+        "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m", "funding_event"]},
         "file_count": {"type": "integer", "minimum": 1},
         "gap_count": {"type": "null"},
         "gap_status": {"const": "not-assessed-by-dataset-receipt"},

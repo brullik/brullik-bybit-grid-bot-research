@@ -45,6 +45,8 @@ The authoritative implementation and review history is:
   source-parity and stable observed-chronology audit.
 - PR [#34](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/34): receipt-verified
   measured funding source-parity/chronology evidence.
+- Funding catalog implementation is prepared on a dedicated branch; its PR and measured catalog
+  evidence remain pending until the implementation merge identity exists.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -52,8 +54,9 @@ partitioning, ZSTD-3, receipt-last publication, and a separate public acquisitio
 series captures a receipted predecessor, range pages are fixed and resumable, and saturated
 200-row responses fail closed. The funding-specific sanitized evidence contract and builder now
 verify exact Landing/Parquet equality and predecessor/internal interval derivation without
-publishing rates or observed settlement timestamps. Funding-specific repair, compaction, and
-catalog evidence remain pending; Gate 2 is not accepted.
+publishing rates or observed settlement timestamps. Funding registration/selection is implemented
+against the same receipt-verified catalog with strict type isolation; funding-specific repair,
+compaction, measured catalog evidence, and Gate 2 remain pending.
 
 The receipt-verified measured funding result is
 [`m2-public-funding-canonical-pilot-20260813.json`](../../benchmarks/results/m2-public-funding-canonical-pilot-20260813.json).
@@ -176,19 +179,21 @@ representative measured runtime artifact is still required before Gate 2.
 ## Dataset catalog and reproducible selection implementation
 
 `grid-data catalog-register` preflights and atomically registers only receipt-verified canonical
-candle datasets in a DuckDB metadata index. It binds complete parent lineage, manifest/evidence/
-build/software hashes, file counts/hashes/key bounds, canonical month/bucket, honest gap/conflict
-summary, and logical receipt/object identity. Catalog state uses a monotonic revision and canonical
-logical SHA-256 rather than unstable DuckDB file bytes; a lock, same-directory building file,
+trade/mark 1m or funding datasets in a DuckDB metadata index. It binds complete parent lineage,
+manifest/evidence/build/software hashes, file counts/hashes/key bounds, canonical month/bucket,
+honest gap/conflict summary, and logical receipt/object identity. Funding reads the strict
+`funding_time_ms` key while candles retain `open_time_ms`. Catalog state uses a monotonic revision
+and canonical logical SHA-256 rather than unstable DuckDB file bytes; a lock, same-directory building file,
 transaction, fsync, and atomic replace protect mutation. Identical registration is idempotent.
 
 `grid-data catalog-select` accepts a closed request containing the exact catalog revision/hash,
 explicit dataset IDs, minute range, instrument filter, and consumer Git identity. It re-verifies
 every selected manifest and file, rejects mutable-latest behavior, missing month/bucket partitions,
-ancestor-plus-child inputs, and overlapping key ranges, and publishes receipt-bound store-relative
+ancestor-plus-child inputs, mixed dataset types, and overlapping key ranges, and publishes receipt-bound store-relative
 object keys. The result proves deterministic pruning, not historical completeness. Runtime DuckDB
 and market data remain outside Git; schemas, tests, ADR-0030, and sanitized evidence contracts are
-authoritative in GitHub.
+authoritative in GitHub. ADR-0035 records the backward-compatible funding extension. Measured
+funding catalog registration/selection evidence remains pending until the implementation is merged.
 
 The receipt-verified representative run is
 [`m2-canonical-catalog-registration-20260813.json`](../../benchmarks/results/m2-canonical-catalog-registration-20260813.json)
@@ -213,4 +218,5 @@ in GitHub. This proves representative catalog/selection operation only, not full
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
 - long-run adaptive throttling evidence and controlled scale-up; and
-- funding ingestion plus the remaining PM-owned Gate 2 acceptance checklist.
+- funding repair/compaction, measured funding catalog evidence, and the remaining PM-owned Gate 2
+  acceptance checklist.

@@ -39,6 +39,7 @@
 | D-033 | Public funding acquisition uses a receipted predecessor plus fixed bounded range pages and rejects saturated responses | accepted | Deterministic resume, historical interval derivation, no silent 200-row truncation, fresh capacity admission, and ADR-0032 |
 | D-034 | GitHub funding pilot evidence re-verifies exact Landing/Parquet equality and predecessor-derived intervals without publishing rates or observed settlement times | accepted | Reviewable transitive hashes/counts, funding-specific sparse semantics, explicit non-Gate-2 limitations, and ADR-0033 |
 | D-035 | Funding coverage audits exact source/canonical parity and stable predecessor-derived cadence; empty windows or undated cadence changes block | accepted | Funding is sparse, current interval metadata is not historical evidence, complete anomaly hashing, and ADR-0034 |
+| D-036 | The receipt-verified canonical catalog admits `funding_event` while every snapshot-bound selection remains single-type | accepted | Shared revision/hash semantics, strict funding verifier and key column, no mixed candle/funding request, and ADR-0035 |
 
 ## Decisions requiring benchmark or owner evidence
 

@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from grid_contracts.market import Candle1m, DatasetType
+from grid_contracts.market import Candle1m, DatasetType, FundingEvent
 from grid_data.dataset_catalog import (
     build_catalog_registration_evidence,
     build_catalog_selection_evidence,
@@ -17,10 +17,14 @@ from grid_market_store import (
     MIN_OPERATING_RESERVE_BYTES,
     CandleDatasetSpec,
     CapacityBudget,
+    FundingDatasetSpec,
     HostSnapshot,
     build_canonical_candle_batch,
+    build_canonical_funding_batch,
     preflight_candle_dataset,
+    preflight_funding_dataset,
     publish_candle_dataset,
+    publish_funding_dataset,
 )
 from grid_market_store.catalog import (
     CATALOG_SELECTION_REQUEST_CONTRACT,
@@ -112,6 +116,154 @@ def publish_dataset(
         snapshot(tmp_path, observed_at_ms=1_002 + minutes[0]),
         committed_at_ms=1_003 + minutes[0],
     )
+
+
+def publish_funding_dataset_fixture(
+    tmp_path: Path,
+    store: Path,
+    dataset_id: str,
+    *,
+    instrument_id: int = 9,
+) -> None:
+    coverage = "8" * 64
+    boundary = "9" * 64
+    batch = build_canonical_funding_batch(
+        (
+            FundingEvent(
+                category="linear",
+                instrument_id=instrument_id,
+                funding_time_ms=JANUARY_1_2026_MS,
+                funding_rate=Decimal("0.0001"),
+                funding_interval_minutes=480,
+                source_id="bybit-v5-funding-history",
+                ingestion_id="funding-fixture-0",
+            ),
+            FundingEvent(
+                category="linear",
+                instrument_id=instrument_id,
+                funding_time_ms=JANUARY_1_2026_MS + 480 * 60_000,
+                funding_rate=Decimal("-0.0002"),
+                funding_interval_minutes=480,
+                source_id="bybit-v5-funding-history",
+                ingestion_id="funding-fixture-1",
+            ),
+        )
+    )
+    plan = preflight_funding_dataset(
+        store,
+        FundingDatasetSpec(
+            dataset_id=dataset_id,
+            semantic_version="1.0.0",
+            parent_dataset_ids=(),
+            source_evidence_sha256=(coverage, boundary),
+            coverage_evidence_sha256=coverage,
+            boundary_evidence_sha256=boundary,
+            capacity_evidence_sha256="d" * 64,
+            build_config_sha256="e" * 64,
+            software_identity="fixture-funding-publisher@1",
+        ),
+        batch,
+        CapacityBudget(
+            active_and_building_bytes=0,
+            rest_staging_bytes=0,
+            operating_reserve_bytes=MIN_OPERATING_RESERVE_BYTES,
+        ),
+        snapshot(tmp_path, observed_at_ms=1_000),
+        now_ms=1_001,
+    )
+    publish_funding_dataset(
+        plan,
+        snapshot(tmp_path, observed_at_ms=1_002),
+        committed_at_ms=1_003,
+    )
+
+
+def test_catalog_registers_and_selects_funding_without_mixing_dataset_types(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "market-store"
+    funding_id = "funding-january-bucket01"
+    candle_id = "trade-january-bucket01"
+    publish_funding_dataset_fixture(tmp_path, store, funding_id)
+    publish_dataset(tmp_path, store, candle_id, minutes=(0,), instrument_id=9)
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        tuple(sorted((funding_id, candle_id))),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    registered = register_catalog_datasets(plan, registered_at_ms=2_000)
+    by_id = {item.dataset_id: item for item in registered.datasets}
+    assert by_id[funding_id].dataset_type is DatasetType.FUNDING_EVENT
+    assert by_id[funding_id].partition_path == (
+        "dataset=funding_event/schema=v1/year=2026/month=01/bucket=01"
+    )
+
+    registration_evidence = build_catalog_registration_evidence(
+        plan,
+        registered,
+        generated_at_utc="2026-08-13T10:00:00Z",
+    )
+    registration_schema = json.loads(
+        (
+            ROOT
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-dataset-catalog-registration.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(
+        registration_schema,
+        format_checker=FormatChecker(),
+    ).validate(registration_evidence)
+
+    request = CatalogSelectionRequest(
+        catalog_revision=registered.revision,
+        catalog_content_sha256=registered.content_sha256,
+        dataset_ids=(funding_id,),
+        dataset_type=DatasetType.FUNDING_EVENT,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS + 480 * 60_000,
+        instrument_ids=(9,),
+        consumer_software_identity=CONSUMER,
+    )
+    request_schema = json.loads(
+        (
+            ROOT / "schemas" / "market" / "v1" / "canonical-dataset-selection-request.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(request_schema).validate(selection_request_payload(request))
+    selection = select_catalog_range(request, store, catalog)
+    assert len(selection.objects) == 1
+    assert "/dataset=funding_event/" in selection.objects[0].object_key
+    selection_evidence = build_catalog_selection_evidence(
+        selection,
+        generated_at_utc="2026-08-13T10:01:00Z",
+    )
+    selection_schema = json.loads(
+        (
+            ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-selection.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(
+        selection_schema,
+        format_checker=FormatChecker(),
+    ).validate(selection_evidence)
+
+    mixed = CatalogSelectionRequest(
+        catalog_revision=registered.revision,
+        catalog_content_sha256=registered.content_sha256,
+        dataset_ids=tuple(sorted((funding_id, candle_id))),
+        dataset_type=DatasetType.FUNDING_EVENT,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS,
+        instrument_ids=(9,),
+        consumer_software_identity=CONSUMER,
+    )
+    with pytest.raises(CatalogError, match="share the requested dataset type"):
+        select_catalog_range(mixed, store, catalog)
 
 
 def test_catalog_registration_and_selection_are_receipt_bound_and_idempotent(
