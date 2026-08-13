@@ -76,6 +76,8 @@ The authoritative implementation and review history is:
   decrease-only public REST response-header throttling and resumable IP-ban abort behavior.
 - PR [#53](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/53): receipt-bound
   child execution timing and strict GitHub-safe long-run adaptive-throttling qualification.
+- PR [#54](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/54): measured
+  transport-attempt versus HTTP-response accounting correction for strict qualification.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -649,6 +651,14 @@ The projection contains no response headers, request identities, symbols, market
 paths, host identity, credentials, or private endpoint results. Implementation and review are
 tracked in [PR #53](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/53); measured
 long-run evidence remains a subsequent PR and does not close Gate 2.
+
+The first 100-instrument measured campaign exposed a strict-accounting error before evidence was
+published: 9,600 completed pages used 9,621 transport attempts, with 21 retryable attempts that
+produced no HTTP response. ADR-0045 requires an observation for every completed page response and
+separately records attempts without a response; it does not invent absent headers for connection
+or protocol failures. A client that returns a completed page without an observation still fails
+closed. The correction and its tests are tracked in
+[PR #54](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/54).
 
 ## Still required before Gate 2
 
