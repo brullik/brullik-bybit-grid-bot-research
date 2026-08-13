@@ -68,6 +68,13 @@ class SparseOriginalClient:
         return (_row(kwargs["end_ms"]), _row(kwargs["start_ms"]))
 
 
+class TwoGapOriginalClient:
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        start_ms = int(str(kwargs["start_ms"]))
+        end_ms = int(str(kwargs["end_ms"]))
+        return (_row(end_ms), _row(start_ms + 2 * 60_000), _row(start_ms))
+
+
 class ExactRepairClient:
     def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
         return (_row(kwargs["start_ms"]),)
@@ -78,7 +85,12 @@ class EmptyRepairClient:
         return ()
 
 
-def snapshot(root: Path, *, observed_at_ms: int) -> HostSnapshot:
+def snapshot(
+    root: Path,
+    *,
+    observed_at_ms: int,
+    free_bytes: int = 200 * 1024**3,
+) -> HostSnapshot:
     return HostSnapshot(
         observed_at_ms=observed_at_ms,
         memory_total_bytes=16 * 1024**3,
@@ -86,7 +98,7 @@ def snapshot(root: Path, *, observed_at_ms: int) -> HostSnapshot:
         storage_kind="nvme",
         storage_device_id="fixture-nvme",
         volume_root=root.resolve(),
-        volume_free_bytes=200 * 1024**3,
+        volume_free_bytes=free_bytes,
     )
 
 
@@ -148,11 +160,14 @@ def capacity_payload() -> dict[str, object]:
 
 def blocked_repair_inputs(
     tmp_path: Path,
+    *,
+    end_ms: int = JANUARY_1_2026_MS + 2 * 60_000,
+    original_client_factory: type[SparseOriginalClient]
+    | type[TwoGapOriginalClient] = SparseOriginalClient,
 ) -> tuple[Path, Path, Path, Path, Path, Path]:
     registry = build_instrument_registry(inventory_payload(), inventory_artifact_sha256="a" * 64)
     registry_path, _ = publish_evidence(tmp_path / "registry.json", registry)
     capacity_path, _ = publish_evidence(tmp_path / "capacity.json", capacity_payload())
-    end_ms = JANUARY_1_2026_MS + 2 * 60_000
     spec = HistoryJobSpec(
         job_id="trade-2026-01-b01-repair-fixture",
         series=(
@@ -188,7 +203,7 @@ def blocked_repair_inputs(
     )
     completed = execute_history_job(
         acquisition,
-        SparseOriginalClient,
+        original_client_factory,
         lambda: snapshot(tmp_path, observed_at_ms=1_002),
         now_ms=lambda: 1_003,
     )
@@ -457,3 +472,53 @@ def test_repair_execution_rejects_a_substituted_plan_before_landing_mutation(
             executor_software_identity=EXECUTOR_IDENTITY,
         )
     assert not repair_staging.exists()
+
+
+def test_repair_preflight_reserves_all_remaining_gap_jobs(tmp_path: Path) -> None:
+    job_root, registry, capacity, store, audit, repair_plan = blocked_repair_inputs(
+        tmp_path,
+        end_ms=JANUARY_1_2026_MS + 4 * 60_000,
+        original_client_factory=TwoGapOriginalClient,
+    )
+    repair_staging = tmp_path / "repair-history"
+    per_task_staging = STAGING_METADATA_BYTES + MAX_PAGE_ARTIFACT_BYTES
+    expected_required = ACTIVE_BUILDING_BYTES + MIN_OPERATING_RESERVE_BYTES + 2 * per_task_staging
+    with pytest.raises(HistoryAcquisitionError, match="complete remaining repair plan"):
+        preflight_gap_repair_execution(
+            repair_plan,
+            audit,
+            job_root,
+            registry,
+            capacity,
+            store,
+            repair_staging,
+            snapshot(
+                tmp_path,
+                observed_at_ms=3_000,
+                free_bytes=expected_required - 1,
+            ),
+            now_ms=3_001,
+            closed_before_ms=JANUARY_1_2026_MS + 5 * 60_000,
+            executor_software_identity=EXECUTOR_IDENTITY,
+        )
+    assert not repair_staging.exists()
+
+    preflight = preflight_gap_repair_execution(
+        repair_plan,
+        audit,
+        job_root,
+        registry,
+        capacity,
+        store,
+        repair_staging,
+        snapshot(tmp_path, observed_at_ms=3_000),
+        now_ms=3_001,
+        closed_before_ms=JANUARY_1_2026_MS + 5 * 60_000,
+        executor_software_identity=EXECUTOR_IDENTITY,
+    )
+    assert len(preflight.task_plans) == 2
+    assert preflight.required_free_bytes == expected_required
+    assert all(
+        task_plan.budget.rest_staging_bytes == 2 * per_task_staging
+        for task_plan in preflight.task_plans
+    )

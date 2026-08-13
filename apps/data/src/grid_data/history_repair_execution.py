@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Final, cast
 
 from grid_contracts.canonical import canonical_sha256, sha256_file
-from grid_market_store import CapacityBudget, HostSnapshot
+from grid_market_store import MAX_MEMORY_PERCENT, CapacityBudget, HostSnapshot
 
 from grid_data.evidence import verify_evidence
 from grid_data.history_acquisition import (
+    MAX_PAGE_ARTIFACT_BYTES,
+    STAGING_METADATA_BYTES,
     CompletedHistoryJob,
     HistoryAcquisitionError,
     HistoryJobPlan,
@@ -28,6 +30,7 @@ from grid_data.history_repair_plan import VerifiedRepairPlan, verify_gap_repair_
 from grid_data.history_request import resolve_history_request_payload
 
 REPAIR_EXECUTION_CONTRACT: Final = "grid.bybit-1m-gap-repair-execution/v1"
+MAX_PREFLIGHT_AGE_MS: Final = 60_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +40,7 @@ class RepairExecutionPreflight:
     executor_software_identity: str
     instrument_registry_sha256: str
     capacity_evidence_sha256: str
+    snapshot: HostSnapshot
     required_free_bytes: int
     planned_peak_memory_bytes: int
     existing_complete_count: int
@@ -98,6 +102,43 @@ def _raw_tasks(plan: VerifiedRepairPlan) -> list[dict[str, object]]:
     if any(not isinstance(item, dict) for item in value):
         raise HistoryAcquisitionError("gap repair plan tasks must be objects")
     return cast(list[dict[str, object]], value)
+
+
+def _assert_aggregate_resources(
+    snapshot: HostSnapshot,
+    *,
+    required_free_bytes: int,
+    planned_peak_memory_bytes: int,
+) -> None:
+    if snapshot.volume_free_bytes < required_free_bytes:
+        raise HistoryAcquisitionError(
+            "insufficient free space for the complete remaining repair plan"
+        )
+    if planned_peak_memory_bytes > snapshot.memory_available_bytes:
+        raise HistoryAcquisitionError("insufficient available memory for repair execution")
+    if planned_peak_memory_bytes * 100 > snapshot.memory_total_bytes * MAX_MEMORY_PERCENT:
+        raise HistoryAcquisitionError("repair execution exceeds the 70% total-memory gate")
+
+
+def _assert_execute_snapshot(
+    preflight: RepairExecutionPreflight,
+    snapshot: HostSnapshot,
+    *,
+    now_ms: int,
+) -> None:
+    age = now_ms - snapshot.observed_at_ms
+    if age < 0 or age > MAX_PREFLIGHT_AGE_MS:
+        raise HistoryAcquisitionError("repair execution host snapshot must be fresh")
+    if (
+        snapshot.device_identity_sha256 != preflight.snapshot.device_identity_sha256
+        or snapshot.memory_total_bytes != preflight.snapshot.memory_total_bytes
+    ):
+        raise HistoryAcquisitionError("host or storage identity changed after repair preflight")
+    _assert_aggregate_resources(
+        snapshot,
+        required_free_bytes=preflight.required_free_bytes,
+        planned_peak_memory_bytes=preflight.planned_peak_memory_bytes,
+    )
 
 
 def preflight_gap_repair_execution(
@@ -172,14 +213,32 @@ def preflight_gap_repair_execution(
     capacity_hashes = {item.capacity_artifact_sha256 for item in resolved_requests}
     if len(registry_hashes) != 1 or len(capacity_hashes) != 1:
         raise HistoryAcquisitionError("repair tasks do not share one evidence identity")
+    remaining_staging_bytes = sum(
+        0
+        if item.existing_complete
+        else STAGING_METADATA_BYTES + len(item.pending_tasks) * MAX_PAGE_ARTIFACT_BYTES
+        for item in task_plans
+    )
+    required_free_bytes = (
+        aggregate_budget.active_and_building_bytes
+        + aggregate_budget.operating_reserve_bytes
+        + remaining_staging_bytes
+    )
+    planned_peak_memory_bytes = max(item.planned_peak_memory_bytes for item in task_plans)
+    _assert_aggregate_resources(
+        snapshot,
+        required_free_bytes=required_free_bytes,
+        planned_peak_memory_bytes=planned_peak_memory_bytes,
+    )
     return RepairExecutionPreflight(
         verified_plan=verified,
         task_plans=task_plans,
         executor_software_identity=executor_software_identity,
         instrument_registry_sha256=next(iter(registry_hashes)),
         capacity_evidence_sha256=next(iter(capacity_hashes)),
-        required_free_bytes=max(item.required_free_bytes for item in task_plans),
-        planned_peak_memory_bytes=max(item.planned_peak_memory_bytes for item in task_plans),
+        snapshot=snapshot,
+        required_free_bytes=required_free_bytes,
+        planned_peak_memory_bytes=planned_peak_memory_bytes,
         existing_complete_count=sum(item.existing_complete for item in task_plans),
     )
 
@@ -380,6 +439,13 @@ def execute_gap_repair(
     if executor_software_identity != preflight.executor_software_identity:
         raise HistoryAcquisitionError("executor software identity changed after preflight")
     _generated_at(generated_at_utc)
+    execution_snapshot = snapshot_provider()
+    execution_now = now_ms()
+    _assert_execute_snapshot(
+        preflight,
+        execution_snapshot,
+        now_ms=execution_now,
+    )
     completed = tuple(
         execute_history_job(
             task_plan,
