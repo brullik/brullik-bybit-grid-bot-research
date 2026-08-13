@@ -65,6 +65,19 @@ class FakeKlineClient:
         return observed
 
 
+class OneEnvelopeViolationKlineClient(FakeKlineClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.injected = False
+
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        rows = [list(row) for row in super().kline_page(**kwargs)]
+        if not self.injected and rows:
+            self.injected = True
+            rows[0][1] = "12"
+        return tuple(tuple(row) for row in rows)
+
+
 class FakeFundingClient:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int, int, int]] = []
@@ -507,6 +520,20 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
     assert payload["landing"]["job_count"] == 12  # type: ignore[index]
     assert payload["landing"]["row_count"] == 16  # type: ignore[index]
     assert payload["landing"]["retry_count"] == 0  # type: ignore[index]
+    assert payload["source_quality"] == {  # type: ignore[index]
+        "admitted_candle_row_count": 16,
+        "candle_job_count": 8,
+        "canonical_coverage_complete": True,
+        "policy": "exact-source-row-quarantine-v1",
+        "quarantine_binding_sha256": canonical_sha256([]),
+        "quarantined_row_count": 0,
+        "reason_counts": {
+            "close_outside_low_high": 0,
+            "low_exceeds_high": 0,
+            "open_outside_low_high": 0,
+        },
+        "source_candle_row_count": 16,
+    }
     assert payload["adaptive_throttling"] == {  # type: ignore[index]
         "automatic_increase_count": 0,
         "child_job_count": 12,
@@ -557,6 +584,53 @@ def test_campaign_evidence_is_schema_valid_aggregate_only_and_redacted(tmp_path:
         "device_identity",
     ):
         assert forbidden not in rendered
+
+
+def test_candle_only_campaign_evidence_projects_receipted_quarantine_without_values(
+    tmp_path: Path,
+) -> None:
+    completed = execute(
+        preflight(tmp_path, request=request_payload(kinds=["trade"])),
+        OneEnvelopeViolationKlineClient(),
+        NeverFundingClient(),
+    )
+    payload = build_history_campaign_evidence(
+        completed.campaign_root,
+        generated_at_utc="2026-08-13T12:00:00Z",
+        software_identity="git:" + "1" * 40,
+        require_complete_throttling_evidence=True,
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-public-history-campaign.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(payload)
+
+    assert payload["scope"]["kind_count"] == 1  # type: ignore[index]
+    assert [item["kind"] for item in payload["landing"]["by_kind"]] == ["trade"]  # type: ignore[index]
+    assert payload["source_quality"] == {  # type: ignore[index]
+        "admitted_candle_row_count": 7,
+        "candle_job_count": 4,
+        "canonical_coverage_complete": False,
+        "policy": "exact-source-row-quarantine-v1",
+        "quarantine_binding_sha256": payload["source_quality"][  # type: ignore[index]
+            "quarantine_binding_sha256"
+        ],
+        "quarantined_row_count": 1,
+        "reason_counts": {
+            "close_outside_low_high": 0,
+            "low_exceeds_high": 0,
+            "open_outside_low_high": 1,
+        },
+        "source_candle_row_count": 8,
+    }
+    assert len(payload["source_quality"]["quarantine_binding_sha256"]) == 64  # type: ignore[index]
+    rendered = json.dumps(payload).lower()
+    assert "aaausdt" not in rendered
+    assert "bbbusdt" not in rendered
+    assert '"open"' not in rendered
+    assert '"source_index"' not in rendered
 
 
 def test_campaign_evidence_rejects_mutable_software_identity(tmp_path: Path) -> None:

@@ -105,7 +105,7 @@
         "artifact_bytes": {"type": "integer", "minimum": 1},
         "by_kind": {
           "type": "array",
-          "minItems": 3,
+          "minItems": 1,
           "maxItems": 3,
           "items": {"$ref": "#/$defs/kindSummary"}
         },
@@ -145,7 +145,7 @@
       "properties": {
         "bucket_count": {"type": "integer", "minimum": 1, "maximum": 8},
         "end_ms": {"$ref": "#/$defs/minute"},
-        "kind_count": {"const": 3},
+        "kind_count": {"type": "integer", "minimum": 1, "maximum": 3},
         "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
         "start_ms": {"$ref": "#/$defs/minute"},
         "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
@@ -160,6 +160,30 @@
         "private_endpoints_called": false,
         "tick_rows_requested": false,
         "trade_endpoint": "/v5/market/kline"
+      }
+    },
+    "source_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admitted_candle_row_count",
+        "candle_job_count",
+        "canonical_coverage_complete",
+        "policy",
+        "quarantine_binding_sha256",
+        "quarantined_row_count",
+        "reason_counts",
+        "source_candle_row_count"
+      ],
+      "properties": {
+        "admitted_candle_row_count": {"type": "integer", "minimum": 0},
+        "candle_job_count": {"type": "integer", "minimum": 0, "maximum": 1920},
+        "canonical_coverage_complete": {"type": "boolean"},
+        "policy": {"const": "exact-source-row-quarantine-v1"},
+        "quarantine_binding_sha256": {"$ref": "#/$defs/sha256"},
+        "quarantined_row_count": {"type": "integer", "minimum": 0},
+        "reason_counts": {"$ref": "#/$defs/quarantineReasonCounts"},
+        "source_candle_row_count": {"type": "integer", "minimum": 0}
       }
     },
     "status": {"const": "verified-public-landing-campaign"},
@@ -201,6 +225,16 @@
         "kind": {"enum": ["trade", "mark", "funding"]},
         "page_count": {"type": "integer", "minimum": 1},
         "row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "quarantineReasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["close_outside_low_high", "low_exceeds_high", "open_outside_low_high"],
+      "properties": {
+        "close_outside_low_high": {"type": "integer", "minimum": 0},
+        "low_exceeds_high": {"type": "integer", "minimum": 0},
+        "open_outside_low_high": {"type": "integer", "minimum": 0}
       }
     },
     "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
