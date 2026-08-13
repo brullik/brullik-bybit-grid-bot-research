@@ -33,6 +33,13 @@ non-overlapping pages, explicit bounded retries, page receipts, and receipt-base
 not raise its operating rate automatically; adaptive response-header throttling and long-run
 qualification remain required before a larger campaign.
 
+ADR-0032 adds the separate funding path. Each series has one receipted predecessor query and
+fixed range pages of at most seven days/200 rows. A range response with the full requested limit
+is rejected as potentially truncated. The predecessor and requested events derive historical
+intervals from settlement chronology; the current registry interval is not reused as historical
+truth. Funding Landing has its own manifest and completion receipt, while host/capacity admission,
+bounded concurrency, explicit retries, and receipt-based resume remain consistent with 1m jobs.
+
 ## Data layers
 
 ```mermaid

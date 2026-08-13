@@ -18,7 +18,11 @@ from grid_bybit_public import (
     UrllibJsonTransport,
 )
 from grid_contracts.canonical import sha256_file
-from grid_market_store import verify_committed_candle_dataset, verify_compacted_candle_dataset
+from grid_market_store import (
+    verify_committed_candle_dataset,
+    verify_committed_funding_dataset,
+    verify_compacted_candle_dataset,
+)
 from grid_market_store.catalog import (
     load_catalog_selection_request,
     preflight_catalog_registration,
@@ -40,6 +44,16 @@ from grid_data.dataset_catalog import (
     verify_catalog_selection_evidence,
 )
 from grid_data.evidence import preflight_evidence, publish_evidence, verify_evidence
+from grid_data.funding_acquisition import (
+    execute_funding_job,
+    preflight_funding_job,
+    verify_completed_funding_job,
+)
+from grid_data.funding_publication import (
+    preflight_completed_funding_publication,
+    publish_preflighted_funding,
+)
+from grid_data.funding_request import resolve_funding_request
 from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
@@ -204,6 +218,51 @@ def parser() -> argparse.ArgumentParser:
         help="mutate Landing and make public requests; omitted means no-mutation preflight",
     )
     history.set_defaults(handler=_history_1m)
+
+    funding = commands.add_parser(
+        "funding-history",
+        help="preflight or execute one bounded receipt-resumable public Bybit funding job",
+    )
+    funding.add_argument("--request", type=Path, required=True)
+    funding.add_argument("--instrument-registry", type=Path, required=True)
+    funding.add_argument("--capacity-evidence", type=Path, required=True)
+    funding.add_argument("--staging-root", type=Path, required=True)
+    funding.add_argument(
+        "--execute",
+        action="store_true",
+        help="mutate Funding Landing and make public requests; omitted means preflight",
+    )
+    funding.set_defaults(handler=_funding_history)
+
+    funding_verify = commands.add_parser(
+        "verify-funding-history",
+        help="verify a completed funding job, predecessor evidence, receipts, and allowlist",
+    )
+    funding_verify.add_argument("job_root", type=Path)
+    funding_verify.set_defaults(handler=_verify_funding_history)
+
+    funding_publish = commands.add_parser(
+        "publish-funding-history",
+        help="preflight or receipt-last publish verified funding Landing as canonical Parquet",
+    )
+    funding_publish.add_argument("--job-root", type=Path, required=True)
+    funding_publish.add_argument("--instrument-registry", type=Path, required=True)
+    funding_publish.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_publish.add_argument("--store-root", type=Path, required=True)
+    funding_publish.add_argument("--software-identity", required=True)
+    funding_publish.add_argument(
+        "--execute",
+        action="store_true",
+        help="write canonical funding Parquet and receipt; omitted means preflight",
+    )
+    funding_publish.set_defaults(handler=_publish_funding_history)
+
+    funding_canonical_verify = commands.add_parser(
+        "verify-canonical-funding",
+        help="verify one receipt-committed canonical funding dataset and exact allowlist",
+    )
+    funding_canonical_verify.add_argument("dataset_root", type=Path)
+    funding_canonical_verify.set_defaults(handler=_verify_canonical_funding)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -477,6 +536,150 @@ def _verify_history_1m(args: argparse.Namespace) -> int:
                 "manifest_sha256": completed.manifest_sha256,
                 "page_count": completed.page_count,
                 "row_count": completed.row_count,
+                "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _funding_history(args: argparse.Namespace) -> int:
+    resolved = resolve_funding_request(
+        args.request,
+        instrument_registry_path=args.instrument_registry,
+        capacity_evidence_path=args.capacity_evidence,
+    )
+    snapshot = probe_host_snapshot(args.staging_root)
+    now_ms = time.time_ns() // 1_000_000
+    plan = preflight_funding_job(
+        args.staging_root,
+        resolved.spec,
+        resolved.budget,
+        snapshot,
+        now_ms=now_ms,
+        closed_before_ms=closed_before_now_ms(now_ms),
+    )
+    summary = {
+        "capacity_evidence_sha256": resolved.capacity_artifact_sha256,
+        "execute": bool(args.execute),
+        "existing_complete": plan.existing_complete,
+        "host_preflight": {
+            "device_identity_sha256": snapshot.device_identity_sha256,
+            "memory_available_bytes": snapshot.memory_available_bytes,
+            "memory_total_bytes": snapshot.memory_total_bytes,
+            "observed_at_ms": snapshot.observed_at_ms,
+            "storage_kind": snapshot.storage_kind,
+            "volume_free_bytes": snapshot.volume_free_bytes,
+        },
+        "instrument_registry_sha256": resolved.registry.artifact_sha256,
+        "job_root": str(plan.paths.job_root),
+        "pending_page_count": len(plan.pending_tasks),
+        "plan_sha256": plan.plan_sha256,
+        "planned_page_count": len(plan.tasks),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "request_sha256": resolved.request_sha256,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    completed = execute_funding_job(
+        plan,
+        lambda: BybitPublicClient(
+            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+        ),
+        lambda: probe_host_snapshot(args.staging_root),
+    )
+    summary.update(
+        {
+            "boundary_evidence_sha256": completed.boundary_evidence_sha256,
+            "manifest": str(completed.manifest_path),
+            "manifest_sha256": completed.manifest_sha256,
+            "page_count": completed.page_count,
+            "row_count": completed.row_count,
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_funding_history(args: argparse.Namespace) -> int:
+    completed = verify_completed_funding_job(args.job_root)
+    print(
+        json.dumps(
+            {
+                "boundary_evidence_sha256": completed.boundary_evidence_sha256,
+                "job_root": str(completed.job_root),
+                "manifest_sha256": completed.manifest_sha256,
+                "page_count": completed.page_count,
+                "row_count": completed.row_count,
+                "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _publish_funding_history(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_completed_funding_publication(
+        args.store_root,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    summary = {
+        "boundary_evidence_sha256": resolved.verified.completed.boundary_evidence_sha256,
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "funding_manifest_sha256": resolved.verified.completed.manifest_sha256,
+        "input_table_sha256": plan.input_table_sha256,
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "request_sha256": plan.request_sha256,
+        "required_free_bytes": plan.required_free_bytes,
+        "row_count": plan.batch.table.num_rows,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    published = publish_preflighted_funding(
+        resolved,
+        lambda: probe_host_snapshot(args.store_root),
+        lambda: time.time_ns() // 1_000_000,
+    )
+    summary.update(
+        {
+            "manifest": str(published.manifest_path),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "receipt": str(published.receipt_path),
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_canonical_funding(args: argparse.Namespace) -> int:
+    published = verify_committed_funding_dataset(args.dataset_root)
+    print(
+        json.dumps(
+            {
+                "dataset_id": published.manifest.dataset_id,
+                "dataset_root": str(published.dataset_root),
+                "file_count": len(published.manifest.files),
+                "instrument_count": published.manifest.instrument_count,
+                "manifest_sha256": published.receipt.manifest_sha256,
+                "row_count": published.manifest.row_count,
                 "valid": True,
             }
         )

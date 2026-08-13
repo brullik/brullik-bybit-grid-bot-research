@@ -16,8 +16,9 @@ Phase 2 public 1m acquisition is documented in the
 requires the explicit `--execute` switch and never uses account credentials. Canonical datasets
 can now be registered in a receipt-verified DuckDB metadata catalog and selected only through an
 explicit catalog revision/content hash and dataset list; the live application has no catalog
-dependency. The canonical funding physical and receipt-last publication primitive is implemented;
-resumable public funding acquisition and boundary evidence are the next Phase 2 increment.
+dependency. Canonical funding now has an exact physical contract, predecessor-bound resumable
+public acquisition, and receipt-last publication; measured pilot and funding coverage/catalog
+evidence remain pending.
 
 [Русская версия](README.ru.md)
 

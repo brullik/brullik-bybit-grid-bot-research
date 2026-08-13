@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/bybit-funding-history-page.schema.json",
+  "title": "Staged Bybit public funding history page v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attempt_count", "category", "contract", "end_ms", "instrument_id", "limit", "row_count", "rows", "rows_sha256", "scope", "sequence", "start_ms", "symbol"],
+  "properties": {
+    "attempt_count": {"type": "integer", "minimum": 1, "maximum": 5},
+    "category": {"const": "linear"},
+    "contract": {"const": "grid.bybit-funding-history-page/v1"},
+    "end_ms": {"type": "integer", "minimum": 0},
+    "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+    "row_count": {"type": "integer", "minimum": 0, "maximum": 199},
+    "rows": {"type": "array", "maxItems": 199, "items": {"$ref": "#/$defs/row"}},
+    "rows_sha256": {"$ref": "#/$defs/sha256"},
+    "scope": {"enum": ["boundary", "range"]},
+    "sequence": {"type": "integer", "minimum": 0},
+    "start_ms": {"type": "integer", "minimum": 0},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["funding_rate", "funding_time_ms"],
+      "properties": {
+        "funding_rate": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"},
+        "funding_time_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000}
+      }
+    }
+  }
+}

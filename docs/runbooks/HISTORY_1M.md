@@ -335,3 +335,82 @@ The output contains only canonical store-relative object keys and hashes, never 
 market values. A changed catalog snapshot, missing month/bucket, parent plus child, overlapping key
 range, or substituted dataset/file fails closed. Selection is not a coverage audit: research must
 still require the applicable PM-owned gap/lifecycle evidence before treating the range as complete.
+
+## 15. Acquire and publish canonical funding
+
+Funding is a separate request and Landing contract because every first requested event needs the
+authoritative settlement immediately before the range. Do not add `instrument_id`, launch time, or
+funding interval to the request. Example `data\requests\btc-funding-2026-07.json`:
+
+```json
+{
+  "contract": "grid.bybit-funding-history-request/v1",
+  "job_id": "funding-2026-07-b05-btc-pilot",
+  "series": [
+    {
+      "symbol": "BTCUSDT",
+      "start_ms": 1782864000000,
+      "end_ms": 1785542340000
+    }
+  ],
+  "page_span_minutes": 10080,
+  "page_limit": 200,
+  "workers": 24,
+  "target_rps": 10,
+  "max_attempts": 3,
+  "max_http_requests": 100000
+}
+```
+
+The range is inclusive, closed, minute-aligned, and limited to one UTC month/bucket. Preflight
+makes no request and creates no directory:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-history `
+  --request data\requests\btc-funding-2026-07.json `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --staging-root data\history
+```
+
+Review the predecessor/range page count, pending pages, retry bound, host identity hash, memory,
+and free-space requirement. Repeat with `--execute` to call only public
+`GET /v5/market/funding/history`. A range page returning its full limit is rejected as potentially
+truncated. Create a new request with a smaller `page_span_minutes`; never edit or delete the failed
+Landing identity. Repeating the identical command resumes only missing receipted pages.
+
+Verify the printed funding job root:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-funding-history `
+  data\history\.funding-landing\funding-2026-07-b05-btc-pilot--<plan-prefix>
+```
+
+Verification requires exactly one predecessor per series and checks every normalized exact rate,
+settlement timestamp, page/receipt, attempt bound, boundary aggregate, completion receipt, and
+file allowlist. It never uses today's `fundingInterval` as historical evidence.
+
+Preflight canonical funding publication with the full Git SHA that contains the adapter:
+
+```powershell
+.venv\Scripts\grid-data.exe publish-funding-history `
+  --job-root data\history\.funding-landing\funding-2026-07-b05-btc-pilot--<plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260812.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-commit-sha>
+```
+
+The adapter derives each event's interval from the preceding settlement, beginning with the
+boundary page, then re-verifies registry lifecycle, capacity, exact Arrow values, and current host
+admission. Repeat with `--execute` only after review, then independently verify:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-canonical-funding `
+  data\market-store\datasets\funding-<landing-manifest-prefix>
+```
+
+An empty entire requested series, missing predecessor, non-minute settlement, duplicate key,
+saturated response, altered page, stale lock/building output, or conflicting dataset identity
+fails closed. Successful publication does not yet prove full funding coverage, perform funding
+repair/compaction/catalog registration, or close Gate 2.
