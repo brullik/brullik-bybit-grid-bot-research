@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified measured funding catalog evidence: revision 2 over the existing candle/funding
+  datasets, one exact BTC/UNI funding selection, idempotent reruns, and no rates, local paths,
+  runtime DuckDB, credentials, account data, or Gate 2 implication.
 - Backward-compatible funding registration and snapshot-bound selection in the receipt-verified
   DuckDB catalog, with strict funding verification/key extraction, type-specific partitions, and
   rejection of mixed candle/funding selection requests.

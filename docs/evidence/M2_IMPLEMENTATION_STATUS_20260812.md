@@ -46,8 +46,7 @@ The authoritative implementation and review history is:
 - PR [#34](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/34): receipt-verified
   measured funding source-parity/chronology evidence.
 - PR [#35](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/35): receipt-verified
-  canonical funding registration and snapshot-bound single-type selection. Measured funding
-  catalog evidence remains pending until the implementation merge identity exists.
+  canonical funding registration and snapshot-bound single-type selection.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -57,7 +56,7 @@ series captures a receipted predecessor, range pages are fixed and resumable, an
 verify exact Landing/Parquet equality and predecessor/internal interval derivation without
 publishing rates or observed settlement timestamps. Funding registration/selection is implemented
 against the same receipt-verified catalog with strict type isolation; funding-specific repair,
-compaction, measured catalog evidence, and Gate 2 remain pending.
+compaction, controlled scale evidence, and Gate 2 remain pending.
 
 The receipt-verified measured funding result is
 [`m2-public-funding-canonical-pilot-20260813.json`](../../benchmarks/results/m2-public-funding-canonical-pilot-20260813.json).
@@ -184,17 +183,18 @@ trade/mark 1m or funding datasets in a DuckDB metadata index. It binds complete 
 manifest/evidence/build/software hashes, file counts/hashes/key bounds, canonical month/bucket,
 honest gap/conflict summary, and logical receipt/object identity. Funding reads the strict
 `funding_time_ms` key while candles retain `open_time_ms`. Catalog state uses a monotonic revision
-and canonical logical SHA-256 rather than unstable DuckDB file bytes; a lock, same-directory building file,
-transaction, fsync, and atomic replace protect mutation. Identical registration is idempotent.
+and canonical logical SHA-256 rather than unstable DuckDB file bytes; a lock, same-directory
+building file, transaction, fsync, and atomic replace protect mutation. Identical registration is
+idempotent.
 
 `grid-data catalog-select` accepts a closed request containing the exact catalog revision/hash,
 explicit dataset IDs, minute range, instrument filter, and consumer Git identity. It re-verifies
 every selected manifest and file, rejects mutable-latest behavior, missing month/bucket partitions,
-ancestor-plus-child inputs, mixed dataset types, and overlapping key ranges, and publishes receipt-bound store-relative
-object keys. The result proves deterministic pruning, not historical completeness. Runtime DuckDB
-and market data remain outside Git; schemas, tests, ADR-0030, and sanitized evidence contracts are
-authoritative in GitHub. ADR-0035 records the backward-compatible funding extension. Measured
-funding catalog registration/selection evidence remains pending until the implementation is merged.
+ancestor-plus-child inputs, mixed dataset types, and overlapping key ranges, and publishes
+receipt-bound store-relative object keys. The result proves deterministic pruning, not historical
+completeness. Runtime DuckDB and market data remain outside Git; schemas, tests, ADR-0030, and
+sanitized evidence contracts are authoritative in GitHub. ADR-0035 records the backward-compatible
+funding extension.
 
 The receipt-verified representative run is
 [`m2-canonical-catalog-registration-20260813.json`](../../benchmarks/results/m2-canonical-catalog-registration-20260813.json)
@@ -212,6 +212,21 @@ Identical registration and selection reruns retained revision/hash and re-verifi
 evidence. No candle values, absolute paths, credentials, account data, or runtime DuckDB bytes are
 in GitHub. This proves representative catalog/selection operation only, not full-history coverage.
 
+The receipt-verified measured funding registration is
+[`m2-canonical-funding-catalog-registration-20260813.json`](../../benchmarks/results/m2-canonical-funding-catalog-registration-20260813.json)
+and its exact selection is
+[`m2-canonical-funding-catalog-selection-20260813.json`](../../benchmarks/results/m2-canonical-funding-catalog-selection-20260813.json).
+They use implementation merge identity `git:e3437d9a8d6f5a17cb5255504d289e2138692d4e`.
+The existing catalog advanced from revision 1 to revision 2 with logical content SHA-256
+`ee0fdb3f2d4261eaf41d56c402f31180bf515467cc37fb88399ea84d1a5acb62` and now contains the
+receipt-verified candle and funding pilots. The exact BTC/UNI funding request selected one
+42-row/5,050-byte hash-bound object; request SHA-256 is
+`afff155e0a3b64cfc894ecc366e55134d13e284ae2ce3b036e4127a0af9ef9a7`. Identical
+registration/selection reruns preserved revision/hash and verified the existing evidence. The
+published chain is bound to the measured funding pilot and chronology manifest, but remains a
+bounded two-series result and does not prove full-history lifecycle coverage, repair, compaction,
+scale, or Gate 2.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
@@ -219,5 +234,5 @@ in GitHub. This proves representative catalog/selection operation only, not full
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
 - long-run adaptive throttling evidence and controlled scale-up; and
-- funding repair/compaction, measured funding catalog evidence, and the remaining PM-owned Gate 2
+- funding repair/compaction, controlled scale evidence, and the remaining PM-owned Gate 2
   acceptance checklist.
