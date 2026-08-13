@@ -56,6 +56,11 @@ from grid_data.funding_publication import (
     publish_preflighted_funding,
 )
 from grid_data.funding_request import resolve_funding_request
+from grid_data.funding_source_boundary import (
+    execute_funding_source_boundary,
+    preflight_funding_source_boundary,
+    verify_completed_funding_source_boundary,
+)
 from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
@@ -357,6 +362,28 @@ def parser() -> argparse.ArgumentParser:
     campaign_coverage_audit.add_argument("--audit-software-identity", required=True)
     campaign_coverage_audit.add_argument("--output", type=Path, required=True)
     campaign_coverage_audit.set_defaults(handler=_audit_history_campaign)
+
+    funding_boundary = commands.add_parser(
+        "funding-source-boundary",
+        help="preflight or discover earliest receipt-verified public funding settlements",
+    )
+    funding_boundary.add_argument("--request", type=Path, required=True)
+    funding_boundary.add_argument("--instrument-registry", type=Path, required=True)
+    funding_boundary.add_argument("--output-root", type=Path, required=True)
+    funding_boundary.add_argument("--software-identity", required=True)
+    funding_boundary.add_argument(
+        "--execute",
+        action="store_true",
+        help="write timestamp-only discovery receipts and call the public endpoint",
+    )
+    funding_boundary.set_defaults(handler=_funding_source_boundary)
+
+    verify_funding_boundary = commands.add_parser(
+        "verify-funding-source-boundary",
+        help="verify one completed timestamp-only funding source-boundary discovery",
+    )
+    verify_funding_boundary.add_argument("job_root", type=Path)
+    verify_funding_boundary.set_defaults(handler=_verify_funding_source_boundary)
 
     funding = commands.add_parser(
         "funding-history",
@@ -838,6 +865,67 @@ def _verify_history_campaign(args: argparse.Namespace) -> int:
                 "page_count": completed.page_count,
                 "row_count": completed.row_count,
                 "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _funding_source_boundary(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.output_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    plan = preflight_funding_source_boundary(
+        args.request,
+        instrument_registry_path=args.instrument_registry,
+        output_root=args.output_root,
+        snapshot=snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    summary = {
+        "execute": bool(args.execute),
+        "existing_complete": plan.existing_complete,
+        "job_root": str(plan.job_root),
+        "max_http_attempts": (len(plan.series) * plan.max_pages_per_symbol * plan.max_attempts),
+        "plan_sha256": plan.plan_sha256,
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+        "symbol_count": len(plan.series),
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    completed = execute_funding_source_boundary(
+        plan,
+        client_factory=lambda: BybitPublicClient(
+            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+        ),
+        snapshot_provider=lambda: probe_host_snapshot(args.output_root),
+    )
+    verified = verify_completed_funding_source_boundary(completed.job_root)
+    summary.update(
+        {
+            "event_count": verified.event_count,
+            "manifest_sha256": verified.manifest_sha256,
+            "page_count": verified.page_count,
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_funding_source_boundary(args: argparse.Namespace) -> int:
+    verified = verify_completed_funding_source_boundary(args.job_root)
+    print(
+        json.dumps(
+            {
+                "event_count": verified.event_count,
+                "manifest_sha256": verified.manifest_sha256,
+                "page_count": verified.page_count,
+                "status": "verified",
+                "symbol_count": verified.symbol_count,
             }
         )
     )

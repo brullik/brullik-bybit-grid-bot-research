@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/funding-source-boundary-page.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attempt_count",
+    "contract",
+    "end_ms",
+    "instrument_id",
+    "limit",
+    "row_count",
+    "start_ms",
+    "symbol",
+    "terminal",
+    "timestamps"
+  ],
+  "properties": {
+    "attempt_count": {"type": "integer", "minimum": 1, "maximum": 5},
+    "contract": {"const": "grid.bybit-funding-source-boundary-page/v1"},
+    "end_ms": {"type": "integer", "minimum": 0},
+    "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+    "row_count": {"type": "integer", "minimum": 0, "maximum": 200},
+    "start_ms": {"type": "integer", "minimum": 0},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
+    "terminal": {"type": "boolean"},
+    "timestamps": {
+      "type": "array",
+      "maxItems": 200,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 0, "multipleOf": 60000}
+    }
+  }
+}

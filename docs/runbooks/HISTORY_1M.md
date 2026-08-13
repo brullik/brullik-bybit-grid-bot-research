@@ -356,6 +356,56 @@ Funding is a separate request and Landing contract because every first requested
 authoritative settlement immediately before the range. Do not add `instrument_id`, launch time, or
 funding interval to the request. Example `data\requests\btc-funding-2026-07.json`:
 
+### Discover a missing full-history predecessor boundary
+
+If a registry-bounded predecessor query returns no settlement, do not move the request boundary by
+guessing and do not use the current `fundingInterval`. Create a new local request such as
+`data\requests\funding-source-boundary.json` (runtime requests and results remain outside Git):
+
+```json
+{
+  "contract": "grid.bybit-funding-source-boundary-request/v1",
+  "discovery_id": "funding-source-boundary",
+  "start_ms": 1514764800000,
+  "end_ms": 1785542340000,
+  "symbols": ["BTCUSDT"],
+  "page_limit": 200,
+  "workers": 24,
+  "target_rps": 15,
+  "max_attempts": 3,
+  "max_pages_per_symbol": 512
+}
+```
+
+Run no-mutation preflight with the full merged Git SHA containing the discovery implementation:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-source-boundary `
+  --request data\requests\funding-source-boundary.json `
+  --instrument-registry data\evidence\instrument-registry-<date>.json `
+  --output-root data\funding-boundary `
+  --software-identity git:<full-commit-sha>
+```
+
+Review the plan hash, symbol/request ceiling, fresh resource admission, and job root. Repeat with
+`--execute` to call only public `GET /v5/market/funding/history`. Execution validates exact rates
+but stores only minute timestamps, resumes from verified page receipts, and completes only after
+finding at least two settlements per symbol. The oldest is predecessor-only; use the second-oldest
+as the earliest possible canonical start in a separately resolved funding request. Source absence
+and cadence still require the normal audit. A stale `.run-lock`, partial receipt, invalid row,
+exhausted 512-page ceiling, or missing second settlement fails closed and requires explicit review.
+
+Independently verify the completed root printed by execution before consuming its boundaries:
+
+```powershell
+.venv\Scripts\grid-data.exe verify-funding-source-boundary `
+  data\funding-boundary\funding-source-boundary--<plan-prefix>
+```
+
+### Acquire one canonical funding partition
+
+Example `data\requests\btc-funding-2026-07.json`:
+
 ```json
 {
   "contract": "grid.bybit-funding-history-request/v1",

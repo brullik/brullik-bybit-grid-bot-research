@@ -323,6 +323,15 @@ pages. Page artifacts preserve normalized exact rate/timestamp pairs and reject 
 response. The acquisition manifest binds all page receipts and a canonical predecessor aggregate;
 see ADR-0032.
 
+`grid.bybit-funding-source-boundary-request/v1` names sorted symbols and one closed scan range.
+Its plan adds receipt-verified registry identities and launch/delivery intersections. Execution
+uses bounded backward pagination and persists only `fundingRateTimestamp` values in individually
+receipted pages; each returned exact-decimal rate is validated and discarded. The completion
+manifest binds every page, the shared decrease-only throttling summary, and per-series oldest and
+second-oldest settlements. The oldest is predecessor-only; the second-oldest is the earliest
+canonical start this evidence can admit. These runtime identities and timestamps stay outside
+Git, and the result does not imply cadence/coverage acceptance or Gate 2; see ADR-0048.
+
 `grid.phase2-public-funding-pilot/v1` re-verifies one immutable funding publication, exact
 Landing/Parquet table equality, and every predecessor/internal interval derivation. The
 GitHub-safe receipt-bound summary contains requested ranges, observed event counts, page/process

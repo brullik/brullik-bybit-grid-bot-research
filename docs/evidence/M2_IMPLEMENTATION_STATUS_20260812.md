@@ -93,6 +93,13 @@ The authoritative implementation and review history is:
 - PR [#60](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/60): schema-bound
   same-host qualification evidence for the ADR-0047 full-history campaign preflight.
 
+ADR-0048 now defines the fail-closed source-boundary discovery required after the first
+five-instrument full-lifecycle execution reached a funding month with no registry-bounded
+predecessor. The workflow scans only public funding history, commits timestamp-only page receipts,
+validates but does not retain exact rates, and admits the second-oldest observed settlement only
+after retaining the oldest as predecessor evidence. Its measured five-instrument result and
+GitHub-safe aggregate projection remain pending a post-merge run; Gate 2 remains closed.
+
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
 partitioning, ZSTD-3, receipt-last publication, and a separate public acquisition contract. Every

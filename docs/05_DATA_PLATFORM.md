@@ -53,6 +53,12 @@ is rejected as potentially truncated. The predecessor and requested events deriv
 intervals from settlement chronology; the current registry interval is not reused as historical
 truth. Funding Landing has its own manifest and completion receipt, while host/capacity admission,
 bounded concurrency, explicit retries, and receipt-based resume remain consistent with 1m jobs.
+ADR-0048 adds a separate prerequisite for ranges whose registry-bounded predecessor is absent.
+It scans the public funding endpoint backward with an explicit oldest-minus-one cursor, receipts
+timestamp-only pages, validates but does not retain exact rates, and identifies the second-oldest
+source-observed settlement as the earliest canonical start with a proven predecessor. Registry
+launch time remains a query bound rather than source-availability proof. The discovery does not
+accept source absence or historical cadence and does not publish canonical data.
 ADR-0034 adds a read-only funding chronology audit: exact source/canonical parity, range-page
 tiling, predecessor/internal interval recomputation, and stable observed cadence. Empty pages and
 cadence changes remain blocked without dated evidence; current interval metadata is never used as
