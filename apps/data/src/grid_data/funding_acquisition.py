@@ -364,6 +364,21 @@ def _verify_artifact(path: Path) -> tuple[dict[str, object], str]:
     return payload, digest
 
 
+def _verify_artifact_digest(path: Path) -> str:
+    """Verify immutable artifact bytes against the canonical receipt without decoding payload."""
+
+    receipt_path = path.with_suffix(".receipt.json")
+    if not path.is_file() or not receipt_path.is_file():
+        raise FundingAcquisitionError(f"funding artifact/receipt pair is incomplete: {path}")
+    receipt = _load_object(receipt_path)
+    digest = sha256_file(path)
+    if receipt != _receipt_payload(path.name, digest):
+        raise FundingAcquisitionError(f"funding artifact receipt does not verify: {path}")
+    if path.parent.name == "pages" and path.stat().st_size > MAX_PAGE_ARTIFACT_BYTES:
+        raise FundingAcquisitionError("funding page exceeds its fixed artifact byte bound")
+    return digest
+
+
 def _assert_fresh(snapshot: HostSnapshot, *, now_ms: int) -> None:
     age = now_ms - snapshot.observed_at_ms
     if age < 0 or age > MAX_PREFLIGHT_AGE_MS:
@@ -887,6 +902,7 @@ def _verify_completed_funding_job(
     job_root: Path,
     *,
     load_batch: bool,
+    verify_page_semantics: bool = True,
 ) -> tuple[CompletedFundingJob, CanonicalFundingBatch | None]:
     """Verify once and optionally build the exact batch from those same verified page bytes."""
 
@@ -957,6 +973,8 @@ def _verify_completed_funding_job(
     total_events = 0
     total_attempts = 0
     empty_range_pages = 0
+    if load_batch and not verify_page_semantics:
+        raise FundingAcquisitionError("funding batch loading requires semantic page verification")
     boundary_rows: list[dict[str, object]] = []
     batch_boundaries: dict[int, int] | None = {} if load_batch else None
     batch_rows: dict[int, list[tuple[int, str, str]]] | None = {} if load_batch else None
@@ -974,35 +992,76 @@ def _verify_completed_funding_job(
         if not isinstance(raw_page, dict) or task.sequence != sequence:
             raise FundingAcquisitionError("funding task/page sequence is not canonical")
         page = root / "pages" / task.artifact_name
-        payload, digest = _verify_artifact(page)
-        _validate_page_payload(payload, task)
+        payload: dict[str, object] | None
+        if verify_page_semantics:
+            payload, digest = _verify_artifact(page)
+            _validate_page_payload(payload, task)
+            row_count = cast(int, payload["row_count"])
+            attempt_count = cast(int, payload["attempt_count"])
+        else:
+            payload = None
+            digest = _verify_artifact_digest(page)
+            raw_row_count = raw_page.get("row_count")
+            raw_attempt_count = raw_page.get("attempt_count")
+            maximum_rows = 1 if task.scope == "boundary" else task.limit - 1
+            minimum_rows = 1 if task.scope == "boundary" else 0
+            if (
+                isinstance(raw_row_count, bool)
+                or not isinstance(raw_row_count, int)
+                or not minimum_rows <= raw_row_count <= maximum_rows
+                or isinstance(raw_attempt_count, bool)
+                or not isinstance(raw_attempt_count, int)
+                or not 1 <= raw_attempt_count <= verified_spec.max_attempts
+            ):
+                raise FundingAcquisitionError("funding manifest page counts are invalid")
+            row_count = raw_row_count
+            attempt_count = raw_attempt_count
         if (
-            raw_page.get("artifact") != f"pages/{page.name}"
+            set(raw_page)
+            != {
+                "artifact",
+                "artifact_sha256",
+                "attempt_count",
+                "end_ms",
+                "ingestion_id",
+                "instrument_id",
+                "row_count",
+                "scope",
+                "sequence",
+                "start_ms",
+                "symbol",
+            }
+            or raw_page.get("artifact") != f"pages/{page.name}"
             or raw_page.get("artifact_sha256") != digest
-            or raw_page.get("attempt_count") != payload.get("attempt_count")
-            or raw_page.get("row_count") != payload.get("row_count")
+            or raw_page.get("attempt_count") != attempt_count
+            or raw_page.get("end_ms") != task.end_ms
+            or raw_page.get("instrument_id") != task.instrument_id
+            or raw_page.get("row_count") != row_count
             or raw_page.get("scope") != task.scope
             or raw_page.get("sequence") != sequence
+            or raw_page.get("start_ms") != task.start_ms
+            or raw_page.get("symbol") != task.symbol
             or raw_page.get("ingestion_id") != f"bybit-funding-page-sha256:{digest}"
         ):
             raise FundingAcquisitionError("funding manifest page facts do not verify")
-        row_count = cast(int, payload["row_count"])
-        total_attempts += cast(int, payload["attempt_count"])
+        total_attempts += attempt_count
         if task.scope == "boundary":
-            row = cast(list[dict[str, object]], payload["rows"])[0]
-            if batch_boundaries is not None:
-                batch_boundaries[task.instrument_id] = cast(int, row["funding_time_ms"])
-            boundary_rows.append(
-                {
-                    "artifact_sha256": digest,
-                    "funding_time_ms": row["funding_time_ms"],
-                    "instrument_id": task.instrument_id,
-                }
-            )
+            if payload is not None:
+                row = cast(list[dict[str, object]], payload["rows"])[0]
+                if batch_boundaries is not None:
+                    batch_boundaries[task.instrument_id] = cast(int, row["funding_time_ms"])
+                boundary_rows.append(
+                    {
+                        "artifact_sha256": digest,
+                        "funding_time_ms": row["funding_time_ms"],
+                        "instrument_id": task.instrument_id,
+                    }
+                )
         else:
             total_events += row_count
             empty_range_pages += row_count == 0
             if batch_rows is not None:
+                assert payload is not None
                 values = batch_rows.setdefault(task.instrument_id, [])
                 values.extend(
                     (
@@ -1013,7 +1072,13 @@ def _verify_completed_funding_job(
                     for item in cast(list[dict[str, object]], payload["rows"])
                 )
         expected_files.update((f"pages/{page.name}", f"pages/{page.stem}.receipt.json"))
-    boundary_sha = canonical_sha256(boundary_rows)
+    if verify_page_semantics:
+        boundary_sha = canonical_sha256(boundary_rows)
+    else:
+        raw_boundary_sha = manifest.get("boundary_evidence_sha256")
+        if not isinstance(raw_boundary_sha, str) or not SHA256_RE.fullmatch(raw_boundary_sha):
+            raise FundingAcquisitionError("funding boundary evidence hash is invalid")
+        boundary_sha = raw_boundary_sha
     expected_request_bound = {
         "actual_http_requests": total_attempts,
         "max_attempts_per_page": verified_spec.max_attempts,
@@ -1113,6 +1178,17 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
     """Verify plan, all pages, manifest, completion receipt, and exact allowlist."""
 
     completed, _batch = _verify_completed_funding_job(job_root, load_batch=False)
+    return completed
+
+
+def verify_completed_funding_job_integrity(job_root: Path) -> CompletedFundingJob:
+    """Verify the immutable receipt/hash chain and manifest facts without row decoding."""
+
+    completed, _batch = _verify_completed_funding_job(
+        job_root,
+        load_batch=False,
+        verify_page_semantics=False,
+    )
     return completed
 
 

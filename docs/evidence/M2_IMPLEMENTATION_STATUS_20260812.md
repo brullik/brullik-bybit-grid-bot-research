@@ -82,6 +82,9 @@ The authoritative implementation and review history is:
   100-instrument x 31-day public long-run throttling and resume evidence.
 - PR [#56](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/56): receipt-verified
   100-instrument canonical publication plus preserved blocked funding-cadence audit evidence.
+- PR [#57](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/57): ADR-0046
+  receipt-integrity fast path for completed canonical campaign verification, with semantic
+  admission retained for first publication and coverage audits.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket

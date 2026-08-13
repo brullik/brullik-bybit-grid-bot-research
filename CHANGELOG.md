@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0046 receipt-integrity reverification for completed canonical campaigns: every source byte,
+  receipt, manifest fact, allowlist, aggregate chain, and canonical dataset still verifies while
+  repeated publication/evidence checks avoid rebuilding already admitted source row batches; new
+  evidence may record the verifier mode and monotonic elapsed milliseconds.
 - Canonical 100-instrument x 31-day publication evidence: 24 immutable ZSTD-3 datasets/files,
   8,938,466 exact rows, 114,867,201 Parquet bytes, complete aggregate lineage, and a 24-reused /
   zero-pending idempotent replay.

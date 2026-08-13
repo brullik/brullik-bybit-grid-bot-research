@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import grid_data.history_acquisition as history_acquisition
 import pytest
 from grid_bybit_public import BybitPublicError, RateLimitObservation
 from grid_bybit_public.transport import TransportError
@@ -18,6 +19,7 @@ from grid_data.history_acquisition import (
     load_completed_history_batch,
     preflight_history_job,
     verify_completed_history_job,
+    verify_completed_history_job_integrity,
 )
 from grid_data.host_probe import probe_host_snapshot
 from grid_market_store import MIN_OPERATING_RESERVE_BYTES, CapacityBudget, HostSnapshot
@@ -488,6 +490,29 @@ def test_tampered_page_or_stale_lock_blocks_resume(tmp_path: Path) -> None:
     second.paths.run_lock.mkdir()
     with pytest.raises(HistoryAcquisitionError, match="run directory"):
         preflight(tmp_path, spec(job_id="trade-2026-01-b01-lock"))
+
+
+def test_integrity_verifier_hashes_pages_without_semantic_decode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient())
+    monkeypatch.setattr(
+        history_acquisition,
+        "_validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("semantic decode was called")),
+    )
+
+    assert verify_completed_history_job_integrity(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+    page = next(
+        path
+        for path in (completed.job_root / "pages").glob("*.json")
+        if not path.name.endswith(".receipt.json")
+    )
+    page.write_bytes(page.read_bytes() + b" ")
+    with pytest.raises(HistoryAcquisitionError, match="receipt"):
+        verify_completed_history_job_integrity(completed.job_root)
 
 
 def test_series_cannot_cross_physical_month_or_bucket() -> None:

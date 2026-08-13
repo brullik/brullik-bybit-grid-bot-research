@@ -76,6 +76,13 @@ already reserves the same full active-plus-building envelope and only one write 
 at a time. A campaign manifest receipt is committed only after every canonical dataset verifies;
 coverage audits and catalog registration remain separate.
 
+ADR-0046 distinguishes initial semantic admission from later receipt-integrity reverification.
+Acquisition completion, every pending canonical child, and every coverage audit still decode and
+validate exact source rows. Once an aggregate canonical publication is committed, reuse,
+independent publication verification, and its GitHub-safe evidence instead hash every Landing
+page and verify every page/child/aggregate receipt and manifest fact without rebuilding source
+Arrow batches; canonical Parquet remains fully verified. Batch loading cannot select this mode.
+
 ## Data layers
 
 ```mermaid

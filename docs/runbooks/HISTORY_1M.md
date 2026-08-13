@@ -602,14 +602,17 @@ Verify the aggregate receipt and every source/canonical relationship independent
   --campaign-root data\history\.campaigns\m2-representative-5x24--<plan-prefix>
 ```
 
-This command performs no exchange request. A successful result proves immutable publication and
-lineage only. Run the separate candle and funding coverage audits before claiming requested-range
-quality; register only explicitly selected verified datasets in the catalog. Do not commit runtime
-campaign plans, Landing data, Parquet, or local catalog files.
+This command performs no exchange request. For an already committed aggregate publication it
+uses ADR-0046 receipt-integrity reverification: every Landing page byte, receipt, exact manifest
+fact, child/aggregate chain, and canonical dataset is verified, but source market rows are not
+decoded again. A successful result proves immutable publication and lineage only. Run the
+separate candle and funding coverage audits before claiming requested-range quality; those audits
+retain full source-row semantics. Register only explicitly selected verified datasets in the
+catalog. Do not commit runtime campaign plans, Landing data, Parquet, or local catalog files.
 
 After the evidence-builder implementation is merged, use that exact merge commit identity to
-publish the GitHub-safe projection. The builder fully re-verifies source and canonical lineage and
-therefore can take minutes:
+publish the GitHub-safe projection. The builder fully re-verifies source integrity and canonical
+lineage using the completed-publication mode and records its monotonic elapsed milliseconds:
 
 ```powershell
 .venv\Scripts\grid-data.exe history-campaign-publication-evidence `
@@ -621,7 +624,9 @@ therefore can take minutes:
 
 Commit only the resulting evidence JSON and receipt. The exact schema excludes runtime paths,
 symbols, instrument/dataset identities, market values, account data, and credentials. Do not use
-publication evidence as a substitute for the subsequent candle/funding coverage audits.
+publication evidence as a substitute for the subsequent candle/funding coverage audits. A first
+or pending publication must still run the semantic preflight above; never use the completed-only
+integrity verifier to admit new source rows.
 
 After the aggregate audit implementation is merged, use that exact merge SHA as the auditor
 identity. The command is read-only for Landing/canonical storage and writes only the sanitized
