@@ -107,9 +107,17 @@ GitHub-safe aggregate projection remain pending a post-merge run; Gate 2 remains
 ADR-0049 defines that GitHub-safe projection. Its builder re-verifies the complete private
 ADR-0048 receipt chain and requires classified response observations to cover every completed
 page, then retains only aggregate counts, requested scan bounds, hashes, and immutable code
-identities. Measured evidence remains a separate post-merge artifact; exact symbols, instrument
-IDs, rates, observed settlement timestamps, runtime paths, account data, and credentials remain
-excluded.
+identities. The receipt-verified measured result is
+[`m2-funding-source-boundary-5xfull-20260813.json`](../../benchmarks/results/m2-funding-source-boundary-5xfull-20260813.json).
+It binds discovery merge `git:149fe395d0ae7efede2dc91bb60f12e70325bee7` and builder merge
+`git:d05ff84dca929e7b40a6edc7c42224293b3ed5ec`. Five of five requested series have both
+a source-observed predecessor and a second settlement admitted as the earliest canonical start.
+The private runtime retained 37,286 timestamp-only events across 193 pages/HTTP attempts, with
+zero retries, rate-limit events, rate reductions, cooldowns, invalid headers, or unclassified
+completed responses. The GitHub artifact contains no symbol, instrument ID, per-series fact,
+funding rate, observed settlement timestamp, runtime path, device/account data, credential, or
+private endpoint result. This is source-boundary evidence only; source completeness, historical
+cadence, canonical publication, and Gate 2 remain separate.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket

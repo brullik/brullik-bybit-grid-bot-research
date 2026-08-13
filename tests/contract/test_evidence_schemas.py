@@ -223,6 +223,65 @@ def test_current_status_policy_timeline_results_preserve_positive_and_negative_e
     assert combined["universe"]["coverage_blocked_instrument_count"] == 0
 
 
+def test_measured_funding_source_boundary_matches_schema_hash_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks/results/m2-funding-source-boundary-5xfull-20260813.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/phase2-funding-source-boundary.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["process"]["discovery_software_identity"] == (
+        "git:149fe395d0ae7efede2dc91bb60f12e70325bee7"
+    )
+    assert payload["process"]["evidence_software_identity"] == (
+        "git:d05ff84dca929e7b40a6edc7c42224293b3ed5ec"
+    )
+    assert payload["scope"] == {
+        "end_ms": 1785542340000,
+        "start_ms": 1514764800000,
+        "symbol_count": 5,
+    }
+    assert payload["landing"] == {
+        "event_count": 37286,
+        "http_attempt_count": 193,
+        "page_count": 193,
+        "retry_count": 0,
+    }
+    assert payload["result"] == {
+        "canonical_start_proven_count": 5,
+        "predecessor_proven_count": 5,
+    }
+    adaptive = payload["adaptive_throttling"]
+    assert adaptive["response_observation_count"] == 193
+    assert adaptive["transport_attempt_without_response_count"] == 0
+    assert adaptive["rate_limit_event_count"] == 0
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "bchusdt",
+        "btcusdt",
+        "linkusdt",
+        "ltcusdt",
+        "xtzusdt",
+        '"symbol":',
+        '"instrument_id":',
+        '"fundingrate":',
+        '"funding_rate":',
+        "1607932800000",
+        "1585152000000",
+        "1603267200000",
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
 def test_representative_multi_year_campaign_request_is_bounded_and_sanitized() -> None:
     artifact = (
         ROOT

@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified five-instrument full-history funding boundary evidence: 37,286 timestamp-only
+  events, 193 classified public responses, zero retries/rate-limit events, and five proven
+  predecessor-backed canonical starts in a per-series identity/observed-time/value-free GitHub
+  projection.
 - ADR-0049 GitHub-safe funding source-boundary evidence: full runtime receipt reverification,
   strict completed-response accounting, aggregate hash/count projection, exact schema/redaction
   tests, and no symbol, instrument ID, funding rate, observed settlement time, or runtime path.
