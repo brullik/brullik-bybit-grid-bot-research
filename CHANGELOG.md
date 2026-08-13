@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0050 receipt-bound candle source-row quarantine: exact source strings and source order are
+  retained for the three recognized OHLC-envelope failures, receipts bind per-page and aggregate
+  hashes/counts, canonical publication excludes the row, and coverage remains fail-closed without
+  price repair or alternate-source substitution.
 - Receipt-verified five-instrument full-history funding boundary evidence: 37,286 timestamp-only
   events, 193 classified public responses, zero retries/rate-limit events, and five proven
   predecessor-backed canonical starts in a per-series identity/observed-time/value-free GitHub
