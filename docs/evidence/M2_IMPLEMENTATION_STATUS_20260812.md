@@ -90,6 +90,8 @@ The authoritative implementation and review history is:
 - PR [#59](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/59): ADR-0047
   single-snapshot input admission for full-history campaign preflight with unchanged child hashes
   and resource gates.
+- PR [#60](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/60): schema-bound
+  same-host qualification evidence for the ADR-0047 full-history campaign preflight.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
