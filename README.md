@@ -20,7 +20,10 @@ dependency. Canonical funding now has an exact physical contract, predecessor-bo
 public acquisition, and receipt-last publication; measured pilot and funding coverage/catalog
 evidence are recorded. Instrument metadata can now be accumulated in an immutable timeline whose
 research-facing selector uses only snapshots observed by the decision time; ex-post
-listing/delisting coverage remains a separate data-quality view.
+listing/delisting coverage remains a separate data-quality view. A receipt-resumable campaign
+command now turns one bounded multi-month intent into deterministic monthly/eight-bucket
+trade/mark/funding jobs, performs aggregate host admission before mutation, and reuses every
+verified child receipt on rerun.
 
 [Русская версия](README.ru.md)
 

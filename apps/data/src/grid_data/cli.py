@@ -61,6 +61,11 @@ from grid_data.history_acquisition import (
     preflight_history_job,
     verify_completed_history_job,
 )
+from grid_data.history_campaign import (
+    execute_history_campaign,
+    preflight_history_campaign,
+    verify_completed_history_campaign,
+)
 from grid_data.history_compaction import (
     build_compaction_evidence,
     preflight_history_compaction,
@@ -255,6 +260,28 @@ def parser() -> argparse.ArgumentParser:
         help="mutate Landing and make public requests; omitted means no-mutation preflight",
     )
     history.set_defaults(handler=_history_1m)
+
+    history_campaign = commands.add_parser(
+        "history-campaign",
+        help="preflight or execute a resumable multi-month public trade/mark/funding campaign",
+    )
+    history_campaign.add_argument("--request", type=Path, required=True)
+    history_campaign.add_argument("--instrument-registry", type=Path, required=True)
+    history_campaign.add_argument("--capacity-evidence", type=Path, required=True)
+    history_campaign.add_argument("--staging-root", type=Path, required=True)
+    history_campaign.add_argument(
+        "--execute",
+        action="store_true",
+        help="write campaign/child receipts and call public endpoints; omitted means preflight",
+    )
+    history_campaign.set_defaults(handler=_history_campaign)
+
+    campaign_verify = commands.add_parser(
+        "verify-history-campaign",
+        help="verify a completed campaign and every receipt-committed child job",
+    )
+    campaign_verify.add_argument("campaign_root", type=Path)
+    campaign_verify.set_defaults(handler=_verify_history_campaign)
 
     funding = commands.add_parser(
         "funding-history",
@@ -639,6 +666,100 @@ def _history_1m(args: argparse.Namespace) -> int:
         }
     )
     print(json.dumps(summary))
+    return 0
+
+
+def _history_campaign(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.staging_root)
+    now_ms = time.time_ns() // 1_000_000
+    plan = preflight_history_campaign(
+        args.request,
+        instrument_registry_path=args.instrument_registry,
+        capacity_evidence_path=args.capacity_evidence,
+        staging_root=args.staging_root,
+        snapshot=snapshot,
+        now_ms=now_ms,
+        closed_before_ms=closed_before_now_ms(now_ms),
+    )
+    pending_jobs = sum(not job.existing_complete for job in plan.jobs)
+    summary = {
+        "campaign_root": str(plan.campaign_root),
+        "execute": bool(args.execute),
+        "existing_complete": plan.existing_complete,
+        "host_preflight": {
+            "device_identity_sha256": snapshot.device_identity_sha256,
+            "memory_available_bytes": snapshot.memory_available_bytes,
+            "memory_total_bytes": snapshot.memory_total_bytes,
+            "observed_at_ms": snapshot.observed_at_ms,
+            "storage_kind": snapshot.storage_kind,
+            "volume_free_bytes": snapshot.volume_free_bytes,
+        },
+        "job_count": len(plan.jobs),
+        "pending_job_count": pending_jobs,
+        "pending_page_count": sum(job.pending_page_count for job in plan.jobs),
+        "plan_sha256": plan.plan_sha256,
+        "planned_page_count": sum(job.planned_page_count for job in plan.jobs),
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "request_sha256": plan.request_sha256,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    completed = execute_history_campaign(
+        plan,
+        kline_client_factory=lambda: BybitPublicClient(
+            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+        ),
+        funding_client_factory=lambda: BybitPublicClient(
+            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+        ),
+        snapshot_provider=lambda: probe_host_snapshot(args.staging_root),
+        progress=lambda job, completed_job: print(
+            json.dumps(
+                {
+                    "event": "campaign-job-complete",
+                    "job_count": len(plan.jobs),
+                    "job_id": job.job_id,
+                    "kind": job.kind,
+                    "page_count": completed_job.page_count,
+                    "row_count": completed_job.row_count,
+                    "sequence": job.sequence,
+                }
+            ),
+            flush=True,
+        ),
+    )
+    summary.update(
+        {
+            "http_request_count": completed.http_request_count,
+            "manifest": str(completed.manifest_path),
+            "manifest_sha256": completed.manifest_sha256,
+            "page_count": completed.page_count,
+            "row_count": completed.row_count,
+            "status": "complete",
+        }
+    )
+    print(json.dumps(summary))
+    return 0
+
+
+def _verify_history_campaign(args: argparse.Namespace) -> int:
+    completed = verify_completed_history_campaign(args.campaign_root)
+    print(
+        json.dumps(
+            {
+                "campaign_root": str(completed.campaign_root),
+                "http_request_count": completed.http_request_count,
+                "job_count": completed.job_count,
+                "manifest_sha256": completed.manifest_sha256,
+                "page_count": completed.page_count,
+                "row_count": completed.row_count,
+                "valid": True,
+            }
+        )
+    )
     return 0
 
 
