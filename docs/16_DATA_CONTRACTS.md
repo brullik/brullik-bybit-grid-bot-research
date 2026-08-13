@@ -46,6 +46,29 @@ the internal `instrument_id`; rows are sorted and unique by that ID. The registr
 decimal metadata and maps source zero delivery/funding sentinels to null. This is a
 dated snapshot, not permission to apply current status to past decisions.
 
+## Instrument timeline and lifecycle coverage
+
+`grid.instrument-timeline/v1` aggregates one or more receipt-verified instrument registries in
+strict source-observation order. Every snapshot retains its complete exact rows and source
+artifact/content hashes under the same stable identity algorithm. Duplicate observation times,
+unstable identities, malformed ordering, and substituted receipts fail closed.
+
+The point-in-time selector returns only the latest snapshot with
+`snapshot_time_ms <= decision_time_ms`. It fails before the first snapshot and may require the
+selected source inventory to be complete. Later snapshot rows are not returned, so later status,
+tick/quantity constraints, leverage, funding interval, and delivery knowledge cannot enter an
+earlier decision.
+
+A separate ex-post lifecycle view compares launch and non-null delivery fields across observations
+for canonical data-quality accounting. Its boundaries are explicitly `ex-post-data-quality-only`:
+they may explain expected history start/end but are not research features. Conflicting bounds,
+closed-without-delivery records, non-positive intervals, symbol reuse, partial inventories,
+suspensions, and source omissions remain blockers rather than inferred facts.
+
+`grid.instrument-timeline-summary/v1` is a GitHub-safe hash/count projection of the runtime
+timeline. It contains no instrument rows, local paths, market values, account data, or credentials
+and does not close Gate 2. See ADR-0037.
+
 ## Public 1m acquisition request and Landing batch
 
 `grid.bybit-1m-history-request/v1` contains:

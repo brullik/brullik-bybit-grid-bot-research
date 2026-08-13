@@ -344,8 +344,8 @@ specs, sanitized audit/catalog evidence, hashes, receipts, tests, and the unreso
 blocker are committed as the source of truth.
 
 This closes scale sequence step 3 only. It does not provide a dated historical funding-schedule
-source, an accepted cadence-change policy, a historical universe timeline, a genuine missing-candle
-repair, the representative multi-year step, or Gate 2 acceptance.
+source, an accepted cadence-change policy, a genuine missing-candle repair, the representative
+multi-year step, or Gate 2 acceptance.
 
 ## Measured multi-file compaction
 
@@ -386,9 +386,43 @@ sanitized summaries, exact hashes, counts, target classifications, receipts, tes
 limitations are the source of truth. Compaction did not update the catalog, delete parents,
 accept a gap reason, or close Gate 2.
 
+## Point-in-time instrument timeline
+
+ADR-0037 and `grid.instrument-timeline/v1` now separate research-safe point-in-time metadata from
+ex-post lifecycle coverage. The research selector returns only the latest registry snapshot whose
+observation time is not later than the decision time; a request before the first snapshot fails,
+and later delivery/status/tick-size fields are not exposed. Ex-post launch/delivery bounds are
+available only to data-quality review. Conflicting launch/non-null-delivery values, closed records
+without delivery time, non-positive lifecycles, and symbol reuse remain blockers.
+
+The first measured timeline combines the receipt-verified 2026-08-12 registry artifact SHA-256
+`4024ded8a34718e6658dcddd34b290f757b030e6c34b07401568b8aeadae910d` with a fresh 2026-08-13
+registry artifact SHA-256
+`a351fd4a28e143b84ca7bc1f3449601f4f07904bd9c0dda1d31a9dfd9e3e3c88`. The runtime timeline
+artifact SHA-256 is
+`8f595d182f333c6173a899aa0e29ae8fd412af3e55cbac8ecd325224d45b1cf9`; its full rows remain
+outside Git. The receipt-verified
+[sanitized summary](../../benchmarks/results/m2-instrument-timeline-20260813.json) binds those
+hashes and implementation commit `f532ce8aa1ce025218d685035e7f8270f3f5d41c`.
+
+Across the two snapshots, stable lifecycle coverage contains 1,015 USDT linear perpetual IDs,
+303 delivery-bounded and 712 open-ended, with zero lifecycle-conflicted instruments and no
+identity conflict. The latest snapshot contains 303 `Closed`, five `PreLaunch`, and 707 `Trading`
+eligible records. A real as-of selection returns 1,010 IDs at the first timestamp and 1,015 at the
+second, proving that later additions do not appear retroactively.
+
+The summary deliberately remains `blocked` with `partial_source_inventory`: Bybit accepted
+`Trading`, `PreLaunch`, `Delivering`, and `Closed` status queries but rejected `Settling` with
+retCode 10001. Strict selection with `require_complete_inventory=true` therefore fails. No missing
+status was inferred, no archive absence was treated as delisting, and no public-trade archive body
+or tick row was downloaded. Two recent snapshots establish the append-only mechanism and current
+lifecycle consistency; they do not provide point-in-time metadata for decisions before
+2026-08-12 or close Gate 2.
+
 ## Still required before Gate 2
 
-- historical lifecycle inventory beyond the current snapshot;
+- broader dated lifecycle evidence covering representative historical decision periods and a
+  resolution for the partial source inventory; the current timeline begins on 2026-08-12;
 - measured coverage-audit evidence for the representative multi-year and full-history controlled
   scales;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding

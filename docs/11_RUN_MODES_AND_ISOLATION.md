@@ -31,6 +31,11 @@ Planned operator intent:
 ```text
 # Stable identities and bounded historical download only
 grid-data instrument-registry --instrument-inventory <inventory.json> --output <registry.json>
+grid-data instrument-timeline --instrument-registry <registry-1.json> \
+  [--instrument-registry <registry-2.json> ...] --output <timeline.json>
+grid-data verify-instrument-timeline <timeline.json>
+grid-data instrument-timeline-summary --timeline <timeline.json> \
+  --software-identity git:<full-commit-sha> --output <sanitized-summary.json>
 grid-data history-1m --request <request.json> --instrument-registry <registry.json> \
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.

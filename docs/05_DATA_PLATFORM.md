@@ -118,6 +118,13 @@ For the Phase 2 Bybit-linear v1 namespace, ADR-0023 freezes
 uniqueness. Requests contain symbols, never caller-supplied IDs. Other categories or exchanges
 require a new namespace policy rather than reusing these integers silently.
 
+ADR-0037 adds an immutable registry timeline. Research selects only the latest snapshot observed
+at or before its decision timestamp; it fails before the first snapshot and can require complete
+inventory evidence. A separate ex-post view may use consistent launch/delivery bounds to explain
+canonical data coverage, but cannot expose a later delisting or today's trading constraints to an
+earlier decision. Partial status inventories, conflicting bounds, symbol reuse, suspensions, and
+source omissions remain explicit blockers.
+
 ## Canonical 1m key
 
 ```text

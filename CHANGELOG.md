@@ -6,6 +6,13 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Immutable receipt-verified instrument timeline with stable cross-snapshot identities, strict
+  point-in-time selection, separate ex-post lifecycle coverage, fail-closed conflict/partial-source
+  accounting, and a bounded GitHub-safe summary that never exposes future snapshot fields.
+- Measured two-snapshot instrument timeline over 1,015 stable USDT perpetual IDs with zero
+  lifecycle conflicts, 303 delivery-bounded and 712 open-ended instruments, verified as-of growth
+  from 1,010 to 1,015 IDs, and an explicit `partial_source_inventory` blocker for Bybit's rejected
+  `Settling` status query.
 - Receipt-verified measured April trade compaction over five independently acquired 10-instrument
   parents: 2,160,000 exact rows compacted from five files to two 16-MiB target-band files plus one
   explicit tail, with equal logical hashes, immutable parent lineage, and idempotent rerun.

@@ -128,7 +128,9 @@ def _snapshot_from_inventory(
         raise InstrumentRegistryError("inventory row violates the instrument contract") from error
 
 
-def _snapshot_payload(snapshot: InstrumentSnapshot) -> dict[str, object]:
+def instrument_snapshot_payload(snapshot: InstrumentSnapshot) -> dict[str, object]:
+    """Serialize one exact registry row for another versioned market contract."""
+
     payload = asdict(snapshot)
     for name in (
         "tick_size",
@@ -192,7 +194,7 @@ def build_instrument_registry(
             "instrument_id_expression": "source_symbol_id",
             "range": "uint32-positive",
         },
-        "records": [_snapshot_payload(item) for item in snapshots],
+        "records": [instrument_snapshot_payload(item) for item in snapshots],
         "source_inventory": {
             "artifact_sha256": inventory_artifact_sha256,
             "content_sha256": source_content_sha,
@@ -211,7 +213,9 @@ def build_instrument_registry(
     return payload
 
 
-def _snapshot_from_registry(record: object) -> InstrumentSnapshot:
+def instrument_snapshot_from_payload(record: object) -> InstrumentSnapshot:
+    """Parse and validate one exact ``grid.instrument-registry/v1`` row."""
+
     if not isinstance(record, dict) or set(record) != _SNAPSHOT_FIELDS:
         raise InstrumentRegistryError("registry record fields do not match v1")
     typed = cast(dict[str, object], record)
@@ -262,6 +266,20 @@ def load_verified_instrument_registry(path: Path) -> VerifiedInstrumentRegistry:
         raw = json.loads(resolved.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise InstrumentRegistryError("instrument registry is not valid JSON") from error
+    payload, snapshots = parse_instrument_registry_payload(raw)
+    return VerifiedInstrumentRegistry(
+        path=resolved,
+        artifact_sha256=sha256_file(resolved),
+        payload=payload,
+        snapshots=snapshots,
+    )
+
+
+def parse_instrument_registry_payload(
+    raw: object,
+) -> tuple[dict[str, object], tuple[InstrumentSnapshot, ...]]:
+    """Verify a self-contained registry payload without weakening receipt checks at file edges."""
+
     if not isinstance(raw, dict) or raw.get("evidence_schema") != INSTRUMENT_REGISTRY_CONTRACT:
         raise InstrumentRegistryError("unsupported instrument registry contract")
     payload = cast(dict[str, object], raw)
@@ -280,7 +298,7 @@ def load_verified_instrument_registry(path: Path) -> VerifiedInstrumentRegistry:
     raw_records = payload.get("records")
     if not isinstance(raw_records, list) or not raw_records:
         raise InstrumentRegistryError("instrument registry has no records")
-    snapshots = tuple(_snapshot_from_registry(item) for item in raw_records)
+    snapshots = tuple(instrument_snapshot_from_payload(item) for item in raw_records)
     identities = [item.instrument_id for item in snapshots]
     symbols = [item.symbol for item in snapshots]
     if identities != sorted(identities) or len(identities) != len(set(identities)):
@@ -306,12 +324,7 @@ def load_verified_instrument_registry(path: Path) -> VerifiedInstrumentRegistry:
         for name in ("artifact_sha256", "content_sha256")
     ):
         raise InstrumentRegistryError("instrument registry source binding is invalid")
-    return VerifiedInstrumentRegistry(
-        path=resolved,
-        artifact_sha256=sha256_file(resolved),
-        payload=payload,
-        snapshots=snapshots,
-    )
+    return payload, snapshots
 
 
 def build_verified_registry_from_inventory(path: Path) -> dict[str, object]:
