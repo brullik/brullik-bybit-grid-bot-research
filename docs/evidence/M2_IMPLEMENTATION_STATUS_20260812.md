@@ -790,6 +790,17 @@ free-space gate but completed in 3,284 ms. The
 records a 38.246x speedup and 97.39% elapsed reduction while excluding paths, device identity,
 instrument identities, market values, account data, credentials, and any Gate 2 implication.
 
+The later five-instrument candle-only full-history resume exposed a different completed-child
+cost: 927 of 978 children were already complete, yet the 2026-08-14 failed resume spent about
+30.5 minutes before the first pending job returned HTTP 403 because completed Landing rows were
+semantically decoded again during both planning and execution. The ADR-0046 resume implementation
+now hashes and receipt-verifies each completed child during preflight and reuses that immutable
+result only inside the same command. On the unchanged 978-job/43,328-page local campaign,
+development preflight measured 72,018 ms and 70,399 ms in two runs; after the second preflight,
+the executor traversed 927 verified children and reached a synthetic first-pending HTTP 403 in
+1,257 ms with exactly one client call. These are pre-merge diagnostic measurements, not Gate 2
+acceptance evidence; a schema-bound post-merge measurement remains required.
+
 ADR-0055 adds funding repair discovery planning without changing ADR-0034 acceptance. A planner
 re-verifies and recomputes a blocked audit, admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches with no other blocker, and embeds bounded ordinary public funding

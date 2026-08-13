@@ -330,7 +330,10 @@ def test_fixed_page_plan_is_no_mutation_and_completed_job_loads_exact_batch(tmp_
     )
 
 
-def test_failed_run_keeps_verified_pages_and_resume_fetches_only_missing(tmp_path: Path) -> None:
+def test_failed_run_keeps_verified_pages_and_resume_fetches_only_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     plan = preflight(tmp_path)
     failing = FakeKlineClient(fail_once={("AAAUSDT", JANUARY_1_2026_MS)})
     with pytest.raises(HistoryAcquisitionError, match="failed after"):
@@ -349,6 +352,10 @@ def test_failed_run_keeps_verified_pages_and_resume_fetches_only_missing(tmp_pat
     assert len(replacement.calls) == len(resumed.pending_tasks)
     assert completed.row_count == 6
 
+    monkeypatch.setattr(
+        "grid_data.history_acquisition._validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("semantic decode was called")),
+    )
     complete_plan = preflight(tmp_path)
     assert complete_plan.existing_complete is True
     never_called = AlwaysFailClient()

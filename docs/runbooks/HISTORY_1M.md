@@ -677,7 +677,12 @@ space, peak memory, and `preflight_elapsed_ms`. ADR-0047 verifies the registry/c
 per command and derives all child plans from that exact snapshot; every execute/resume command
 reloads them. Repeat with `--execute` only if all pass. Children run sequentially and
 emit progress JSON; interruption preserves their verified pages. Repeating the identical command
-downloads only missing pages, while a completed campaign performs no public request.
+downloads only missing pages, while a completed campaign performs no public request. Completed
+child jobs are reverified through every page byte/hash, page receipt, manifest fact, child receipt,
+and allowlist without repeating JSON/Decimal/Arrow semantic decoding. That verified result is
+reused only inside the same preflight/execute process so hundreds of completed children are not
+hashed twice before the first pending request. A partial child still semantically validates every
+existing page, and `verify-history-campaign` remains the explicit full semantic verifier.
 
 Verify the printed root independently:
 

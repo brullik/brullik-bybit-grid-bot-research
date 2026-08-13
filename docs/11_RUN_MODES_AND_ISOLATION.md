@@ -25,6 +25,9 @@ Funding-specific pilot evidence and a fail-closed source-chronology audit remain
 read-only commands; neither uses current undated interval metadata.
 Multi-month public acquisition is now a separate `history-campaign` coordinator over those same
 child boundaries. It has no research, catalog, live, credential, or private-endpoint dependency.
+On resume, completed immutable Landing children use ADR-0046 receipt/hash integrity verification
+once per command and are reused only in-process; partial children and explicit semantic verifiers
+retain exact source-row decoding. This changes no request, retry, pacing, or completion contract.
 Both candle and funding child executors apply the ADR-0043 shared decrease-only response-header
 pacer and receipt its sanitized observations; HTTP 403 aborts the resumable child rather than
 retrying through the documented IP-ban interval.
