@@ -471,6 +471,176 @@ def test_phase2_ten_by_seven_scale_chain_is_complete_bound_and_sanitized() -> No
             assert forbidden not in rendered
 
 
+def test_phase2_fifty_by_ninety_scale_chain_is_bound_sanitized_and_fail_closed() -> None:
+    specifications = ROOT / "benchmarks" / "specifications"
+    results = ROOT / "benchmarks" / "results"
+    market_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "bybit-1m-history-request.schema.json"
+    )
+    funding_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "bybit-funding-history-request.schema.json"
+    )
+    candle_audit_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-1m-coverage-audit.schema.json"
+    )
+    funding_audit_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-funding-coverage-audit.schema.json"
+    )
+    registration_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-catalog-registration.schema.json"
+    )
+    selection_request_schema = load_json(
+        ROOT / "schemas" / "market" / "v1" / "canonical-dataset-selection-request.schema.json"
+    )
+    selection_schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-selection.schema.json"
+    )
+    months = (
+        ("2026-04", "2026-04", 2_160_000),
+        ("2026-05", "2026-05", 2_232_000),
+        ("2026-06-partial", "2026-06-partial", 2_088_000),
+    )
+    dataset_types = {
+        "trade": "trade_kline_1m",
+        "mark": "mark_kline_1m",
+        "funding": "funding_event",
+    }
+    registration_path = results / "m2-50x90-catalog-registration-20260813.json"
+    registration = load_json(registration_path)
+    Draft202012Validator(
+        registration_schema,
+        format_checker=FormatChecker(),
+    ).validate(registration)
+    registration_content = dict(registration)
+    embedded_registration_hash = registration_content.pop("content_sha256")
+    assert embedded_registration_hash == canonical_sha256(registration_content)
+    assert verify_evidence(registration_path)
+    assert registration["catalog"] == {
+        "backend": "duckdb",
+        "content_sha256": "f7883c006fff2a8eaa5c897964fb69b1fbdd4a7f6baa00d8ce9b00293d6595bc",
+        "dataset_count": 14,
+        "file_count": 14,
+        "revision": 4,
+        "schema_version": 1,
+    }
+    assert len(registration["datasets"]) == 9
+    registered = {item["dataset_id"]: item for item in registration["datasets"]}
+    expected_symbols: set[str] | None = None
+
+    for flow, dataset_type in dataset_types.items():
+        selection_request_path = specifications / f"m2-{flow}-50x90-catalog-selection-20260813.json"
+        selection_path = results / f"m2-{flow}-50x90-catalog-selection-20260813.json"
+        selection_request = load_json(selection_request_path)
+        selection = load_json(selection_path)
+        Draft202012Validator(selection_request_schema).validate(selection_request)
+        Draft202012Validator(
+            selection_schema,
+            format_checker=FormatChecker(),
+        ).validate(selection)
+        selection_content = dict(selection)
+        embedded_selection_hash = selection_content.pop("content_sha256")
+        assert embedded_selection_hash == canonical_sha256(selection_content)
+        assert verify_evidence(selection_path)
+        assert selection["request"] == selection_request
+        assert selection["request_sha256"] == canonical_sha256(selection_request)
+        assert selection["catalog"] == {
+            "content_sha256": registration["catalog"]["content_sha256"],
+            "revision": 4,
+            "schema_version": 1,
+        }
+        assert selection["selection"]["object_count"] == 3
+        assert selection["selection"]["selected_row_inventory"] == (
+            21_421 if flow == "funding" else 6_480_000
+        )
+        selected_ids = {item["dataset_id"] for item in selection["selected_dataset_manifests"]}
+        assert selected_ids == set(selection_request["dataset_ids"])
+        assert all(
+            registered[dataset_id]["dataset_type"] == dataset_type for dataset_id in selected_ids
+        )
+
+        for request_name, audit_name, expected_minutes in months:
+            request_path = (
+                specifications / f"m2-{flow}-{request_name}-50x90-history-request-20260813.json"
+            )
+            audit_path = results / f"m2-{flow}-{audit_name}-50x90-coverage-audit-20260813.json"
+            request = load_json(request_path)
+            audit = load_json(audit_path)
+            request_schema = funding_request_schema if flow == "funding" else market_request_schema
+            audit_schema = funding_audit_schema if flow == "funding" else candle_audit_schema
+            Draft202012Validator(request_schema).validate(request)
+            Draft202012Validator(
+                audit_schema,
+                format_checker=FormatChecker(),
+            ).validate(audit)
+            audit_content = dict(audit)
+            embedded_audit_hash = audit_content.pop("content_sha256")
+            assert embedded_audit_hash == canonical_sha256(audit_content)
+            assert verify_evidence(audit_path)
+            symbols = {item["symbol"] for item in request["series"]}
+            assert len(symbols) == 50
+            expected_symbols = symbols if expected_symbols is None else expected_symbols
+            assert symbols == expected_symbols
+            assert audit["dataset_id"] in selected_ids
+            assert (
+                audit["bindings"]["canonical_manifest_sha256"]
+                == registered[audit["dataset_id"]]["manifest_sha256"]
+            )
+            quality = audit["quality"]
+            assert quality["canonical_source_table_equal"] is True
+            assert quality["duplicate_key_count"] == 0
+            assert quality["unrequested_row_count"] == 0
+            assert quality["unexpected_timestamp_count"] == 0
+            assert quality["lifecycle_failure_count"] == 0
+            if flow == "funding":
+                assert quality["requested_window_minutes"] == expected_minutes
+                assert quality["empty_range_page_count"] == 0
+                assert quality["internal_interval_mismatch_count"] == 0
+                assert quality["predecessor_interval_mismatch_count"] == 0
+            else:
+                assert audit["status"] == "passed"
+                assert quality["expected_minute_count"] == expected_minutes
+                assert quality["missing_minute_count"] == 0
+                assert quality["observed_row_count"] == expected_minutes
+
+    april_funding = load_json(results / "m2-funding-2026-04-50x90-coverage-audit-20260813.json")
+    assert april_funding["status"] == "blocked"
+    assert april_funding["quality"]["interval_change_count"] == 4
+    assert april_funding["quality"]["source_range_enumeration_complete"] is False
+    assert april_funding["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {"unexplained_interval_change": 4},
+        "unaccepted_reason_codes": ["unexplained_interval_change"],
+        "unknown_reason_count": 0,
+    }
+    changed_symbols = {
+        item["symbol"] for item in april_funding["series"] if item["interval_change_count"] > 0
+    }
+    assert changed_symbols == {"ONTUSDT", "PIPPINUSDT"}
+    for month in ("2026-05", "2026-06-partial"):
+        funding = load_json(results / f"m2-funding-{month}-50x90-coverage-audit-20260813.json")
+        assert funding["status"] == "passed"
+        assert funding["quality"]["interval_change_count"] == 0
+        assert funding["quality"]["source_range_enumeration_complete"] is True
+
+    evidence_paths = [registration_path]
+    evidence_paths.extend(specifications.glob("m2-*-50x90-*.json"))
+    evidence_paths.extend(results.glob("m2-*-50x90-*.json"))
+    for artifact_path in evidence_paths:
+        rendered = artifact_path.read_text(encoding="utf-8").lower()
+        for forbidden in (
+            "c:\\",
+            "/home/",
+            "api_key",
+            "api_secret",
+            "authorization",
+            "device_identity",
+            '"funding_rate"',
+            '"open"',
+            '"volume"',
+        ):
+            assert forbidden not in rendered
+
+
 def test_archive_coverage_matches_schema_hash_and_receipt() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-archive-coverage.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-archive-coverage.schema.json")

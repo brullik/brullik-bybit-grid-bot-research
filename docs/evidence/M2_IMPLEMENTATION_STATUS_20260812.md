@@ -51,6 +51,9 @@ The authoritative implementation and review history is:
   receipt-verified funding catalog registration/selection evidence and redaction assertions.
 - PR [#37](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/37): receipt-verified
   trade/mark/funding evidence for controlled scale step 2 (10 instruments x 7 days).
+- PR [#38](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/38): receipt-verified
+  trade/mark/funding evidence for controlled scale step 3 (50 instruments x 90 days) and the
+  ADR-0036 candle-audit schema-bound correction.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -277,13 +280,79 @@ larger steps, or Gate 2 acceptance. Runtime Landing, Parquet, and DuckDB remain 
 request/evidence schemas, hashes, counts, receipts, tests, and limitations above are the GitHub
 source of truth.
 
+## Controlled scale step 3: 50 instruments x 90 days
+
+The third PM-owned scale step ran over 2026-04-01 through 2026-06-29 inclusive, split into the
+canonical April, May, and partial-June month partitions in stable bucket 5. Each request contains
+the same 50 lifecycle-admitted USDT linear perpetuals. The GitHub-authoritative public specs are:
+
+- trade
+  [April](../../benchmarks/specifications/m2-trade-2026-04-50x90-history-request-20260813.json),
+  [May](../../benchmarks/specifications/m2-trade-2026-05-50x90-history-request-20260813.json), and
+  [June](../../benchmarks/specifications/m2-trade-2026-06-partial-50x90-history-request-20260813.json);
+- mark
+  [April](../../benchmarks/specifications/m2-mark-2026-04-50x90-history-request-20260813.json),
+  [May](../../benchmarks/specifications/m2-mark-2026-05-50x90-history-request-20260813.json), and
+  [June](../../benchmarks/specifications/m2-mark-2026-06-partial-50x90-history-request-20260813.json);
+  and
+- funding
+  [April](../../benchmarks/specifications/m2-funding-2026-04-50x90-history-request-20260813.json),
+  [May](../../benchmarks/specifications/m2-funding-2026-05-50x90-history-request-20260813.json), and
+  [June](../../benchmarks/specifications/m2-funding-2026-06-partial-50x90-history-request-20260813.json).
+
+All nine jobs use 24 workers and a per-job 15-RPS target. Candle page size is the accepted maximum
+1,000 rows; funding uses 10,080-minute unsaturated range pages plus one predecessor per series.
+The month-aligned canonical datasets contain 6,480,000 exact trade rows and 6,480,000 exact mark
+rows. Their six receipt-verified audits are
+[trade April](../../benchmarks/results/m2-trade-2026-04-50x90-coverage-audit-20260813.json),
+[May](../../benchmarks/results/m2-trade-2026-05-50x90-coverage-audit-20260813.json),
+[June](../../benchmarks/results/m2-trade-2026-06-partial-50x90-coverage-audit-20260813.json),
+[mark April](../../benchmarks/results/m2-mark-2026-04-50x90-coverage-audit-20260813.json),
+[May](../../benchmarks/results/m2-mark-2026-05-50x90-coverage-audit-20260813.json), and
+[June](../../benchmarks/results/m2-mark-2026-06-partial-50x90-coverage-audit-20260813.json).
+Every candle audit proves exact Landing/Parquet equality, complete requested-minute coverage,
+lifecycle fit, and zero missing, duplicate, conflicting, unexpected, or unrequested keys.
+
+Funding retained 21,421 exact events: 7,201 in April, 7,347 in May, and 6,873 in June. The
+[May](../../benchmarks/results/m2-funding-2026-05-50x90-coverage-audit-20260813.json) and
+[June](../../benchmarks/results/m2-funding-2026-06-partial-50x90-coverage-audit-20260813.json)
+chronology audits pass with complete unsaturated enumeration and zero interval/key/lifecycle
+blockers. The
+[April audit](../../benchmarks/results/m2-funding-2026-04-50x90-coverage-audit-20260813.json)
+correctly remains `blocked`: ONTUSDT and PIPPINUSDT contain four observed cadence transitions.
+Exact source/canonical equality, boundaries, keys, and page coverage pass, but v1 accepts no
+undated schedule-change reason. No current `fundingInterval` value was misused as historical
+evidence and no PM/risk gate was weakened.
+
+The nine immutable datasets were atomically added through
+[catalog revision 4](../../benchmarks/results/m2-50x90-catalog-registration-20260813.json), with
+14 total datasets/files and logical content SHA-256
+`f7883c006fff2a8eaa5c897964fb69b1fbdd4a7f6baa00d8ce9b00293d6595bc`.
+The exact 90-day [trade](../../benchmarks/results/m2-trade-50x90-catalog-selection-20260813.json),
+[mark](../../benchmarks/results/m2-mark-50x90-catalog-selection-20260813.json), and
+[funding](../../benchmarks/results/m2-funding-50x90-catalog-selection-20260813.json) selections
+each returned three receipt/hash-bound month objects. Their selected inventories are 6,480,000,
+6,480,000, and 21,421 rows respectively. Registration and all selections were rerun idempotently
+without changing revision or hash.
+
+ADR-0036 corrects the candle audit JSON Schema from the stale 16-series pilot limit to the existing
+700-series request bound. The pilot evidence contract remains limited to 16 series; the scale run
+was not relabelled as a pilot. Runtime Landing, Parquet, and DuckDB remain outside Git, while exact
+specs, sanitized audit/catalog evidence, hashes, receipts, tests, and the unresolved funding
+blocker are committed as the source of truth.
+
+This closes scale sequence step 3 only. It does not provide a dated historical funding-schedule
+source, an accepted cadence-change policy, a historical universe timeline, a genuine missing-candle
+repair, measured multi-file compaction, the representative multi-year step, or Gate 2 acceptance.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
-- measured coverage-audit evidence for the 50 x 90-day and larger controlled scales, plus an
-  owner-reviewed reason policy;
+- measured coverage-audit evidence for the representative multi-year and full-history controlled
+  scales;
+- dated historical evidence or a separately owner-reviewed policy for the blocked April funding
+  cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - measured multi-file compaction/target-attainment evidence at representative scale;
 - long-run adaptive throttling evidence and controlled scale-up; and
-- funding repair/compaction, controlled scale evidence, and the remaining PM-owned Gate 2
-  acceptance checklist.
+- funding repair/compaction and the remaining PM-owned Gate 2 acceptance checklist.

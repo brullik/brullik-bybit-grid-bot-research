@@ -6,6 +6,13 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified Phase 2 scale-step evidence for 50 instruments over 90 days across three
+  monthly partitions: 12,960,000 complete trade/mark candles, 21,421 funding events, revision-4
+  three-object catalog selections, and an honestly blocked April funding audit for four undated
+  cadence transitions on ONTUSDT/PIPPINUSDT while all candle and later funding audits pass.
+- ADR-0036 and a backward-compatible correction aligning the canonical candle coverage-audit
+  schema with the existing 700-series acquisition bound while retaining the separate 16-series
+  pilot limit and every fail-closed quality rule.
 - Receipt-verified Phase 2 scale-step evidence for 10 instruments over 7 days across trade 1m,
   mark 1m, and funding: exact public requests, 201,600 complete candles, 231 chronology-verified
   funding events, zero gap/key/lifecycle blockers, and revision-3 catalog selections.
