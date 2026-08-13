@@ -22,7 +22,9 @@ The authoritative implementation and review history is:
 - PR [#22](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/22): fail-closed
   canonical requested-range coverage audit; and
 - PR [#23](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/23): receipt-verified
-  measured coverage evidence.
+  measured coverage evidence; and
+- PR [#24](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/24): verified,
+  bounded standard-request planning for blocked 1m gaps.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
@@ -73,11 +75,26 @@ It accounts for the complete gap list and embeds bounded, standard history reque
 editing the committed canonical dataset or changing the accepted-reason policy. The measured
 pilot audit passes with zero gaps, so no artificial runtime repair artifact is created.
 
+## Repair execution and immutable replacement implementation
+
+`grid-data execute-history-repair` re-verifies the complete plan chain and performs a whole-plan
+resource preflight before running the existing fixed-page downloader sequentially for each gap.
+Every task binds the embedded request, registry, capacity evidence, Landing plan/manifest, and full
+executor Git identity. Exact returned coverage produces `passed`; an empty or partial repeated
+observation is preserved as `blocked`.
+
+`grid-data publish-history-repair` accepts only a passed execution, proves that parent plus repair
+rows exactly cover all original requested minutes with no overlap/duplicate/unrequested key, and
+publishes a deterministic receipt-last child dataset whose manifest names the old dataset as its
+sole parent. The value-free replacement proof records both manifests and exact row accounting.
+Positive, blocked, substitution, parent-immutability, and idempotent-rerun fixtures pass. The real
+pilot has no genuine gap, so no synthetic result is represented as measured runtime evidence.
+
 ## Still required before Gate 2
 
 - historical lifecycle inventory beyond the current snapshot;
 - measured coverage-audit evidence at each controlled scale and an owner-reviewed reason policy;
-- measured repair execution and immutable replacement lineage when a genuine gap is observed;
+- measured repair execution/replacement evidence when a genuine gap is observed;
 - multi-file target-size compaction and tail policy at representative scale;
 - catalog registration and reproducible range selection;
 - long-run adaptive throttling evidence and controlled scale-up; and

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Whole-plan-admitted, receipt-resumable public 1m repair execution plus fail-closed repeated-empty
+  evidence, exact gap closure, immutable parent-to-child replacement lineage, and a value-free
+  post-publication proof; no parent Parquet file is edited or deleted.
 - Deterministic no-network 1m gap-repair planning from a recomputed receipt-verified blocked
   coverage audit, with missing-only fail-closed policy, complete gap accounting, bounded standard
   history requests, Git/hash bindings, and explicit canonical no-mutation semantics.

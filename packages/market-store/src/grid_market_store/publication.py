@@ -760,3 +760,17 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
         manifest=manifest,
         receipt=receipt,
     )
+
+
+def load_committed_candle_table(dataset_root: Path) -> tuple[PublishedDataset, pa.Table]:
+    """Verify one committed dataset before loading its exact canonical Arrow table."""
+
+    published = verify_committed_candle_dataset(dataset_root)
+    tables = [
+        pq.read_table(published.dataset_root / item.path) for item in published.manifest.files
+    ]
+    if not tables:
+        raise PublicationError("committed candle dataset has no Parquet tables")
+    table = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+    verify_canonical_candle_schema(table.schema, published.manifest.dataset_type)
+    return published, table

@@ -38,7 +38,18 @@ from grid_data.history_publication import (
     preflight_completed_history_publication,
     publish_preflighted_history,
 )
+from grid_data.history_repair_execution import (
+    execute_gap_repair,
+    preflight_gap_repair_execution,
+    verify_gap_repair_execution,
+)
 from grid_data.history_repair_plan import build_gap_repair_plan
+from grid_data.history_repair_publication import (
+    build_gap_replacement_evidence,
+    preflight_repaired_history_publication,
+    publish_preflighted_repair,
+    verify_gap_replacement_evidence,
+)
 from grid_data.history_request import closed_before_now_ms, resolve_history_request
 from grid_data.history_sources import (
     build_history_source_assessment,
@@ -242,6 +253,47 @@ def parser() -> argparse.ArgumentParser:
     repair_plan.add_argument("--planner-software-identity", required=True)
     repair_plan.add_argument("--output", type=Path, required=True)
     repair_plan.set_defaults(handler=_plan_history_repair)
+
+    repair_execute = commands.add_parser(
+        "execute-history-repair",
+        help="preflight or execute every standard request in a verified 1m gap repair plan",
+    )
+    repair_execute.add_argument("--repair-plan", type=Path, required=True)
+    repair_execute.add_argument("--coverage-audit", type=Path, required=True)
+    repair_execute.add_argument("--job-root", type=Path, required=True)
+    repair_execute.add_argument("--instrument-registry", type=Path, required=True)
+    repair_execute.add_argument("--capacity-evidence", type=Path, required=True)
+    repair_execute.add_argument("--store-root", type=Path, required=True)
+    repair_execute.add_argument("--repair-staging-root", type=Path, required=True)
+    repair_execute.add_argument("--executor-software-identity", required=True)
+    repair_execute.add_argument("--output", type=Path, required=True)
+    repair_execute.add_argument(
+        "--execute",
+        action="store_true",
+        help="make bounded public requests and write Landing/evidence; omitted is preflight",
+    )
+    repair_execute.set_defaults(handler=_execute_history_repair)
+
+    repair_publish = commands.add_parser(
+        "publish-history-repair",
+        help="preflight or publish a passed repair as a new immutable child dataset",
+    )
+    repair_publish.add_argument("--repair-execution", type=Path, required=True)
+    repair_publish.add_argument("--repair-plan", type=Path, required=True)
+    repair_publish.add_argument("--coverage-audit", type=Path, required=True)
+    repair_publish.add_argument("--job-root", type=Path, required=True)
+    repair_publish.add_argument("--instrument-registry", type=Path, required=True)
+    repair_publish.add_argument("--capacity-evidence", type=Path, required=True)
+    repair_publish.add_argument("--store-root", type=Path, required=True)
+    repair_publish.add_argument("--repair-staging-root", type=Path, required=True)
+    repair_publish.add_argument("--software-identity", required=True)
+    repair_publish.add_argument("--output", type=Path, required=True)
+    repair_publish.add_argument(
+        "--execute",
+        action="store_true",
+        help="publish replacement Parquet and lineage evidence; omitted is preflight",
+    )
+    repair_publish.set_defaults(handler=_publish_history_repair)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -511,6 +563,159 @@ def _plan_history_repair(args: argparse.Namespace) -> int:
             }
         )
     )
+    return 0
+
+
+def _execute_history_repair(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.repair_staging_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    preflight = preflight_gap_repair_execution(
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        closed_before_ms=closed_before_now_ms(observed_at_ms),
+        executor_software_identity=args.executor_software_identity,
+    )
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    verified_execution = None
+    if output.exists() or receipt.exists():
+        verified_execution = verify_gap_repair_execution(
+            output,
+            args.repair_plan,
+            args.coverage_audit,
+            args.job_root,
+            args.instrument_registry,
+            args.capacity_evidence,
+            args.store_root,
+            args.repair_staging_root,
+        )
+        if (
+            verified_execution.payload.get("executor_software_identity")
+            != args.executor_software_identity
+        ):
+            raise ValueError("existing repair execution uses a different software identity")
+    else:
+        preflight_evidence(output)
+    summary = {
+        "execute": bool(args.execute),
+        "existing_execution": verified_execution is not None,
+        "existing_complete_task_count": preflight.existing_complete_count,
+        "planned_max_http_requests": preflight.verified_plan.planned_max_http_requests,
+        "planned_peak_memory_bytes": preflight.planned_peak_memory_bytes,
+        "repair_plan_sha256": preflight.verified_plan.artifact_sha256,
+        "required_free_bytes": preflight.required_free_bytes,
+        "status": "preflight-passed",
+        "task_count": len(preflight.task_plans),
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if verified_execution is not None:
+        payload = verified_execution.payload
+        artifact = verified_execution.path
+    else:
+        preflight_evidence(output)
+        result = execute_gap_repair(
+            preflight,
+            lambda: BybitPublicClient(
+                UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
+            ),
+            lambda: probe_host_snapshot(args.repair_staging_root),
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            executor_software_identity=args.executor_software_identity,
+            now_ms=lambda: time.time_ns() // 1_000_000,
+        )
+        artifact, receipt = publish_evidence(output, result.payload)
+        payload = result.payload
+    limits = payload["limits"]
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "limits": limits,
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "status": payload["status"],
+        }
+    )
+    print(json.dumps(summary))
+    return 0 if payload["status"] == "passed" else 2
+
+
+def _publish_history_repair(args: argparse.Namespace) -> int:
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_repaired_history_publication(
+        args.repair_execution,
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    plan = resolved.plan
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing_evidence = output.exists() or receipt.exists()
+    published = None
+    evidence = None
+    if existing_evidence:
+        if not plan.existing_commit or not verify_evidence(output):
+            raise ValueError("replacement evidence conflicts with an uncommitted publication")
+        published = verify_committed_candle_dataset(plan.paths.dataset_root)
+        evidence = verify_gap_replacement_evidence(output, resolved, published)
+    else:
+        preflight_evidence(output)
+    summary = {
+        "dataset_id": plan.spec.dataset_id,
+        "dataset_root": str(plan.paths.dataset_root),
+        "execute": bool(args.execute),
+        "existing_commit": plan.existing_commit,
+        "existing_evidence": existing_evidence,
+        "expected_minute_count": resolved.expected_minute_count,
+        "parent_dataset_id": resolved.parent.manifest.dataset_id,
+        "planned_peak_memory_bytes": plan.planned_peak_memory_bytes,
+        "repaired_row_count": resolved.repaired_row_count,
+        "required_free_bytes": plan.required_free_bytes,
+        "status": "preflight-passed",
+    }
+    if not args.execute:
+        print(json.dumps(summary))
+        return 0
+    if published is not None and evidence is not None:
+        artifact = output
+    else:
+        published = publish_preflighted_repair(
+            resolved,
+            lambda: probe_host_snapshot(args.store_root),
+            lambda: time.time_ns() // 1_000_000,
+        )
+        evidence = build_gap_replacement_evidence(
+            resolved,
+            published,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, evidence)
+    summary.update(
+        {
+            "artifact": str(artifact),
+            "manifest_sha256": published.receipt.manifest_sha256,
+            "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+            "replacement_row_count": published.manifest.row_count,
+            "status": evidence["status"],
+        }
+    )
+    print(json.dumps(summary))
     return 0
 
 

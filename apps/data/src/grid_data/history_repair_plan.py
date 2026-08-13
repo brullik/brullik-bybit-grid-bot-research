@@ -32,6 +32,15 @@ class RepairPlan:
     planned_max_http_requests: int
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedRepairPlan:
+    path: Path
+    artifact_sha256: str
+    payload: dict[str, object]
+    task_count: int
+    planned_max_http_requests: int
+
+
 def _object(path: Path, *, name: str) -> tuple[Path, dict[str, object]]:
     resolved = path.resolve()
     try:
@@ -271,4 +280,51 @@ def build_gap_repair_plan(
         payload=payload,
         task_count=len(tasks),
         planned_max_http_requests=total_requests,
+    )
+
+
+def verify_gap_repair_plan(
+    repair_plan_path: Path,
+    coverage_audit_path: Path,
+    job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+) -> VerifiedRepairPlan:
+    """Recompute one receipt-verified plan from all bound runtime inputs."""
+
+    plan_path, stored = _object(repair_plan_path, name="gap repair plan")
+    if not verify_evidence(plan_path):
+        raise HistoryAcquisitionError("gap repair plan receipt does not verify")
+    embedded_content_sha = stored.get("content_sha256")
+    hash_input = dict(stored)
+    hash_input.pop("content_sha256", None)
+    if (
+        stored.get("contract") != REPAIR_PLAN_CONTRACT
+        or stored.get("status") != "planned"
+        or not isinstance(embedded_content_sha, str)
+        or embedded_content_sha != canonical_sha256(hash_input)
+    ):
+        raise HistoryAcquisitionError("gap repair plan identity or content hash is invalid")
+    planner_identity = stored.get("planner_software_identity")
+    generated_at = stored.get("generated_at_utc")
+    if not isinstance(planner_identity, str) or not isinstance(generated_at, str):
+        raise HistoryAcquisitionError("gap repair plan identities are invalid")
+    recomputed = build_gap_repair_plan(
+        coverage_audit_path,
+        job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+        store_root,
+        generated_at_utc=generated_at,
+        planner_software_identity=planner_identity,
+    )
+    if recomputed.payload != stored:
+        raise HistoryAcquisitionError("gap repair plan no longer matches verified runtime inputs")
+    return VerifiedRepairPlan(
+        path=plan_path,
+        artifact_sha256=sha256_file(plan_path),
+        payload=stored,
+        task_count=recomputed.task_count,
+        planned_max_http_requests=recomputed.planned_max_http_requests,
     )

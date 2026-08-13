@@ -99,6 +99,24 @@ manifest, canonical manifest, planner Git identity, and one exact standard
 and 100,000 maximum HTTP attempts. It authorizes neither request execution nor mutation of a
 committed canonical dataset; repaired publication needs explicit immutable replacement lineage.
 
+`grid.bybit-1m-gap-repair-execution/v1` re-verifies that complete chain, preflights every embedded
+standard request under one aggregate staging bound, and inventories the independently receipted
+Landing results. It is `passed` only when every gap minute is returned exactly once. A repeated
+empty/partial REST observation is committed as `blocked`; it is never reclassified as accepted
+absence. The execution artifact contains ranges, hashes, counts, and software identity but no
+market values, credentials, host identity, or local paths.
+
+`grid.canonical-1m-gap-replacement-publication/v1` combines a passed execution with its verified
+canonical parent. It rejects overlapping, duplicate, shifted, and unrequested keys and proves the
+exact original requested coverage before invoking the canonical writer. The resulting manifest
+has a deterministic new dataset ID, exactly one parent dataset ID, and source hashes for the
+parent manifest, plan, execution, registry, and every repair Landing manifest.
+
+`grid.canonical-1m-gap-replacement/v1` is the receipt-last, value-free post-publication proof. It
+binds both manifests and records exact parent/repaired/replacement row accounting, zero key
+blockers, and `parent_dataset_mutated=false`. It is not catalog registration, compaction, or Gate 2
+acceptance.
+
 ## Canonical trade-price 1m candle
 
 Primary key:

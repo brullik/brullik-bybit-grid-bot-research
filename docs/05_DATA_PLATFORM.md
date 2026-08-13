@@ -242,13 +242,24 @@ ADR-0027 implements deterministic repair planning without downloading or mutatin
 recomputes a receipt-verified blocked audit, permits only `rest_returned_no_data` missing-minute
 blockers, and emits one standard bounded history request per complete contiguous gap. The plan
 binds the original Landing and canonical manifests, every embedded request hash, and the planner's
-Git commit. Repair execution and immutable replacement lineage remain separate later steps.
+Git commit.
+
+ADR-0028 executes that plan only after every standard request and their aggregate staging budget
+pass a no-mutation preflight. Each task retains the existing page receipts and resume behavior;
+the plan passes only when every missing minute is returned exactly once. Publication then creates
+a deterministic new dataset identity, records the old dataset as its sole parent, proves the
+complete requested key union, and writes a receipt-last value-free replacement proof. A repeated
+empty response remains blocked, and the old canonical files are never edited or deleted.
 
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
 - Late corrections create a new dataset version or partition replacement with lineage; committed files are not edited in place.
 - Gap repair is planned from a recomputed blocked audit; planning never edits the committed dataset or performs a market request.
+- Repair execution uses standard receipted Landing jobs after whole-plan resource admission; a
+  passed execution is still not a canonical mutation.
+- A successful repair publishes a new child dataset with the old manifest and every repair source
+  hash in lineage; it never patches the parent in place.
 - Periodic compaction merges small incremental files into target-size files.
 - Catalog statistics allow research jobs to select only required partitions.
 - Resume uses receipts, not directory guessing.

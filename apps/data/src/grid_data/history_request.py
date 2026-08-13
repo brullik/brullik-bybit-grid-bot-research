@@ -190,15 +190,16 @@ def load_verified_capacity_evidence(
     return capacity_path, capacity, sha256_file(capacity_path)
 
 
-def resolve_history_request(
-    request_path: Path,
+def resolve_history_request_payload(
+    request: dict[str, object],
     *,
+    source_path: Path,
     instrument_registry_path: Path,
     capacity_evidence_path: Path,
 ) -> ResolvedHistoryRequest:
-    """Bind a v1 request to immutable evidence and derive its complete staging budget."""
+    """Resolve an already-loaded v1 request without materializing a temporary request file."""
 
-    resolved_request, request = _object_file(request_path, name="history request")
+    resolved_request = source_path.resolve()
     if set(request) - _REQUEST_KEYS or request.get("contract") != HISTORY_REQUEST_CONTRACT:
         raise HistoryAcquisitionError("history request fields or contract do not match v1")
     kind = request.get("kind")
@@ -242,6 +243,23 @@ def resolve_history_request(
         capacity_artifact_sha256=capacity_hash,
         spec=spec,
         budget=budget,
+    )
+
+
+def resolve_history_request(
+    request_path: Path,
+    *,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+) -> ResolvedHistoryRequest:
+    """Bind a v1 request to immutable evidence and derive its complete staging budget."""
+
+    resolved_request, request = _object_file(request_path, name="history request")
+    return resolve_history_request_payload(
+        request,
+        source_path=resolved_request,
+        instrument_registry_path=instrument_registry_path,
+        capacity_evidence_path=capacity_evidence_path,
     )
 
 

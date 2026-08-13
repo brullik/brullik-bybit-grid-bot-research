@@ -191,6 +191,55 @@ original runtime inputs, and refuses every blocker except missing requested minu
 
 The receipt-last result embeds one standard, hash-bound history request per contiguous gap and
 accounts for every missing minute. Do not run it for a passing audit, edit an embedded request, or
-treat the plan as permission to download or replace canonical data. Repair execution and
-immutable replacement publication are separate reviewed steps. The successful bounded pilot has
-no gaps, so it correctly produces no repair plan.
+treat the plan as permission to download or replace canonical data. The successful bounded pilot
+has no gaps, so it correctly produces no repair plan.
+
+## 11. Execute a verified repair plan
+
+First run the command without `--execute`. It recomputes the plan from all original inputs,
+resolves embedded requests without temporary files, verifies existing task receipts, and admits
+the aggregate Landing/free-space/memory bound before any public request:
+
+```powershell
+.venv\Scripts\grid-data.exe execute-history-repair `
+  --repair-plan data\evidence\m2-gap-repair-plan-<date>.json `
+  --coverage-audit benchmarks\results\m2-canonical-coverage-audit-<date>.json `
+  --job-root data\history\.landing\<completed-original-job> `
+  --instrument-registry data\evidence\instrument-registry-<date>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --repair-staging-root data\history-repair `
+  --executor-software-identity git:<executor-commit-sha> `
+  --output data\evidence\m2-gap-repair-execution-<date>.json
+```
+
+Inspect `task_count`, `planned_max_http_requests`, `required_free_bytes`, and
+`planned_peak_memory_bytes`. Then repeat the identical command with `--execute`. Tasks run
+sequentially but retain their standard bounded worker pool, page receipts, retries, and resume.
+Exit code 0 writes `status=passed`; exit code 2 writes immutable `status=blocked` evidence when a
+minute is still absent. Never delete a blocked execution to disguise a repeated empty response.
+
+## 12. Publish the immutable repaired child
+
+Only a receipt-verified `passed` execution is eligible. Run without `--execute` first:
+
+```powershell
+.venv\Scripts\grid-data.exe publish-history-repair `
+  --repair-execution data\evidence\m2-gap-repair-execution-<date>.json `
+  --repair-plan data\evidence\m2-gap-repair-plan-<date>.json `
+  --coverage-audit benchmarks\results\m2-canonical-coverage-audit-<date>.json `
+  --job-root data\history\.landing\<completed-original-job> `
+  --instrument-registry data\evidence\instrument-registry-<date>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --repair-staging-root data\history-repair `
+  --software-identity git:<replacement-commit-sha> `
+  --output data\evidence\m2-gap-replacement-<date>.json
+```
+
+The preflight re-verifies the entire chain, checks that the exact repair key union closes every
+original requested minute, and prints the deterministic child ID and parent ID. Repeat with
+`--execute` to atomically publish the new dataset and write the value-free lineage proof. Verify
+that the new manifest has exactly the printed parent, and retain the old dataset unchanged. This
+does not compact files, register the child in a catalog, change the accepted gap-reason policy, or
+close Gate 2.

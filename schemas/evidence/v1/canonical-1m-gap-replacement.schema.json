@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/canonical-1m-gap-replacement.schema.json",
+  "title": "Immutable canonical one-minute gap replacement proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "content_sha256",
+    "contract",
+    "coverage",
+    "generated_at_utc",
+    "limitations",
+    "lineage",
+    "replacement_software_identity",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capacity_evidence_sha256",
+        "instrument_registry_sha256",
+        "parent_manifest_sha256",
+        "repair_execution_artifact_sha256",
+        "repair_plan_artifact_sha256",
+        "replacement_manifest_sha256"
+      ],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "parent_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_execution_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "replacement_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.canonical-1m-gap-replacement/v1"},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflicting_key_count",
+        "duplicate_key_count",
+        "exact_requested_coverage",
+        "expected_minute_count",
+        "parent_row_count",
+        "repaired_row_count",
+        "replacement_row_count",
+        "unrequested_row_count"
+      ],
+      "properties": {
+        "conflicting_key_count": {"const": 0},
+        "duplicate_key_count": {"const": 0},
+        "exact_requested_coverage": {"const": true},
+        "expected_minute_count": {"type": "integer", "minimum": 1},
+        "parent_row_count": {"type": "integer", "minimum": 1},
+        "repaired_row_count": {"type": "integer", "minimum": 1},
+        "replacement_row_count": {"type": "integer", "minimum": 1},
+        "unrequested_row_count": {"const": 0}
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parent_dataset_id",
+        "parent_dataset_mutated",
+        "parent_ids_in_manifest",
+        "replacement_dataset_id"
+      ],
+      "properties": {
+        "parent_dataset_id": {"$ref": "#/$defs/originalDatasetId"},
+        "parent_dataset_mutated": {"const": false},
+        "parent_ids_in_manifest": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {"$ref": "#/$defs/originalDatasetId"}
+        },
+        "replacement_dataset_id": {"$ref": "#/$defs/replacementDatasetId"}
+      }
+    },
+    "replacement_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "status": {"const": "passed"},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "market_values_included": false,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "originalDatasetId": {"type": "string", "pattern": "^(trade|mark)-1m-[0-9a-f]{24}$"},
+    "replacementDatasetId": {"type": "string", "pattern": "^(trade|mark)-1m-repair-[0-9a-f]{24}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
