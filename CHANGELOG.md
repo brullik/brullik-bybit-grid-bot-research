@@ -9,6 +9,8 @@ All notable project-governance and architecture changes are recorded here.
 - Receipt-verified DuckDB dataset catalog registration with atomic revision/content-hash chaining,
   complete parent lineage, idempotent binding, and snapshot-bound reproducible range selection
   that rejects implicit latest, missing partitions, ancestor/child ambiguity, and key overlap.
+- Sanitized representative catalog evidence for the existing two-instrument 20,160-row canonical
+  pilot, including idempotent revision/hash verification and one exact hash-bound range selection.
 - Fail-closed, target-size immutable canonical compaction with deterministic multi-file/tail
   semantics, complete parent lineage, logical hash parity, and receipt-last public evidence.
 - Whole-plan-admitted, receipt-resumable public 1m repair execution plus fail-closed repeated-empty

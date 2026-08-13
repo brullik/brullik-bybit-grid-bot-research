@@ -1,0 +1,19 @@
+{
+  "catalog_content_sha256": "154c1e644466a44e93945473208823fda19ccf1f6ea39b0becd50636cc70c122",
+  "catalog_revision": 1,
+  "consumer_software_identity": "git:15c58b2aeba7c605df4c59f80a124673bb9cc156",
+  "dataset_ids": [
+    "trade-1m-4e5571d82a7acf83e10f8165"
+  ],
+  "dataset_type": "trade_kline_1m",
+  "end_time_ms": 1783468740000,
+  "instrument_filter": {
+    "instrument_ids": [
+      5,
+      29
+    ],
+    "mode": "include"
+  },
+  "request_schema": "grid.canonical-dataset-selection-request/v1",
+  "start_time_ms": 1782864000000
+}
