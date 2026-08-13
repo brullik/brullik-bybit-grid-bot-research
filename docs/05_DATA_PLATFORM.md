@@ -98,6 +98,11 @@ validate exact source rows. Once an aggregate canonical publication is committed
 independent publication verification, and its GitHub-safe evidence instead hash every Landing
 page and verify every page/child/aggregate receipt and manifest fact without rebuilding source
 Arrow batches; canonical Parquet remains fully verified. Batch loading cannot select this mode.
+The same accepted boundary applies when a history campaign resumes an immutable completed Landing
+child: preflight hashes and receipt-verifies it once, the executor reuses that verified in-process
+result, and no object survives the command. Partial children, initial completion, canonical
+admission, coverage audits, and explicit semantic campaign verification continue to decode every
+source row. The final aggregate campaign receipt is still independently verified before return.
 
 ## Data layers
 

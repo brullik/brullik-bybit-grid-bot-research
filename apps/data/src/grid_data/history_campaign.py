@@ -30,6 +30,7 @@ from grid_data.funding_acquisition import (
     execute_funding_job,
     preflight_funding_job,
     verify_completed_funding_job,
+    verify_completed_funding_job_integrity,
 )
 from grid_data.funding_request import (
     FUNDING_REQUEST_CONTRACT,
@@ -52,6 +53,7 @@ from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
     verify_completed_history_job,
+    verify_completed_history_job_integrity,
 )
 from grid_data.history_request import (
     HISTORY_REQUEST_CONTRACT,
@@ -452,6 +454,17 @@ def _verify_receipt(path: Path, receipt_path: Path) -> tuple[dict[str, object], 
     return payload, digest
 
 
+def _verify_completed_campaign_child_integrity(
+    child_root: Path,
+    kind: CampaignKind,
+) -> CompletedHistoryJob | CompletedFundingJob:
+    """Reverify immutable completed children without repeating semantic row admission."""
+
+    if kind == "funding":
+        return verify_completed_funding_job_integrity(child_root)
+    return verify_completed_history_job_integrity(child_root)
+
+
 def _existing_state(
     campaign_root: Path,
     *,
@@ -474,7 +487,10 @@ def _existing_state(
         raise HistoryCampaignError("existing campaign plan does not match deterministic preflight")
     if names == partial:
         return False
-    verify_completed_history_campaign(campaign_root)
+    verify_completed_history_campaign(
+        campaign_root,
+        child_verifier=_verify_completed_campaign_child_integrity,
+    )
     return True
 
 
@@ -808,28 +824,38 @@ def execute_history_campaign(
     """Run child jobs sequentially and publish a receipt-last aggregate manifest."""
 
     if plan.existing_complete:
-        return verify_completed_history_campaign(plan.campaign_root)
+        return verify_completed_history_campaign(
+            plan.campaign_root,
+            child_verifier=_verify_completed_campaign_child_integrity,
+        )
     _publish_plan_if_new(plan)
     entries: list[dict[str, object]] = []
     for job in plan.jobs:
         if job.kind == "funding":
             if not isinstance(job.plan, FundingJobPlan):
                 raise HistoryCampaignError("funding campaign job has the wrong plan type")
-            completed: CompletedHistoryJob | CompletedFundingJob = execute_funding_job(
-                job.plan,
-                funding_client_factory,
-                snapshot_provider,
-                now_ms=now_ms,
-            )
+            completed: CompletedHistoryJob | CompletedFundingJob
+            if job.plan.existing_completed is not None:
+                completed = job.plan.existing_completed
+            else:
+                completed = execute_funding_job(
+                    job.plan,
+                    funding_client_factory,
+                    snapshot_provider,
+                    now_ms=now_ms,
+                )
         else:
             if not isinstance(job.plan, HistoryJobPlan):
                 raise HistoryCampaignError("candle campaign job has the wrong plan type")
-            completed = execute_history_job(
-                job.plan,
-                kline_client_factory,
-                snapshot_provider,
-                now_ms=now_ms,
-            )
+            if job.plan.existing_completed is not None:
+                completed = job.plan.existing_completed
+            else:
+                completed = execute_history_job(
+                    job.plan,
+                    kline_client_factory,
+                    snapshot_provider,
+                    now_ms=now_ms,
+                )
         entries.append(_completed_job_entry(job, completed, staging_root=plan.staging_root))
         if progress is not None:
             progress(job, completed)
@@ -854,7 +880,10 @@ def execute_history_campaign(
         plan.completion_receipt_path,
         _receipt_payload(plan.manifest_path.name, sha256_file(plan.manifest_path)),
     )
-    return verify_completed_history_campaign(plan.campaign_root)
+    return verify_completed_history_campaign(
+        plan.campaign_root,
+        child_verifier=_verify_completed_campaign_child_integrity,
+    )
 
 
 def _relative_child_root(campaign_root: Path, raw: object) -> Path:

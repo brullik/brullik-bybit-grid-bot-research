@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import local
 from typing import Any
 
+import grid_data.history_campaign as history_campaign
 import grid_data.history_request as history_request
 import pytest
 from grid_bybit_public import BybitPublicError, RateLimitObservation
@@ -468,6 +469,40 @@ def test_campaign_executes_verifies_and_complete_rerun_is_idempotent(tmp_path: P
     assert same.manifest_sha256 == completed.manifest_sha256
 
 
+def test_completed_campaign_resume_uses_integrity_without_semantic_decode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient(), FakeFundingClient())
+
+    def semantic_decode_forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("semantic decode was called")
+
+    monkeypatch.setattr(
+        "grid_data.history_acquisition._validate_page_payload",
+        semantic_decode_forbidden,
+    )
+    monkeypatch.setattr(
+        "grid_data.funding_acquisition._validate_page_payload",
+        semantic_decode_forbidden,
+    )
+    resumed = preflight_history_campaign(
+        tmp_path / "campaign-request.json",
+        instrument_registry_path=tmp_path / "registry.json",
+        capacity_evidence_path=tmp_path / "capacity.json",
+        staging_root=tmp_path / "history",
+        snapshot=snapshot(tmp_path, observed_at_ms=1_001),
+        now_ms=1_002,
+        closed_before_ms=FEBRUARY_1_2026_0001_MS + 60_000,
+    )
+
+    assert resumed.existing_complete is True
+    same = execute(resumed, NeverKlineClient(), NeverFundingClient())
+    assert same.manifest_sha256 == completed.manifest_sha256
+    with pytest.raises(AssertionError, match="semantic decode was called"):
+        verify_completed_history_campaign(completed.campaign_root)
+
+
 def test_interrupted_child_is_resumed_without_refetching_receipted_pages(tmp_path: Path) -> None:
     plan = preflight(tmp_path)
     with pytest.raises(HistoryAcquisitionError, match="failed after"):
@@ -490,6 +525,54 @@ def test_interrupted_child_is_resumed_without_refetching_receipted_pages(tmp_pat
     assert sum(job.pending_page_count for job in resumed.jobs) < sum(
         job.planned_page_count for job in resumed.jobs
     )
+    completed = execute(resumed, FakeKlineClient(), FakeFundingClient())
+    assert completed.job_count == len(resumed.jobs)
+
+
+def test_resume_reuses_preflight_verified_completed_children_in_process(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FailAfterFirstCompletedJob(FakeKlineClient):
+        def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+            if len(self.calls) == 2:
+                self._thread_state.observation = RateLimitObservation(
+                    200, 0, "absent", None, None, None
+                )
+                self.calls.append(
+                    (kwargs["symbol"], kwargs["start_ms"], kwargs["end_ms"], kwargs["kind"])
+                )
+                raise BybitPublicError("injected after one completed child")
+            return super().kline_page(**kwargs)
+
+    plan = preflight(tmp_path)
+    with pytest.raises(HistoryAcquisitionError, match="failed after"):
+        execute(plan, FailAfterFirstCompletedJob(), FakeFundingClient())
+
+    resumed = preflight_history_campaign(
+        tmp_path / "campaign-request.json",
+        instrument_registry_path=tmp_path / "registry.json",
+        capacity_evidence_path=tmp_path / "capacity.json",
+        staging_root=tmp_path / "history",
+        snapshot=snapshot(tmp_path, observed_at_ms=1_001),
+        now_ms=1_002,
+        closed_before_ms=FEBRUARY_1_2026_0001_MS + 60_000,
+    )
+    assert sum(job.plan.existing_completed is not None for job in resumed.jobs) == 1
+
+    original_history_execute = history_campaign.execute_history_job
+    original_funding_execute = history_campaign.execute_funding_job
+
+    def execute_pending_history(*args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+        assert args[0].existing_completed is None
+        return original_history_execute(*args, **kwargs)
+
+    def execute_pending_funding(*args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+        assert args[0].existing_completed is None
+        return original_funding_execute(*args, **kwargs)
+
+    monkeypatch.setattr(history_campaign, "execute_history_job", execute_pending_history)
+    monkeypatch.setattr(history_campaign, "execute_funding_job", execute_pending_funding)
     completed = execute(resumed, FakeKlineClient(), FakeFundingClient())
     assert completed.job_count == len(resumed.jobs)
 

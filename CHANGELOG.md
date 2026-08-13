@@ -94,6 +94,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Resumed history campaigns now use ADR-0046 receipt-integrity verification for already completed
+  Landing children and reuse each verified result within the same preflight/execute invocation;
+  partial children and explicit semantic verifiers still decode and validate every source row.
 - Public REST transport now classifies TLS record/read failures (`ssl.SSLError`) as bounded
   retryable transport failures, preserving page-level attempt ceilings and campaign resume.
 - Long-run throttling qualification now distinguishes receipt-verified transport attempts from

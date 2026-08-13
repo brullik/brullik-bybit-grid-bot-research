@@ -220,6 +220,7 @@ def test_fixed_plan_predecessor_evidence_and_exact_batch(tmp_path: Path) -> None
 
 def test_failed_run_resumes_only_missing_pages_and_complete_is_idempotent(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = preflight(tmp_path)
     failing = FakeFundingClient(fail_once={("AAAUSDT", JANUARY_1_2026_MS)})
@@ -231,6 +232,10 @@ def test_failed_run_resumes_only_missing_pages_and_complete_is_idempotent(
     completed = execute(resumed, replacement)
     assert len(replacement.calls) == len(resumed.pending_tasks)
 
+    monkeypatch.setattr(
+        "grid_data.funding_acquisition._validate_page_payload",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("semantic decode was called")),
+    )
     complete_plan = preflight(tmp_path)
     assert complete_plan.existing_complete is True
     never_called = AlwaysFailFundingClient()

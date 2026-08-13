@@ -229,7 +229,11 @@ class FundingJobPlan:
     plan_sha256: str
     required_free_bytes: int
     planned_peak_memory_bytes: int
-    existing_complete: bool
+    existing_completed: CompletedFundingJob | None
+
+    @property
+    def existing_complete(self) -> bool:
+        return self.existing_completed is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -569,17 +573,21 @@ def _existing_state(
     paths: FundingJobPaths,
     plan_payload: Mapping[str, object],
     tasks: tuple[FundingPageTask, ...],
-) -> tuple[tuple[FundingPageTask, ...], bool]:
+) -> tuple[tuple[FundingPageTask, ...], CompletedFundingJob | None]:
     if not paths.job_root.exists():
-        return tasks, False
+        return tasks, None
     if not paths.job_root.is_dir() or paths.job_root.is_symlink() or paths.run_lock.exists():
         raise FundingAcquisitionError("funding job has an unsafe or stale run directory")
     observed_plan, _digest = _verify_artifact(paths.plan_path)
     if canonical_json_bytes(observed_plan) != canonical_json_bytes(plan_payload):
         raise FundingAcquisitionError("existing funding plan does not match requested plan")
     if paths.receipt_path.exists() or paths.manifest_path.exists():
-        completed = verify_completed_funding_job(paths.job_root)
-        return (), completed.page_count == len(tasks)
+        completed = verify_completed_funding_job_integrity(paths.job_root)
+        if completed.page_count != len(tasks):
+            raise FundingAcquisitionError(
+                "completed funding page count differs from deterministic plan"
+            )
+        return (), completed
     pending: list[FundingPageTask] = []
     expected_page_files: set[str] = set()
     for task in tasks:
@@ -598,7 +606,7 @@ def _existing_state(
     )
     if not actual_page_files.issubset(expected_page_files):
         raise FundingAcquisitionError("funding pages directory contains orphan files")
-    return tuple(pending), False
+    return tuple(pending), None
 
 
 def preflight_funding_job(
@@ -629,7 +637,7 @@ def preflight_funding_job(
     paths = _paths(staging_root, spec, plan_sha)
     _assert_fresh(snapshot, now_ms=now_ms)
     _assert_target_volume(paths.staging_root, snapshot)
-    pending, complete = _existing_state(paths, plan_payload, tasks)
+    pending, existing_completed = _existing_state(paths, plan_payload, tasks)
     if len(pending) * spec.max_attempts > spec.max_http_requests:
         raise FundingAcquisitionError("funding resume retry bound exceeds max_http_requests")
     required_free, planned_memory = _resource_requirements(len(tasks), len(pending), spec, budget)
@@ -648,7 +656,7 @@ def preflight_funding_job(
         plan_sha256=plan_sha,
         required_free_bytes=required_free,
         planned_peak_memory_bytes=planned_memory,
-        existing_complete=complete,
+        existing_completed=existing_completed,
     )
 
 
@@ -716,7 +724,7 @@ def execute_funding_job(
     """Fetch missing pages and publish a completion receipt after final verification."""
 
     if plan.existing_complete:
-        return verify_completed_funding_job(plan.paths.job_root)
+        return verify_completed_funding_job_integrity(plan.paths.job_root)
     start_snapshot = snapshot_provider()
     start_now = now_ms()
     _assert_execute_snapshot(plan, start_snapshot, now_ms=start_now)
