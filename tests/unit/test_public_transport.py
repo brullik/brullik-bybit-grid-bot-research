@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import ssl
 import urllib.error
 from collections.abc import Mapping
 from io import BytesIO
@@ -59,6 +60,7 @@ def test_remote_disconnect_is_retried_and_then_succeeds(
     [
         http.client.IncompleteRead(b"partial"),
         ConnectionResetError("connection reset"),
+        ssl.SSLError(ssl.SSL_ERROR_SSL, "decryption failed or bad record mac"),
     ],
 )
 def test_connection_protocol_failures_exhaust_bounded_attempts(
