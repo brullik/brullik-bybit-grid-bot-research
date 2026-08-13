@@ -109,6 +109,9 @@ acquisition scope and cannot be used as point-in-time strategy metadata.
 
 `grid.public-history-campaign-plan/v1` binds the exact request, registry/capacity hashes, public
 endpoint policy, and every deterministic dataset/month/eight-bucket child request and plan hash.
+For funding campaigns it may additionally bind a fully verified ADR-0048 source-boundary
+manifest/plan/request/software identity. ADR-0052 clips each funding series to its source-proven
+canonical start and binds the exact discovered predecessor into the first child boundary task.
 Aggregate preflight accounts for all incomplete child Landing bounds before mutation, while
 execution is sequential so per-child pacers do not multiply the configured RPS.
 Within one preflight invocation, ADR-0047 verifies registry/capacity bytes once and reuses their
@@ -136,7 +139,8 @@ remains valid.
 campaign. It binds campaign/request/registry/capacity hashes, immutable implementation identity,
 scope counts, measured runtime bytes, and aggregate plus per-kind job/page/row/HTTP/retry counts.
 Its schema contains no symbols, instrument IDs, market values, runtime paths, device/account data,
-or credentials. It proves public Landing acquisition and resume integrity only.
+or credentials. It may expose only the bound funding source-boundary manifest hash. It proves
+public Landing acquisition and resume integrity only.
 
 `grid.history-campaign-publication-plan/v1` binds one verified acquisition campaign, its exact
 registry/capacity evidence, immutable publisher Git identity, and every source-job/canonical

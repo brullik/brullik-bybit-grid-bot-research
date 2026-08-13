@@ -92,6 +92,7 @@ def _resolve_series(
     raw: object,
     *,
     registry: VerifiedInstrumentRegistry,
+    predecessor_by_symbol: dict[str, int] | None = None,
 ) -> tuple[FundingSeries, ...]:
     if not isinstance(raw, list) or not raw:
         raise FundingAcquisitionError("funding request series must be a non-empty array")
@@ -126,6 +127,7 @@ def _resolve_series(
                 launch_time_ms=instrument.launch_time_ms,
                 start_ms=start_ms,
                 end_ms=end_ms,
+                predecessor_settlement_ms=(predecessor_by_symbol or {}).get(symbol),
             )
         )
     return tuple(sorted(resolved, key=lambda item: item.instrument_id))
@@ -138,6 +140,7 @@ def resolve_funding_request_payload(
     instrument_registry_path: Path,
     capacity_evidence_path: Path,
     verified_evidence: VerifiedRequestEvidence | None = None,
+    predecessor_by_symbol: dict[str, int] | None = None,
 ) -> ResolvedFundingRequest:
     """Resolve an already-loaded funding request without mutating storage."""
 
@@ -156,7 +159,11 @@ def resolve_funding_request_payload(
     ):
         raise FundingAcquisitionError("verified request evidence paths do not match funding inputs")
     registry = evidence.registry
-    series = _resolve_series(request.get("series"), registry=registry)
+    series = _resolve_series(
+        request.get("series"),
+        registry=registry,
+        predecessor_by_symbol=predecessor_by_symbol,
+    )
     capacity_path = evidence.capacity_path
     capacity = evidence.capacity
     capacity_hash = evidence.capacity_artifact_sha256

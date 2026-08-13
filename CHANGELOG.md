@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0052 funding source-boundary admission: campaign preflight re-verifies ADR-0048 receipts,
+  requires exact registry/symbol/range/identity compatibility, clips each funding series to its
+  proven start, and binds the exact oldest predecessor into the first child boundary request.
 - ADR-0051 sanitized candle source-quality evidence: candle-only campaigns validate, requested
   kinds are projected exactly, and receipt-verified aggregate quarantine counts/reasons/hashes
   disclose an intentional canonical gap without publishing source identities or market values.

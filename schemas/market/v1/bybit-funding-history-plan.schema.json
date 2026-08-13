@@ -31,6 +31,7 @@
         "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"},
         "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
         "launch_time_ms": {"type": "integer", "minimum": 0},
+        "predecessor_settlement_ms": {"type": ["integer", "null"], "minimum": 0, "multipleOf": 60000},
         "start_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
         "end_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000}
       }

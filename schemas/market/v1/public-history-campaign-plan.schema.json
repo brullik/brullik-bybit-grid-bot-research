@@ -22,6 +22,7 @@
     "campaign_request_sha256": {"$ref": "#/$defs/sha256"},
     "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
     "contract": {"const": "grid.public-history-campaign-plan/v1"},
+    "funding_source_boundary": {"$ref": "#/$defs/fundingSourceBoundary"},
     "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
     "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
     "jobs": {
@@ -34,6 +35,17 @@
     "source_policy": {"$ref": "#/$defs/sourcePolicy"}
   },
   "$defs": {
+    "fundingSourceBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_sha256", "plan_sha256", "request_sha256", "software_identity"],
+      "properties": {
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+      }
+    },
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "sourcePolicy": {
       "type": "object",
