@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified 100-instrument x 31-day public long-run campaign evidence: 9,600 completed
+  pages, 8,938,466 Landing rows, 591,702,449 bytes, complete response classification, 21 explicit
+  no-response retries, no rate-limit/reduction/cooldown events, and measured resume overhead.
 - Receipt-bound long-run campaign qualification with child execution timing, exact aggregate
   adaptive-throttling counters, full HTTP-response observation coverage, strict fail-closed CLI
   mode, backward-compatible v1 schemas, and GitHub-safe disclosure.
