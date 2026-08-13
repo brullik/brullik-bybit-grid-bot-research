@@ -514,6 +514,8 @@ page pass per child during aggregate preflight while retaining all artifact dige
 receipts, range/boundary checks, and source-plan bindings. A repeated no-mutation preflight over
 10,537,365 rows completed successfully in 544.333 seconds on 2026-08-13. No publication campaign,
 canonical dataset, exchange request, order, bot, or transfer was created by either diagnostic run.
+The implementation and its regression proof are tracked in
+[PR #45](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/45).
 
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
