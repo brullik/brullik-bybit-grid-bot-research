@@ -213,6 +213,14 @@ pages. Page artifacts preserve normalized exact rate/timestamp pairs and reject 
 response. The acquisition manifest binds all page receipts and a canonical predecessor aggregate;
 see ADR-0032.
 
+`grid.phase2-public-funding-pilot/v1` re-verifies one immutable funding publication, exact
+Landing/Parquet table equality, and every predecessor/internal interval derivation. The
+GitHub-safe receipt-bound summary contains requested ranges, observed event counts, page/process
+facts, layout facts, immutable Git identity, and transitive hashes, but no rates, observed
+settlement timestamps, local paths, host identity, account data, credentials, or runtime market
+files. Sparse event counts do not establish complete historical settlement chronology, lifecycle
+coverage, accepted gaps, or Gate 2; see ADR-0033.
+
 ## Dataset manifest
 
 Required fields:

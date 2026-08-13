@@ -49,6 +49,7 @@ from grid_data.funding_acquisition import (
     preflight_funding_job,
     verify_completed_funding_job,
 )
+from grid_data.funding_pilot_evidence import build_funding_pilot_evidence
 from grid_data.funding_publication import (
     preflight_completed_funding_publication,
     publish_preflighted_funding,
@@ -263,6 +264,18 @@ def parser() -> argparse.ArgumentParser:
     )
     funding_canonical_verify.add_argument("dataset_root", type=Path)
     funding_canonical_verify.set_defaults(handler=_verify_canonical_funding)
+
+    funding_pilot_evidence = commands.add_parser(
+        "funding-pilot-evidence",
+        help="publish GitHub-safe hashes/counts for one verified canonical public funding pilot",
+    )
+    funding_pilot_evidence.add_argument("--job-root", type=Path, required=True)
+    funding_pilot_evidence.add_argument("--instrument-registry", type=Path, required=True)
+    funding_pilot_evidence.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_pilot_evidence.add_argument("--store-root", type=Path, required=True)
+    funding_pilot_evidence.add_argument("--software-identity", required=True)
+    funding_pilot_evidence.add_argument("--output", type=Path, required=True)
+    funding_pilot_evidence.set_defaults(handler=_funding_pilot_evidence)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -681,6 +694,42 @@ def _verify_canonical_funding(args: argparse.Namespace) -> int:
                 "manifest_sha256": published.receipt.manifest_sha256,
                 "row_count": published.manifest.row_count,
                 "valid": True,
+            }
+        )
+    )
+    return 0
+
+
+def _funding_pilot_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    snapshot = probe_host_snapshot(args.store_root)
+    observed_at_ms = time.time_ns() // 1_000_000
+    resolved = preflight_completed_funding_publication(
+        args.store_root,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        snapshot,
+        now_ms=observed_at_ms,
+        software_identity=args.software_identity,
+    )
+    if not resolved.plan.existing_commit:
+        raise ValueError("pilot evidence requires the exact canonical funding publication to exist")
+    published = verify_committed_funding_dataset(resolved.plan.paths.dataset_root)
+    payload = build_funding_pilot_evidence(
+        resolved,
+        published,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "canonical": payload["canonical"],
+                "receipt": str(receipt),
+                "scope": payload["scope"],
+                "status": payload["status"],
             }
         )
     )

@@ -37,6 +37,7 @@
 | D-031 | Canonical metadata registration uses a logical-hash DuckDB catalog; range selection binds an exact catalog snapshot and explicit dataset IDs | accepted | Receipt re-verification, complete lineage, atomic revision chain, no implicit latest, partition/key-overlap rejection, and ADR-0030 |
 | D-032 | Canonical funding uses exact Decimal128(38,18) and settlement-derived intervals with receipt-last immutable publication | accepted | Current interval metadata is not historical evidence; predecessor binding, internal delta checks, exact schema, and ADR-0031 |
 | D-033 | Public funding acquisition uses a receipted predecessor plus fixed bounded range pages and rejects saturated responses | accepted | Deterministic resume, historical interval derivation, no silent 200-row truncation, fresh capacity admission, and ADR-0032 |
+| D-034 | GitHub funding pilot evidence re-verifies exact Landing/Parquet equality and predecessor-derived intervals without publishing rates or observed settlement times | accepted | Reviewable transitive hashes/counts, funding-specific sparse semantics, explicit non-Gate-2 limitations, and ADR-0033 |
 
 ## Decisions requiring benchmark or owner evidence
 

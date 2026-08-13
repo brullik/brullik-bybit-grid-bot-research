@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-public-funding-pilot.schema.json",
+  "title": "Sanitized Phase 2 public canonical funding pilot evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "canonical",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "publication",
+    "quality",
+    "scope",
+    "source",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_evidence_sha256",
+        "build_config_sha256",
+        "canonical_manifest_sha256",
+        "canonical_request_sha256",
+        "capacity_evidence_sha256",
+        "funding_manifest_sha256",
+        "funding_plan_sha256",
+        "funding_request_sha256",
+        "input_table_sha256",
+        "instrument_registry_sha256"
+      ],
+      "properties": {
+        "boundary_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "build_config_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_request_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_request_sha256": {"$ref": "#/$defs/sha256"},
+        "input_table_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket_count",
+        "dataset_id",
+        "dataset_type",
+        "file_count",
+        "funding_rate_arrow_type",
+        "funding_rate_scale",
+        "instrument_count",
+        "manifest_sha256",
+        "parquet_bytes",
+        "row_count",
+        "row_group_count",
+        "schema_version",
+        "semantic_version",
+        "single_file_classification"
+      ],
+      "properties": {
+        "bucket_count": {"const": 8},
+        "dataset_id": {"type": "string", "pattern": "^funding-[0-9a-f]{24}$"},
+        "dataset_type": {"const": "funding_event"},
+        "file_count": {"const": 1},
+        "funding_rate_arrow_type": {"const": "decimal128(38, 18)"},
+        "funding_rate_scale": {"const": 18},
+        "instrument_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "parquet_bytes": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "row_group_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "schema_version": {"const": "v1"},
+        "semantic_version": {"const": "1.0.0"},
+        "single_file_classification": {
+          "enum": ["tail-below-target", "target-band", "oversized-single-batch"]
+        }
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-public-funding-pilot/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "existing_commit_verified",
+        "exact_physical_contract",
+        "layout_contract",
+        "parquet_compression",
+        "parquet_compression_level",
+        "software_identity",
+        "target_file_size_bytes"
+      ],
+      "properties": {
+        "existing_commit_verified": {"const": true},
+        "exact_physical_contract": {"const": "grid.funding-exact-physical/v1"},
+        "layout_contract": {"const": "grid.canonical-funding-layout/v1"},
+        "parquet_compression": {"const": "zstd"},
+        "parquet_compression_level": {"const": 3},
+        "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+        "target_file_size_bytes": {"const": 16777216}
+      }
+    },
+    "quality": {
+      "const": {
+        "canonical_receipt_verified": true,
+        "exact_landing_canonical_table_equality": true,
+        "funding_rates_exact_decimal128": true,
+        "internal_intervals_recomputed": true,
+        "predecessor_intervals_recomputed": true,
+        "sorted_unique_keys_verified": true
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "observed_event_count",
+        "requested_window_minutes",
+        "series"
+      ],
+      "properties": {
+        "category": {"const": "linear"},
+        "observed_event_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "requested_window_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/series"}
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_http_requests",
+        "authentication",
+        "base_url",
+        "boundary_page_count",
+        "endpoint",
+        "max_attempt_count_observed",
+        "max_attempts_per_page",
+        "page_count",
+        "page_limit",
+        "page_span_minutes",
+        "private_endpoints_called",
+        "range_page_count",
+        "saturated_range_pages_accepted",
+        "target_rps",
+        "workers"
+      ],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "authentication": {"const": "none"},
+        "base_url": {"const": "https://api.bybit.com"},
+        "boundary_page_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "endpoint": {"const": "/v5/market/funding/history"},
+        "max_attempt_count_observed": {"type": "integer", "minimum": 1, "maximum": 5},
+        "max_attempts_per_page": {"type": "integer", "minimum": 1, "maximum": 5},
+        "page_count": {"type": "integer", "minimum": 2, "maximum": 100000},
+        "page_limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        "page_span_minutes": {"type": "integer", "minimum": 1, "maximum": 10080},
+        "private_endpoints_called": {"const": false},
+        "range_page_count": {"type": "integer", "minimum": 1, "maximum": 99984},
+        "saturated_range_pages_accepted": {"const": false},
+        "target_rps": {"type": "integer", "minimum": 1, "maximum": 96},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 32}
+      }
+    },
+    "status": {"const": "verified-canonical-funding-publication"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_funding_rates": false,
+        "evidence_contains_local_paths": false,
+        "evidence_contains_observed_settlement_timestamps": false,
+        "runtime_market_artifacts_committed_to_git": false,
+        "runtime_market_dataset_receipt_verified": true
+      }
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "end_ms",
+        "instrument_id",
+        "observed_event_count",
+        "predecessor_bound",
+        "requested_window_minutes",
+        "start_ms",
+        "symbol"
+      ],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "observed_event_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "predecessor_bound": {"const": true},
+        "requested_window_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
