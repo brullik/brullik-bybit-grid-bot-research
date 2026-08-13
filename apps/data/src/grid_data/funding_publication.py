@@ -27,8 +27,7 @@ from grid_market_store import (
 from grid_data.funding_acquisition import (
     CompletedFundingJob,
     FundingAcquisitionError,
-    load_completed_funding_batch,
-    verify_completed_funding_job,
+    load_verified_completed_funding_batch,
 )
 from grid_data.history_acquisition import HistoryAcquisitionError
 from grid_data.history_request import (
@@ -111,7 +110,7 @@ def load_verified_funding_publication_input(
 ) -> VerifiedFundingPublicationInput:
     """Verify Landing and upstream evidence without probing the host or mutating storage."""
 
-    completed = verify_completed_funding_job(job_root)
+    completed, batch = load_verified_completed_funding_batch(job_root)
     manifest = _object(completed.manifest_path, name="funding manifest")
     plan = _object(completed.plan_path, name="funding plan")
     registry = load_verified_instrument_registry(instrument_registry_path)
@@ -134,7 +133,6 @@ def load_verified_funding_publication_input(
         raise FundingAcquisitionError(str(error)) from error
     if budget.active_and_building_bytes != expected_active:
         raise FundingAcquisitionError("funding capacity budget differs from accepted layout")
-    batch = load_completed_funding_batch(completed.job_root)
     _validate_registry_coverage(registry, batch)
     return VerifiedFundingPublicationInput(
         completed=completed,

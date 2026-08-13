@@ -506,6 +506,15 @@ after every source job, canonical audit/file/manifest/receipt, and total verifie
 tests cover interruption after a committed child, receipt-based resume without rewrite, complete
 idempotency, resource failure before mutation, source substitution, and outer/canonical tampering.
 
+The first no-mutation run over the representative 72-child campaign exposed redundant work rather
+than a host-capacity failure: the initial implementation did not finish within the 900-second
+diagnostic limit because aggregate verification, publication preparation, and batch loading each
+decoded the same receipt-verified pages again. The typed verified-child handoff now performs one
+page pass per child during aggregate preflight while retaining all artifact digests, manifests,
+receipts, range/boundary checks, and source-plan bindings. A repeated no-mutation preflight over
+10,537,365 rows completed successfully in 544.333 seconds on 2026-08-13. No publication campaign,
+canonical dataset, exchange request, order, bot, or transfer was created by either diagnostic run.
+
 This implementation contains no public or private Bybit client and cannot create an order, bot,
 or transfer. A completed publication campaign still requires separate candle/funding coverage
 audits and catalog registration. Measured publication of the 72-child representative runtime

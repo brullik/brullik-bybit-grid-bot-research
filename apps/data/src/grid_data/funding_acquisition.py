@@ -27,6 +27,7 @@ from grid_contracts.canonical import (
 from grid_contracts.market import MINUTE_MS, FundingEvent
 from grid_market_store import (
     MAX_MEMORY_PERCENT,
+    CanonicalFundingBatch,
     CapacityBudget,
     HostSnapshot,
     build_canonical_funding_batch,
@@ -831,8 +832,62 @@ def _verified_spec(raw_spec: Mapping[str, object]) -> FundingJobSpec:
         raise FundingAcquisitionError("funding plan spec is invalid") from error
 
 
-def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
-    """Verify plan, all pages, manifest, completion receipt, and exact allowlist."""
+def _funding_batch_from_verified_rows(
+    boundary_by_instrument: Mapping[int, int],
+    rows_by_instrument: Mapping[int, list[tuple[int, str, str]]],
+    requested_instruments: set[int],
+) -> CanonicalFundingBatch:
+    logical: list[FundingEvent] = []
+    for instrument_id in sorted(requested_instruments):
+        observed = sorted(rows_by_instrument.get(instrument_id, []))
+        if not observed:
+            raise FundingAcquisitionError(
+                "each requested funding series requires at least one returned event"
+            )
+        timestamps = [item[0] for item in observed]
+        if len(timestamps) != len(set(timestamps)):
+            raise FundingAcquisitionError("completed funding pages contain duplicate keys")
+        previous = boundary_by_instrument.get(instrument_id)
+        if previous is None:
+            raise FundingAcquisitionError("funding series has no predecessor boundary")
+        for timestamp, rate, ingestion_id in observed:
+            delta = timestamp - previous
+            if delta <= 0 or delta % MINUTE_MS:
+                raise FundingAcquisitionError(
+                    "funding interval cannot be derived from settlement chronology"
+                )
+            try:
+                logical.append(
+                    FundingEvent(
+                        category="linear",
+                        instrument_id=instrument_id,
+                        funding_time_ms=timestamp,
+                        funding_rate=Decimal(rate),
+                        funding_interval_minutes=delta // MINUTE_MS,
+                        source_id="bybit-v5-funding-history/v1",
+                        ingestion_id=ingestion_id,
+                        quality_flags=0,
+                    )
+                )
+            except ValueError as error:
+                raise FundingAcquisitionError(
+                    "funding row violates the logical event contract"
+                ) from error
+            previous = timestamp
+    try:
+        return build_canonical_funding_batch(logical)
+    except ValueError as error:
+        raise FundingAcquisitionError(
+            "completed funding pages do not form one canonical batch"
+        ) from error
+
+
+def _verify_completed_funding_job(
+    job_root: Path,
+    *,
+    load_batch: bool,
+) -> tuple[CompletedFundingJob, CanonicalFundingBatch | None]:
+    """Verify once and optionally build the exact batch from those same verified page bytes."""
 
     root = job_root.resolve()
     if not root.is_dir() or root.is_symlink() or (root / ".run-lock").exists():
@@ -885,6 +940,11 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
     total_attempts = 0
     empty_range_pages = 0
     boundary_rows: list[dict[str, object]] = []
+    batch_boundaries: dict[int, int] | None = {} if load_batch else None
+    batch_rows: dict[int, list[tuple[int, str, str]]] | None = {} if load_batch else None
+    requested_instruments = (
+        {series.instrument_id for series in verified_spec.series} if load_batch else None
+    )
     expected_files = {
         "plan.json",
         "plan.receipt.json",
@@ -912,6 +972,8 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
         total_attempts += cast(int, payload["attempt_count"])
         if task.scope == "boundary":
             row = cast(list[dict[str, object]], payload["rows"])[0]
+            if batch_boundaries is not None:
+                batch_boundaries[task.instrument_id] = cast(int, row["funding_time_ms"])
             boundary_rows.append(
                 {
                     "artifact_sha256": digest,
@@ -922,6 +984,16 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
         else:
             total_events += row_count
             empty_range_pages += row_count == 0
+            if batch_rows is not None:
+                values = batch_rows.setdefault(task.instrument_id, [])
+                values.extend(
+                    (
+                        cast(int, item["funding_time_ms"]),
+                        cast(str, item["funding_rate"]),
+                        f"bybit-funding-page-sha256:{digest}",
+                    )
+                    for item in cast(list[dict[str, object]], payload["rows"])
+                )
         expected_files.update((f"pages/{page.name}", f"pages/{page.stem}.receipt.json"))
     boundary_sha = canonical_sha256(boundary_rows)
     expected_request_bound = {
@@ -978,7 +1050,7 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
     }
     if actual_directories != {"pages"}:
         raise FundingAcquisitionError("funding job contains orphan or missing directories")
-    return CompletedFundingJob(
+    completed = CompletedFundingJob(
         job_root=root,
         plan_path=plan_path,
         manifest_path=manifest_path,
@@ -989,75 +1061,40 @@ def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
         row_count=total_events,
     )
 
+    batch: CanonicalFundingBatch | None = None
+    if (
+        batch_boundaries is not None
+        and batch_rows is not None
+        and requested_instruments is not None
+    ):
+        batch = _funding_batch_from_verified_rows(
+            batch_boundaries,
+            batch_rows,
+            requested_instruments,
+        )
+    return completed, batch
 
-def load_completed_funding_batch(job_root: Path):  # type: ignore[no-untyped-def]
+
+def verify_completed_funding_job(job_root: Path) -> CompletedFundingJob:
+    """Verify plan, all pages, manifest, completion receipt, and exact allowlist."""
+
+    completed, _batch = _verify_completed_funding_job(job_root, load_batch=False)
+    return completed
+
+
+def load_verified_completed_funding_batch(
+    job_root: Path,
+) -> tuple[CompletedFundingJob, CanonicalFundingBatch]:
+    """Verify and convert a completed funding job in one linear page read."""
+
+    completed, batch = _verify_completed_funding_job(job_root, load_batch=True)
+    if batch is None:  # pragma: no cover - guarded by load_batch=True
+        raise FundingAcquisitionError("completed funding batch was not built")
+    return completed, batch
+
+
+def load_completed_funding_batch(job_root: Path) -> CanonicalFundingBatch:
     """Verify and convert one completed funding job into the exact Arrow batch."""
 
-    completed = verify_completed_funding_job(job_root)
-    plan = _load_object(completed.plan_path)
-    raw_tasks = cast(list[dict[str, object]], plan["tasks"])
-    boundary_by_instrument: dict[int, int] = {}
-    rows_by_instrument: dict[int, list[tuple[int, str, str]]] = {}
-    requested_instruments: set[int] = set()
-    for raw_task in raw_tasks:
-        task = FundingPageTask(**raw_task)  # type: ignore[arg-type]
-        requested_instruments.add(task.instrument_id)
-        page = completed.job_root / "pages" / task.artifact_name
-        payload, digest = _verify_artifact(page)
-        raw_rows = cast(list[dict[str, object]], payload["rows"])
-        if task.scope == "boundary":
-            boundary_by_instrument[task.instrument_id] = cast(int, raw_rows[0]["funding_time_ms"])
-            continue
-        values = rows_by_instrument.setdefault(task.instrument_id, [])
-        values.extend(
-            (
-                cast(int, item["funding_time_ms"]),
-                cast(str, item["funding_rate"]),
-                f"bybit-funding-page-sha256:{digest}",
-            )
-            for item in raw_rows
-        )
-    logical: list[FundingEvent] = []
-    for instrument_id in sorted(requested_instruments):
-        observed = sorted(rows_by_instrument.get(instrument_id, []))
-        if not observed:
-            raise FundingAcquisitionError(
-                "each requested funding series requires at least one returned event"
-            )
-        timestamps = [item[0] for item in observed]
-        if len(timestamps) != len(set(timestamps)):
-            raise FundingAcquisitionError("completed funding pages contain duplicate keys")
-        previous = boundary_by_instrument.get(instrument_id)
-        if previous is None:
-            raise FundingAcquisitionError("funding series has no predecessor boundary")
-        category = "linear"
-        for timestamp, rate, ingestion_id in observed:
-            delta = timestamp - previous
-            if delta <= 0 or delta % MINUTE_MS:
-                raise FundingAcquisitionError(
-                    "funding interval cannot be derived from settlement chronology"
-                )
-            try:
-                logical.append(
-                    FundingEvent(
-                        category=category,
-                        instrument_id=instrument_id,
-                        funding_time_ms=timestamp,
-                        funding_rate=Decimal(rate),
-                        funding_interval_minutes=delta // MINUTE_MS,
-                        source_id="bybit-v5-funding-history/v1",
-                        ingestion_id=ingestion_id,
-                        quality_flags=0,
-                    )
-                )
-            except ValueError as error:
-                raise FundingAcquisitionError(
-                    "funding row violates the logical event contract"
-                ) from error
-            previous = timestamp
-    try:
-        return build_canonical_funding_batch(logical)
-    except ValueError as error:
-        raise FundingAcquisitionError(
-            "completed funding pages do not form one canonical batch"
-        ) from error
+    _completed, batch = load_verified_completed_funding_batch(job_root)
+    return batch

@@ -27,8 +27,8 @@ from grid_market_store import (
 )
 
 from grid_data.funding_acquisition import (
+    CompletedFundingJob,
     FundingAcquisitionError,
-    verify_completed_funding_job,
 )
 from grid_data.funding_publication import (
     FUNDING_HISTORY_PUBLICATION_CONTRACT,
@@ -37,10 +37,11 @@ from grid_data.funding_publication import (
     publish_preflighted_funding,
 )
 from grid_data.history_acquisition import (
+    CompletedHistoryJob,
     HistoryAcquisitionError,
-    verify_completed_history_job,
 )
 from grid_data.history_campaign import (
+    CAMPAIGN_RECEIPT_CONTRACT,
     CompletedHistoryCampaign,
     HistoryCampaignError,
     verify_completed_history_campaign,
@@ -330,6 +331,43 @@ def _source_jobs(
     return tuple(jobs)
 
 
+def _source_from_completed_child(
+    completed: CompletedHistoryJob | CompletedFundingJob,
+    *,
+    sequence: int,
+    kind: CampaignKind,
+    source_campaign_root: Path,
+) -> SourceCampaignJob:
+    plan = _load_canonical_object(completed.plan_path)
+    raw_spec = plan.get("spec")
+    if not isinstance(raw_spec, dict):
+        raise HistoryCampaignPublicationError("verified source child has no plan spec")
+    job_id = _text("source job id", raw_spec.get("job_id"))
+    try:
+        relative = completed.job_root.relative_to(source_campaign_root.parent.parent).as_posix()
+    except ValueError as error:
+        raise HistoryCampaignPublicationError(
+            "verified source child escapes the campaign staging root"
+        ) from error
+    validated_relative, expected_root = _source_job_path(
+        source_campaign_root,
+        relative,
+        kind,
+    )
+    if expected_root.resolve() != completed.job_root:
+        raise HistoryCampaignPublicationError("verified source child root is not deterministic")
+    return SourceCampaignJob(
+        sequence=sequence,
+        kind=kind,
+        job_id=job_id,
+        job_root_relative=validated_relative,
+        job_root=completed.job_root,
+        job_plan_sha256=sha256_file(completed.plan_path),
+        job_manifest_sha256=completed.manifest_sha256,
+        row_count=completed.row_count,
+    )
+
+
 def _dataset_type(kind: CampaignKind) -> str:
     return {
         "trade": "trade_kline_1m",
@@ -349,41 +387,12 @@ def _resolved_plan(
     return resolved.plan
 
 
-def _resolve_child(
+def _prepare_child(
     source: SourceCampaignJob,
+    resolved: ResolvedChildPublication,
     *,
     store_root: Path,
-    instrument_registry_path: Path,
-    capacity_evidence_path: Path,
-    snapshot: HostSnapshot,
-    now_ms: int,
-    software_identity: str,
-) -> tuple[PreparedCampaignPublication, ResolvedChildPublication]:
-    try:
-        if source.kind == "funding":
-            resolved: ResolvedChildPublication = preflight_completed_funding_publication(
-                store_root,
-                source.job_root,
-                instrument_registry_path,
-                capacity_evidence_path,
-                snapshot,
-                now_ms=now_ms,
-                software_identity=software_identity,
-            )
-        else:
-            resolved = preflight_completed_history_publication(
-                store_root,
-                source.job_root,
-                instrument_registry_path,
-                capacity_evidence_path,
-                snapshot,
-                now_ms=now_ms,
-                software_identity=software_identity,
-            )
-    except (FundingAcquisitionError, HistoryAcquisitionError, PublicationError) as error:
-        raise HistoryCampaignPublicationError(
-            f"source campaign child {source.sequence} publication preflight failed: {error}"
-        ) from error
+) -> PreparedCampaignPublication:
     child_plan = _resolved_plan(resolved)
     dataset_type = child_plan.batch.dataset_type.value
     if dataset_type != _dataset_type(source.kind):
@@ -401,7 +410,7 @@ def _resolve_child(
         ) from error
     if relative_root != expected_root.as_posix():
         raise HistoryCampaignPublicationError("canonical dataset root is not deterministic")
-    prepared = PreparedCampaignPublication(
+    return PreparedCampaignPublication(
         sequence=source.sequence,
         kind=source.kind,
         job_id=source.job_id,
@@ -418,7 +427,70 @@ def _resolve_child(
         planned_peak_memory_bytes=child_plan.planned_peak_memory_bytes,
         existing_commit=child_plan.existing_commit,
     )
-    return prepared, resolved
+
+
+def _preflight_child_publication(
+    job_root: Path,
+    kind: CampaignKind,
+    *,
+    sequence: int,
+    store_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    snapshot: HostSnapshot,
+    now_ms: int,
+    software_identity: str,
+) -> ResolvedChildPublication:
+    try:
+        if kind == "funding":
+            resolved: ResolvedChildPublication = preflight_completed_funding_publication(
+                store_root,
+                job_root,
+                instrument_registry_path,
+                capacity_evidence_path,
+                snapshot,
+                now_ms=now_ms,
+                software_identity=software_identity,
+            )
+        else:
+            resolved = preflight_completed_history_publication(
+                store_root,
+                job_root,
+                instrument_registry_path,
+                capacity_evidence_path,
+                snapshot,
+                now_ms=now_ms,
+                software_identity=software_identity,
+            )
+    except (FundingAcquisitionError, HistoryAcquisitionError, PublicationError) as error:
+        raise HistoryCampaignPublicationError(
+            f"source campaign child {sequence} publication preflight failed: {error}"
+        ) from error
+    return resolved
+
+
+def _resolve_child(
+    source: SourceCampaignJob,
+    *,
+    store_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    snapshot: HostSnapshot,
+    now_ms: int,
+    software_identity: str,
+) -> tuple[PreparedCampaignPublication, ResolvedChildPublication]:
+    resolved = _preflight_child_publication(
+        source.job_root,
+        source.kind,
+        sequence=source.sequence,
+        store_root=store_root,
+        instrument_registry_path=instrument_registry_path,
+        capacity_evidence_path=capacity_evidence_path,
+        snapshot=snapshot,
+        now_ms=now_ms,
+        software_identity=software_identity,
+    )
+    return _prepare_child(source, resolved, store_root=store_root), resolved
 
 
 def _campaign_plan_payload(
@@ -497,10 +569,49 @@ def preflight_history_campaign_publication(
             "software identity must be git:<40-character-lowercase-commit-sha>"
         )
     try:
-        source_campaign = verify_completed_history_campaign(source_campaign_root)
         registry = load_verified_instrument_registry(instrument_registry_path)
         capacity_path, _capacity, capacity_sha = load_verified_capacity_evidence(
             capacity_evidence_path
+        )
+    except (HistoryCampaignError, HistoryAcquisitionError) as error:
+        raise HistoryCampaignPublicationError(str(error)) from error
+    resolved_store = store_root.resolve()
+    prepared: list[PreparedCampaignPublication] = []
+
+    def preflight_verified_child(
+        job_root: Path,
+        kind: CampaignKind,
+    ) -> CompletedHistoryJob | CompletedFundingJob:
+        sequence = len(prepared)
+        resolved = _preflight_child_publication(
+            job_root,
+            kind,
+            sequence=sequence,
+            store_root=resolved_store,
+            instrument_registry_path=instrument_registry_path,
+            capacity_evidence_path=capacity_path,
+            snapshot=snapshot,
+            now_ms=now_ms,
+            software_identity=software_identity,
+        )
+        completed = (
+            resolved.verified.completed
+            if isinstance(resolved, ResolvedFundingPublication)
+            else resolved.completed_history
+        )
+        source = _source_from_completed_child(
+            completed,
+            sequence=sequence,
+            kind=kind,
+            source_campaign_root=source_campaign_root.resolve(),
+        )
+        prepared.append(_prepare_child(source, resolved, store_root=resolved_store))
+        return completed
+
+    try:
+        source_campaign = verify_completed_history_campaign(
+            source_campaign_root,
+            child_verifier=preflight_verified_child,
         )
     except (HistoryCampaignError, HistoryAcquisitionError) as error:
         raise HistoryCampaignPublicationError(str(error)) from error
@@ -515,19 +626,21 @@ def preflight_history_campaign_publication(
         )
     source_campaign_plan_sha = sha256_file(source_campaign.plan_path)
     source_jobs = _source_jobs(source_campaign)
-    prepared: list[PreparedCampaignPublication] = []
-    for source in source_jobs:
-        child, resolved = _resolve_child(
-            source,
-            store_root=store_root,
-            instrument_registry_path=instrument_registry_path,
-            capacity_evidence_path=capacity_path,
-            snapshot=snapshot,
-            now_ms=now_ms,
-            software_identity=software_identity,
-        )
-        prepared.append(child)
-        del resolved
+    if len(prepared) != len(source_jobs):
+        raise HistoryCampaignPublicationError("publication preflight did not verify every child")
+    for child, source in zip(prepared, source_jobs, strict=True):
+        if (
+            child.sequence != source.sequence
+            or child.kind != source.kind
+            or child.job_id != source.job_id
+            or child.source_job_root != source.job_root_relative
+            or child.source_job_plan_sha256 != source.job_plan_sha256
+            or child.source_job_manifest_sha256 != source.job_manifest_sha256
+            or child.row_count != source.row_count
+        ):
+            raise HistoryCampaignPublicationError(
+                "publication preflight child differs from source campaign inventory"
+            )
     jobs = tuple(prepared)
     if not jobs:
         raise HistoryCampaignPublicationError("source campaign resolved to no publications")
@@ -540,7 +653,6 @@ def preflight_history_campaign_publication(
         jobs=jobs,
     )
     plan_sha = canonical_sha256(plan_payload)
-    resolved_store = store_root.resolve()
     namespace = resolved_store / ".publication-campaigns"
     if namespace.is_symlink():
         raise HistoryCampaignPublicationError("publication campaign namespace cannot be a symlink")
@@ -630,6 +742,48 @@ def _published_entry(
     }
 
 
+def _assert_source_campaign_envelope_unchanged(
+    plan: HistoryCampaignPublicationPlan,
+) -> None:
+    root = plan.source_campaign.campaign_root
+    if root.is_symlink() or root.parent.is_symlink() or not root.is_dir():
+        raise HistoryCampaignPublicationError("source campaign root became unsafe")
+    expected_names = {
+        "completion-receipt.json",
+        "manifest.json",
+        "plan.json",
+        "plan.receipt.json",
+    }
+    if {path.name for path in root.iterdir()} != expected_names:
+        raise HistoryCampaignPublicationError("source campaign envelope allowlist changed")
+    source_plan = _load_canonical_object(plan.source_campaign.plan_path)
+    source_manifest = _load_canonical_object(plan.source_campaign.manifest_path)
+    plan_sha = sha256_file(plan.source_campaign.plan_path)
+    manifest_sha = sha256_file(plan.source_campaign.manifest_path)
+    plan_receipt = _load_canonical_object(root / "plan.receipt.json")
+    completion_receipt = _load_canonical_object(root / "completion-receipt.json")
+    if (
+        plan_sha != plan.source_campaign_plan_sha256
+        or manifest_sha != plan.source_campaign_manifest_sha256
+        or plan_receipt
+        != {
+            "artifact": "plan.json",
+            "artifact_sha256": plan_sha,
+            "contract": CAMPAIGN_RECEIPT_CONTRACT,
+            "status": "complete",
+        }
+        or completion_receipt
+        != {
+            "artifact": "manifest.json",
+            "artifact_sha256": manifest_sha,
+            "contract": CAMPAIGN_RECEIPT_CONTRACT,
+            "status": "complete",
+        }
+        or source_manifest.get("campaign_plan_sha256") != canonical_sha256(source_plan)
+    ):
+        raise HistoryCampaignPublicationError("source campaign envelope changed after preflight")
+
+
 def execute_history_campaign_publication(
     plan: HistoryCampaignPublicationPlan,
     *,
@@ -644,12 +798,8 @@ def execute_history_campaign_publication(
             plan.publication_root,
             plan.source_campaign.campaign_root,
         )
-    source_campaign = verify_completed_history_campaign(plan.source_campaign.campaign_root)
-    if (
-        source_campaign.manifest_sha256 != plan.source_campaign_manifest_sha256
-        or sha256_file(source_campaign.plan_path) != plan.source_campaign_plan_sha256
-    ):
-        raise HistoryCampaignPublicationError("source campaign changed after publication preflight")
+    _assert_source_campaign_envelope_unchanged(plan)
+    source_campaign = plan.source_campaign
     source_jobs = _source_jobs(source_campaign)
     if len(source_jobs) != len(plan.jobs):
         raise HistoryCampaignPublicationError("source campaign job count changed after preflight")
@@ -749,10 +899,13 @@ def _expected_source_evidence(
 ) -> tuple[str, ...]:
     values = [source.job_manifest_sha256, instrument_evidence_sha256]
     if source.kind == "funding":
-        completed = verify_completed_funding_job(source.job_root)
-        values.append(completed.boundary_evidence_sha256)
-    else:
-        verify_completed_history_job(source.job_root)
+        source_manifest = _load_canonical_object(source.job_root / "manifest.json")
+        values.append(
+            _text(
+                "funding boundary evidence hash",
+                source_manifest.get("boundary_evidence_sha256"),
+            )
+        )
     return tuple(dict.fromkeys(values))
 
 

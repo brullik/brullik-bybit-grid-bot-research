@@ -67,6 +67,10 @@ MAX_CAMPAIGN_JOBS: Final = MAX_CAMPAIGN_MONTHS * BUCKET_COUNT * 3
 MAX_CAMPAIGN_SYMBOLS: Final = 700
 CAMPAIGN_ID_RE: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
 CampaignKind = Literal["trade", "mark", "funding"]
+CampaignChildVerifier = Callable[
+    [Path, CampaignKind],
+    CompletedHistoryJob | CompletedFundingJob,
+]
 _KIND_ORDER: Final = {"trade": 0, "mark": 1, "funding": 2}
 _REQUEST_KEYS: Final = frozenset(
     {
@@ -793,7 +797,11 @@ def _relative_child_root(campaign_root: Path, raw: object) -> Path:
     return staging_root.joinpath(*relative.parts)
 
 
-def verify_completed_history_campaign(campaign_root: Path) -> CompletedHistoryCampaign:
+def verify_completed_history_campaign(
+    campaign_root: Path,
+    *,
+    child_verifier: CampaignChildVerifier | None = None,
+) -> CompletedHistoryCampaign:
     """Verify the aggregate receipt, child manifests, hashes, totals, and exact allowlist."""
 
     supplied_root = campaign_root.absolute()
@@ -982,10 +990,16 @@ def verify_completed_history_campaign(campaign_root: Path) -> CompletedHistoryCa
         if child_root != expected_root:
             raise HistoryCampaignError("campaign child root is not deterministically derived")
         child = (
-            verify_completed_funding_job(child_root)
-            if kind == "funding"
-            else verify_completed_history_job(child_root)
+            child_verifier(child_root, cast(CampaignKind, kind))
+            if child_verifier is not None
+            else (
+                verify_completed_funding_job(child_root)
+                if kind == "funding"
+                else verify_completed_history_job(child_root)
+            )
         )
+        if (kind == "funding") != isinstance(child, CompletedFundingJob):
+            raise HistoryCampaignError("campaign child verifier returned the wrong job type")
         if child.manifest_sha256 != raw_manifest_job.get("job_manifest_sha256"):
             raise HistoryCampaignError("campaign child manifest hash does not verify")
         child_plan = _load_canonical_object(child.plan_path)

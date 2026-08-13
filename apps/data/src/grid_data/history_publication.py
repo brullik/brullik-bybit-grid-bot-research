@@ -27,8 +27,7 @@ from grid_market_store import (
 from grid_data.history_acquisition import (
     CompletedHistoryJob,
     HistoryAcquisitionError,
-    load_completed_history_batch,
-    verify_completed_history_job,
+    load_verified_completed_history_batch,
 )
 from grid_data.history_request import (
     active_and_building_bytes_from_capacity,
@@ -118,7 +117,7 @@ def load_verified_history_publication_input(
 ) -> VerifiedHistoryPublicationInput:
     """Verify Landing and upstream evidence without probing the host or mutating storage."""
 
-    completed = verify_completed_history_job(job_root)
+    completed, batch = load_verified_completed_history_batch(job_root)
     manifest = _object(completed.manifest_path, name="history manifest")
     history_plan = _object(completed.plan_path, name="history plan")
     registry = load_verified_instrument_registry(instrument_registry_path)
@@ -135,7 +134,6 @@ def load_verified_history_publication_input(
         raise HistoryAcquisitionError(
             "history capacity budget does not match the supplied accepted-layout evidence"
         )
-    batch = load_completed_history_batch(completed.job_root)
     _validate_registry_coverage(registry, batch)
     return VerifiedHistoryPublicationInput(
         completed_history=completed,
