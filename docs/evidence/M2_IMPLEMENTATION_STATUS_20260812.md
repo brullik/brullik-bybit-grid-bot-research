@@ -37,13 +37,17 @@ The authoritative implementation and review history is:
   funding physical contract and receipt-last immutable publication primitive.
 - PR [#30](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/30): predecessor-bound,
   receipt-resumable public funding acquisition and verified Landing-to-canonical adapter.
+- PR [#31](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/31): funding-specific,
+  GitHub-safe pilot evidence with exact Landing/Parquet and predecessor-interval verification.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
 partitioning, ZSTD-3, receipt-last publication, and a separate public acquisition contract. Every
 series captures a receipted predecessor, range pages are fixed and resumable, and saturated
-200-row responses fail closed. A measured funding pilot, funding-specific coverage/repair,
-compaction, and catalog evidence remain pending; Gate 2 is not accepted.
+200-row responses fail closed. The funding-specific sanitized evidence contract and builder now
+verify exact Landing/Parquet equality and predecessor/internal interval derivation without
+publishing rates or observed settlement timestamps. Its measured artifact, funding-specific
+coverage/repair, compaction, and catalog evidence remain pending; Gate 2 is not accepted.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).
