@@ -78,6 +78,8 @@ The authoritative implementation and review history is:
   child execution timing and strict GitHub-safe long-run adaptive-throttling qualification.
 - PR [#54](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/54): measured
   transport-attempt versus HTTP-response accounting correction for strict qualification.
+- PR [#55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55): receipt-verified
+  100-instrument x 31-day public long-run throttling and resume evidence.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -676,7 +678,8 @@ evidence pass required another measured 233.6 seconds. This qualifies the ADR-00
 accounting at this controlled scale and demonstrates deterministic resume, while also exposing
 small-file re-verification as the next measured local optimization target. It is Landing evidence
 only: canonical publication/audit, broader historical scale, Gate 2, and private/live permissions
-remain unchanged.
+remain unchanged. The result and exact contract assertions are tracked in
+[PR #55](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/55).
 
 ## Still required before Gate 2
 
