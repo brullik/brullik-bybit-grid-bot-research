@@ -582,6 +582,96 @@ def test_public_funding_pilot_matches_schema_hash_receipt_and_safety_boundary() 
     assert "/home/" not in rendered
 
 
+def test_measured_funding_coverage_audit_is_bound_passed_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-canonical-funding-coverage-audit-20260813.json"
+    pilot = load_json(
+        ROOT / "benchmarks" / "results" / "m2-public-funding-canonical-pilot-20260813.json"
+    )
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "canonical-funding-coverage-audit.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    content = dict(payload)
+    embedded_hash = content.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(content)
+    assert verify_evidence(artifact)
+    assert payload["status"] == "passed"
+    assert payload["audit_software_identity"] == ("git:97bce032b351f95e11d78352b74fe5f2098f8834")
+    assert payload["bindings"]["publisher_software_identity"] == (
+        "git:cbe8391db0b9d5b9bdeb9ebae5af4035e570a7e2"
+    )
+    assert (
+        payload["bindings"]["canonical_manifest_sha256"]
+        == (pilot["bindings"]["canonical_manifest_sha256"])
+    )
+    assert (
+        payload["bindings"]["funding_manifest_sha256"]
+        == (pilot["bindings"]["funding_manifest_sha256"])
+    )
+    assert (
+        payload["bindings"]["boundary_evidence_sha256"]
+        == (pilot["bindings"]["boundary_evidence_sha256"])
+    )
+    assert payload["chronology_anomaly_evidence"] == {
+        "anomaly_count": 0,
+        "anomaly_records_sha256": canonical_sha256([]),
+    }
+    assert payload["quality"] == {
+        "boundary_page_count": 2,
+        "canonical_source_table_equal": True,
+        "conflicting_key_count": 0,
+        "duplicate_key_count": 0,
+        "empty_range_page_count": 0,
+        "internal_interval_mismatch_count": 0,
+        "interval_change_count": 0,
+        "lifecycle_failure_count": 0,
+        "observed_event_count": 42,
+        "predecessor_interval_mismatch_count": 0,
+        "range_page_count": 2,
+        "requested_window_minutes": 20_160,
+        "source_range_enumeration_complete": True,
+        "unexpected_timestamp_count": 0,
+        "unrequested_row_count": 0,
+    }
+    assert payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {},
+        "unaccepted_reason_codes": [],
+        "unknown_reason_count": 0,
+    }
+    assert [item["interval_histogram"] for item in payload["series"]] == [
+        [{"event_count": 21, "interval_minutes": 480}],
+        [{"event_count": 21, "interval_minutes": 480}],
+    ]
+    assert payload["coverage_basis"]["current_instrument_interval_used"] is False
+
+    forbidden_keys = {
+        "device_identity_sha256",
+        "fundingRate",
+        "funding_rate",
+        "funding_time_ms",
+        "host_preflight",
+        "rows",
+        "settlement_time_ms",
+    }
+
+    def assert_sanitized(value: Any) -> None:
+        if isinstance(value, Mapping):
+            assert forbidden_keys.isdisjoint(value)
+            for nested in value.values():
+                assert_sanitized(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_sanitized(nested)
+
+    assert_sanitized(payload)
+    rendered = json.dumps(payload)
+    assert "C:\\" not in rendered
+    assert "/home/" not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 
