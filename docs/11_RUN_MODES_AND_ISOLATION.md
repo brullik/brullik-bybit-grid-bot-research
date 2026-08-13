@@ -20,6 +20,8 @@ planning, receipt-resumable repair execution, immutable replacement lineage, and
 immutable compaction plus receipt-verified DuckDB catalog registration and snapshot-bound range
 selection. A separate public funding path now includes predecessor-bound, receipt-resumable
 acquisition and exact receipt-last canonical publication.
+Funding-specific pilot evidence and a fail-closed source-chronology audit remain separate
+read-only commands; neither uses current undated interval metadata.
 
 ## Separate startup examples
 
@@ -47,6 +49,10 @@ grid-data publish-funding-history --job-root <completed-funding-job-root> \
   --store-root <local-path> --software-identity git:<full-commit-sha>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data verify-canonical-funding <committed-funding-dataset-root>
+grid-data audit-funding-history --job-root <completed-funding-job-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --publisher-software-identity git:<publisher-commit-sha> \
+  --audit-software-identity git:<auditor-commit-sha> --output <funding-audit-evidence.json>
 grid-data history-pilot-evidence --job-root <completed-job-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --store-root <local-path> --software-identity git:<full-commit-sha> \

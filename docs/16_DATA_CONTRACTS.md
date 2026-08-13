@@ -221,6 +221,15 @@ settlement timestamps, local paths, host identity, account data, credentials, or
 files. Sparse event counts do not establish complete historical settlement chronology, lifecycle
 coverage, accepted gaps, or Gate 2; see ADR-0033.
 
+`grid.canonical-funding-coverage-audit/v1` re-verifies exact Landing/Parquet equality, one
+predecessor per series, complete range-page tiling, registry lifecycle bounds, and every
+settlement-derived interval. Its v1 reason policy accepts nothing automatically: an empty source
+window, predecessor/internal mismatch, or cadence change blocks until separately dated evidence
+or governance explains it. Current `fundingInterval` is explicitly unused. Public evidence keeps
+requested bounds, counts, interval histograms, hashes, and identities but excludes rates, observed
+settlement timestamps, runtime paths, host/account data, and credentials. `passed` is bounded
+source-parity/stable-cadence evidence, not full-history or Gate 2 acceptance; see ADR-0034.
+
 ## Dataset manifest
 
 Required fields:

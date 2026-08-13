@@ -38,6 +38,7 @@
 | D-032 | Canonical funding uses exact Decimal128(38,18) and settlement-derived intervals with receipt-last immutable publication | accepted | Current interval metadata is not historical evidence; predecessor binding, internal delta checks, exact schema, and ADR-0031 |
 | D-033 | Public funding acquisition uses a receipted predecessor plus fixed bounded range pages and rejects saturated responses | accepted | Deterministic resume, historical interval derivation, no silent 200-row truncation, fresh capacity admission, and ADR-0032 |
 | D-034 | GitHub funding pilot evidence re-verifies exact Landing/Parquet equality and predecessor-derived intervals without publishing rates or observed settlement times | accepted | Reviewable transitive hashes/counts, funding-specific sparse semantics, explicit non-Gate-2 limitations, and ADR-0033 |
+| D-035 | Funding coverage audits exact source/canonical parity and stable predecessor-derived cadence; empty windows or undated cadence changes block | accepted | Funding is sparse, current interval metadata is not historical evidence, complete anomaly hashing, and ADR-0034 |
 
 ## Decisions requiring benchmark or owner evidence
 

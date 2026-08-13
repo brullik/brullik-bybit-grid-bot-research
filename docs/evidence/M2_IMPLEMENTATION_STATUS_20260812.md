@@ -41,6 +41,8 @@ The authoritative implementation and review history is:
   GitHub-safe pilot evidence with exact Landing/Parquet and predecessor-interval verification.
 - PR [#32](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/32): receipt-verified,
   measured public funding pilot evidence and its sanitized acceptance assertions.
+- PR [#33](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/33): fail-closed funding
+  source-parity and stable observed-chronology audit.
 
 The funding path now includes `grid.canonical-funding-layout/v1`, exact signed Decimal128(38, 18),
 minute-aligned settlement keys, settlement-derived interval semantics, month/eight-bucket
@@ -48,8 +50,8 @@ partitioning, ZSTD-3, receipt-last publication, and a separate public acquisitio
 series captures a receipted predecessor, range pages are fixed and resumable, and saturated
 200-row responses fail closed. The funding-specific sanitized evidence contract and builder now
 verify exact Landing/Parquet equality and predecessor/internal interval derivation without
-publishing rates or observed settlement timestamps. Funding-specific coverage/repair, compaction,
-and catalog evidence remain pending; Gate 2 is not accepted.
+publishing rates or observed settlement timestamps. Funding-specific repair, compaction, and
+catalog evidence remain pending; Gate 2 is not accepted.
 
 The receipt-verified measured funding result is
 [`m2-public-funding-canonical-pilot-20260813.json`](../../benchmarks/results/m2-public-funding-canonical-pilot-20260813.json).
@@ -73,6 +75,15 @@ rate, observed settlement timestamp, local path, host/account data, credential, 
 order, bot, or transfer is in GitHub. This proves only the bounded source return and immutable
 publication; it does not prove complete funding chronology, lifecycle coverage, scale behavior,
 or Gate 2.
+
+`grid-data audit-funding-history` and `grid.canonical-funding-coverage-audit/v1` now provide the
+funding-specific read-only boundary. They prove exact Landing/Parquet parity, predecessor and
+internal interval derivation, range-page tiling, lifecycle bounds, and stable observed cadence.
+Empty source windows and cadence changes are unaccepted blockers; current undated
+`fundingInterval` is never historical evidence. The audit publishes counts, interval histograms,
+transitive hashes, and a complete private-anomaly hash without rates or observed settlement
+timestamps. Measured audit evidence remains pending until this implementation is merged; Gate 2
+remains closed.
 
 The sanitized, receipt-verified measured result is
 [`m2-public-1m-canonical-pilot-20260812.json`](../../benchmarks/results/m2-public-1m-canonical-pilot-20260812.json).

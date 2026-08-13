@@ -49,6 +49,7 @@ from grid_data.funding_acquisition import (
     preflight_funding_job,
     verify_completed_funding_job,
 )
+from grid_data.funding_coverage_audit import build_completed_funding_coverage_audit
 from grid_data.funding_pilot_evidence import build_funding_pilot_evidence
 from grid_data.funding_publication import (
     preflight_completed_funding_publication,
@@ -276,6 +277,19 @@ def parser() -> argparse.ArgumentParser:
     funding_pilot_evidence.add_argument("--software-identity", required=True)
     funding_pilot_evidence.add_argument("--output", type=Path, required=True)
     funding_pilot_evidence.set_defaults(handler=_funding_pilot_evidence)
+
+    funding_coverage_audit = commands.add_parser(
+        "audit-funding-history",
+        help="audit exact funding source parity, range enumeration, and stable chronology",
+    )
+    funding_coverage_audit.add_argument("--job-root", type=Path, required=True)
+    funding_coverage_audit.add_argument("--instrument-registry", type=Path, required=True)
+    funding_coverage_audit.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_coverage_audit.add_argument("--store-root", type=Path, required=True)
+    funding_coverage_audit.add_argument("--publisher-software-identity", required=True)
+    funding_coverage_audit.add_argument("--audit-software-identity", required=True)
+    funding_coverage_audit.add_argument("--output", type=Path, required=True)
+    funding_coverage_audit.set_defaults(handler=_audit_funding_history)
 
     history_verify = commands.add_parser(
         "verify-history-1m",
@@ -734,6 +748,32 @@ def _funding_pilot_evidence(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _audit_funding_history(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    audit = build_completed_funding_coverage_audit(
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        publisher_software_identity=args.publisher_software_identity,
+        audit_software_identity=args.audit_software_identity,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, audit.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "dataset_id": audit.payload["dataset_id"],
+                "quality": audit.payload["quality"],
+                "receipt": str(receipt),
+                "status": audit.payload["status"],
+            }
+        )
+    )
+    return 0 if audit.passed else 2
 
 
 def _publish_history_1m(args: argparse.Namespace) -> int:
