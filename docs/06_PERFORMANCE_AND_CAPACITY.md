@@ -231,6 +231,14 @@ transport measured 9.709345 requests/second in 10,299,356,000 ns versus 7.764397
 in 12,879,301,000 ns: a 1.250496 request-rate ratio and 20.031716% lower wall time. This is one
 host/network observation and remains component evidence rather than a Gate 2 threshold.
 
+ADR-0084 aligns initial history-campaign storage admission with its strictly sequential child
+execution. On the retained 978-job/43,328-page full-history plan, the unchanged conservative page
+and metadata bounds require 174.096 GiB when every child maximum is summed, but 91.899 GiB when the
+largest 45-page child is reserved alongside active/building data and the operating reserve. Fresh
+free-space checks before and after every child charge actual retained Landing growth and stop
+before another request if the next unchanged child bound no longer fits. Observed page sizes are
+reported evidence only and do not lower the 512 KiB contract.
+
 The 2026-08-14 post-merge run bound to `9b68150b740d9bd8988ed791c98dbd9bf4a90a72`
 selected 368,640 rows across 16 same-partition fragments and 32 instruments. The first pass took
 816,325,700 ns (451,584 rows/second); the immediate repeat took 804,938,400 ns (457,972

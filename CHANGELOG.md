@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0084 sequential peak-child history-campaign admission: full-history bootstrap no longer
+  reserves mutually exclusive child Landing maxima at once, while unchanged per-page bounds and
+  fresh before/after-child free-space checks retain fail-closed, receipt-resumable execution.
 - Receipt-verified post-merge ADR-0083 throughput evidence: the unchanged 100-page/10-RPS public
   workload completed at 9.709345 requests/second, 1.250496x the prior confirmation, with the same
   aggregate response hash, zero errors, and no retained market values.

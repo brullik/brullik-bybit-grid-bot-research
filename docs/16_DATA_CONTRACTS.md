@@ -115,8 +115,11 @@ endpoint policy, and every deterministic dataset/month/eight-bucket child reques
 For funding campaigns it may additionally bind a fully verified ADR-0048 source-boundary
 manifest/plan/request/software identity. ADR-0052 clips each funding series to its source-proven
 canonical start and binds the exact discovered predecessor into the first child boundary task.
-Aggregate preflight accounts for all incomplete child Landing bounds before mutation, while
-execution is sequential so per-child pacers do not multiply the configured RPS.
+ADR-0084 aggregate preflight reserves the maximum unchanged Landing bound of any incomplete child,
+not the sum of mutually exclusive sequential child peaks. Execution refreshes free-space evidence
+before and after every child; already retained Landing bytes therefore reduce observed free space,
+and a shortfall stops before the next child request while preserving receipt-based resume. Child
+page bounds and sequential pacing remain unchanged.
 Within one preflight invocation, ADR-0047 verifies registry/capacity bytes once and reuses their
 path-checked parsed snapshot for all child derivations. Every child and aggregate artifact retains
 the same exact evidence hashes; each later command invocation reloads and reverifies the files.

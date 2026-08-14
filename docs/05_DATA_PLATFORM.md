@@ -72,11 +72,15 @@ historical truth.
 
 ADR-0038 adds the multi-job orchestration boundary without weakening those child contracts. One
 campaign request is deterministically split by dataset type, UTC month, and the accepted eight
-buckets. All children are preflighted before mutation; aggregate admission reserves the complete
-remaining Landing bound once alongside active-plus-building and the operating reserve. Children
-run sequentially so their pacers cannot multiply the target RPS. The campaign plan is committed
-before the first child, each existing child receipt is reused, and an aggregate manifest receipt
-is written only after all child allowlists and hashes verify. Registry lifecycle intersection is
+buckets. All children are preflighted before mutation. ADR-0084 aligns aggregate storage
+admission with the already mandatory sequential execution: the initial no-mutation gate reserves
+active-plus-building, the operating reserve, and the largest incomplete child's unchanged
+conservative Landing bound. Every child executor refreshes free space immediately before and
+after its own mutation, so retained prior Landing bytes are charged through observed free space;
+shortfall stops the receipt-resumable campaign before the next public request. Children run
+sequentially so their pacers cannot multiply the target RPS. The campaign plan is committed before
+the first child, each existing child receipt is reused, and an aggregate manifest receipt is
+written only after all child allowlists and hashes verify. Registry lifecycle intersection is
 ex-post acquisition scoping, not point-in-time research metadata.
 
 ADR-0047 removes redundant input admission inside that boundary. Each campaign invocation

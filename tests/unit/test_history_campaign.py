@@ -394,7 +394,10 @@ def test_campaign_schema_split_order_and_no_mutation(tmp_path: Path) -> None:
         for job in plan.jobs
     )
     assert plan.plan_payload["source_policy"]["tick_rows_requested"] is False  # type: ignore[index]
-    assert plan.required_free_bytes > 98_000_000_000
+    assert plan.required_free_bytes == max(
+        job.plan.required_free_bytes for job in plan.jobs if not job.existing_complete
+    )
+    assert 98_000_000_000 < plan.required_free_bytes < 99_000_000_000
 
 
 def test_campaign_verifies_shared_registry_and_capacity_once(
@@ -704,10 +707,49 @@ def test_funding_source_boundary_must_match_campaign_registry_and_symbols(
         )
 
 
-def test_campaign_rejects_aggregate_disk_shortfall_before_mutation(tmp_path: Path) -> None:
-    with pytest.raises(HistoryCampaignError, match="aggregate pending campaign"):
-        preflight(tmp_path, free_bytes=99_000_000_000)
-    assert not (tmp_path / "history").exists()
+def test_campaign_rejects_peak_child_disk_shortfall_before_mutation(tmp_path: Path) -> None:
+    admitted_root = tmp_path / "admitted"
+    admitted_root.mkdir()
+    admitted = preflight(admitted_root)
+    blocked_root = tmp_path / "blocked"
+    blocked_root.mkdir()
+
+    with pytest.raises(HistoryAcquisitionError, match="bounded REST staging"):
+        preflight(blocked_root, free_bytes=admitted.required_free_bytes - 1)
+    assert not (blocked_root / "history").exists()
+
+
+def test_campaign_rechecks_free_space_before_each_sequential_child(tmp_path: Path) -> None:
+    plan = preflight(
+        tmp_path,
+        request=request_payload(kinds=["trade"]),
+        free_bytes=99_000_000_000,
+    )
+    kline = FakeKlineClient()
+    snapshots = 0
+
+    def snapshot_provider() -> HostSnapshot:
+        nonlocal snapshots
+        snapshots += 1
+        free_bytes = 99_000_000_000 if snapshots <= 2 else plan.jobs[1].plan.required_free_bytes - 1
+        return snapshot(
+            plan.staging_root.parent,
+            observed_at_ms=1_001,
+            free_bytes=free_bytes,
+        )
+
+    with pytest.raises(HistoryAcquisitionError, match="insufficient free space"):
+        execute_history_campaign(
+            plan,
+            kline_client_factory=lambda: kline,
+            funding_client_factory=NeverFundingClient,
+            snapshot_provider=snapshot_provider,
+            now_ms=lambda: 1_002,
+        )
+
+    assert len(kline.calls) == plan.jobs[0].pending_page_count
+    assert plan.jobs[0].plan.paths.receipt_path.is_file()  # type: ignore[union-attr]
+    assert not plan.manifest_path.exists()
 
 
 def test_campaign_rejects_unbounded_or_empty_lifecycle_scope(tmp_path: Path) -> None:

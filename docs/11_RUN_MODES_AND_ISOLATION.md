@@ -60,7 +60,8 @@ grid-data verify-history-1m <completed-job-root>
 grid-data history-campaign --request <campaign-request.json> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
   --staging-root <local-path>
-# Repeat with --execute only after aggregate no-mutation preflight; children run sequentially.
+# Repeat with --execute only after no-mutation peak-child preflight; children run sequentially.
+# Fresh free-space checks before/after each child stop safely and resume without refetching receipts.
 grid-data verify-history-campaign <completed-campaign-root>
 grid-data publish-history-campaign --campaign-root <completed-campaign-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
