@@ -179,6 +179,26 @@ def test_announcement_page_orders_by_date_timestamp_not_publish_time() -> None:
     assert [item["publishTime"] for item in page.items] == [1, 2]
 
 
+def test_announcement_page_accepts_legacy_row_without_publish_time() -> None:
+    transport = QueueTransport(
+        [
+            response(
+                {
+                    "list": [
+                        {
+                            "dateTimestamp": 1_654_063_851_000,
+                            "type": {"key": "new_crypto"},
+                        }
+                    ],
+                    "total": 1,
+                }
+            )
+        ]
+    )
+    page = BybitPublicClient(transport).announcement_page(announcement_type="new_crypto", page=1)
+    assert "publishTime" not in page.items[0]
+
+
 def test_kline_pagination_moves_inclusive_end_backward_without_duplicates() -> None:
     transport = QueueTransport(
         [

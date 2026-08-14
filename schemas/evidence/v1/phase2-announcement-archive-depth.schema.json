@@ -112,6 +112,7 @@
         "base_url": "https://api.bybit.com",
         "endpoint": "/v5/announcements/index",
         "locale": "en-US",
+        "legacy_publish_time_may_be_absent": true,
         "page_limit": 20,
         "private_endpoints_called": false,
         "query_policy": "first-and-declared-last-page-per-documented-type-v1",
@@ -145,9 +146,11 @@
         "required": [
           "announcement_type",
           "first_page_item_count",
+          "first_page_publish_time_present_count",
           "first_page_result_sha256",
           "last_page_item_count",
           "last_page_number",
+          "last_page_publish_time_present_count",
           "last_page_result_sha256",
           "latest_date_timestamp_ms",
           "latest_publish_time_ms",
@@ -158,14 +161,20 @@
         "properties": {
           "announcement_type": {"$ref": "#/$defs/announcementType"},
           "first_page_item_count": {"type": "integer", "minimum": 1, "maximum": 20},
+          "first_page_publish_time_present_count": {"type": "integer", "minimum": 0, "maximum": 20},
           "first_page_result_sha256": {"$ref": "#/$defs/sha256"},
           "last_page_item_count": {"type": "integer", "minimum": 1, "maximum": 20},
           "last_page_number": {"type": "integer", "minimum": 1, "maximum": 500000},
+          "last_page_publish_time_present_count": {"type": "integer", "minimum": 0, "maximum": 20},
           "last_page_result_sha256": {"$ref": "#/$defs/sha256"},
           "latest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
-          "latest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+          "latest_publish_time_ms": {
+            "anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+          },
           "oldest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
-          "oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+          "oldest_publish_time_ms": {
+            "anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+          },
           "total_announcements": {"type": "integer", "minimum": 1, "maximum": 10000000}
         }
       }
