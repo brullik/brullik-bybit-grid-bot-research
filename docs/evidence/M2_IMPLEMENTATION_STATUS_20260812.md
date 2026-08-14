@@ -914,7 +914,8 @@ private/live capability was used and that the temporary fixture was removed. The
 [artifact](../../benchmarks/results/m2-stale-output-fault-injection-20260814.json) and
 [receipt](../../benchmarks/results/m2-stale-output-fault-injection-20260814.json.receipt.json)
 provide runtime evidence only for the unchanged stale-building-output criterion. They do not
-accept the remainder of Gate 2.
+accept the remainder of Gate 2. Publication and its pinned contract assertions are tracked in
+[PR #80](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/80).
 
 ## Still required before Gate 2
 
