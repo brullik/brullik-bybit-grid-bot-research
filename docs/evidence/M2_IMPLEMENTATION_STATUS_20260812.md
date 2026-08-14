@@ -1010,7 +1010,9 @@ ambiguous adjacent bounds exercised the exact-key fallback, and the complete sto
 remained unchanged. This qualifies only the synthetic incremental boundary; full-history
 end-to-end performance and Gate 2 remain blocked. The implementation and regression proofs are
 tracked in
-[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86).
+[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86); the immutable measured
+artifact and receipt are tracked in
+[PR #87](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/87).
 
 ## Still required before Gate 2
 
