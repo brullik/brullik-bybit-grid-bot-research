@@ -984,7 +984,9 @@ fails closed; the operator must compact an over-fragmented partition. Tests cove
 two-instrument candle and funding fragments, duplicates across candle fragments, multi-batch
 streaming, and the hard stream ceiling. No catalog/dataset mutation, network, credential,
 private endpoint, or live capability is added. This enables bounded incremental selection but
-does not prove coverage, accept Gate 2, or authorize Phase 3.
+does not prove coverage, accept Gate 2, or authorize Phase 3. The implementation, ADR, and
+regression proofs are tracked in
+[PR #85](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/85).
 
 ## Still required before Gate 2
 
