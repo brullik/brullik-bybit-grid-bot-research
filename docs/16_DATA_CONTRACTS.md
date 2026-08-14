@@ -360,6 +360,14 @@ codes. It performs no Bybit request, retained-store read, or repeated benchmark.
 cannot accept Gate 2, authorize Phase 3, expose runtime identities/market values, or reinterpret
 the immutable v1 result; see ADR-0075.
 
+`grid.gate2-readiness-pack/v3` is the next append-only current-evidence successor. It repeats the
+complete v2 verification and adds exact receipt/schema/hash/status checks for the blocked candle
+repair execution, the funding repair candidate audit, and the full-history catalog result. The
+same six criteria remain three evidence-ready and three blocked; only stale evidence-missing
+descriptions are replaced by `candle-repair-source-gap-remains` and
+`eligible-funding-repair-candidate-unavailable`. Gate 2 acceptance and Phase 3 authorization remain
+impossible within this contract; see ADR-0081.
+
 `grid.phase2-full-history-catalog-performance/v1` is a sanitized measurement over the four exact
 ADR-0080 topology-scoped catalog selections. It receipt/hash/schema verifies the prior public and
 private chain, measures a concurrent first pass and immediate repeat through the production

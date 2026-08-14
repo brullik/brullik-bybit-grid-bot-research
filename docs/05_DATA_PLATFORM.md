@@ -437,6 +437,13 @@ or performance runs. Three criteria are evidence-ready and three remain blocked 
 repair, lifecycle, cadence, absence-policy, and performance-envelope codes. Gate 2 remains closed
 pending the unchanged data-quality-owner decision.
 
+ADR-0081 adds the append-only `grid.gate2-readiness-pack/v3` successor after the measured blocked
+candle-repair outcome, funding-repair no-candidate audit, and full-history catalog result entered
+GitHub. It reuses the complete v2 verification and checks three additional exact source chains
+without a market request or retained-store scan. The criteria and readiness counts do not change;
+two stale evidence-missing descriptions become measured-negative blocker codes, while Gate 2 and
+Phase 3 remain closed pending the same owner evidence/policy decisions.
+
 ADR-0076 adds an identifier-free public projection for a receipt-verified candle-gap repair
 execution. It records aggregate limits, immutable bindings, and whether exact repair completed or
 the source gap remained. Existing private execution output is reused without another public

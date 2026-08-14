@@ -19,6 +19,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 - [ADR-0084 - Sequential peak-child history-campaign admission](ADR-0084-sequential-peak-child-history-campaign-admission.md)
 - [ADR-0083 - Bounded pooled public REST transport](ADR-0083-bounded-pooled-public-rest-transport.md)
 - [ADR-0082 - Read-only full-history catalog performance evidence](ADR-0082-read-only-full-history-catalog-performance-evidence.md)
+- [ADR-0081 - Current-evidence Gate 2 readiness v3](ADR-0081-current-evidence-gate2-readiness-v3.md)
 - [ADR-0080 - Topology-scoped full-history catalog selection evidence](ADR-0080-topology-scoped-full-history-catalog-evidence.md)
 - [ADR-0079 - Schema-only canonical dataset catalog admission](ADR-0079-schema-only-canonical-catalog-admission.md)
 - [ADR-0078 - File-backed full-history catalog registration request](ADR-0078-file-backed-full-history-catalog-registration.md)

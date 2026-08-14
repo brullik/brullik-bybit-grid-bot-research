@@ -33,6 +33,9 @@ All notable project-governance and architecture changes are recorded here.
   selector measurement over the existing four receipt-bound full-history topology requests,
   without repeating download, publication, repair, or catalog registration and without changing
   Gate 2.
+- ADR-0081 and append-only Gate 2 readiness v3 implementation: the complete v2 source chain plus
+  measured candle-repair, funding no-candidate, and full-history catalog evidence can be verified
+  offline without repeating expensive work; criteria remain unchanged and Gate 2 stays closed.
 - Receipt-verified full-history catalog evidence bound to merge `bd79038`: one revision-5
   registration and four topology-scoped selections reconcile 978 datasets/objects, 268
   schema-only datasets, 30,832,334 rows, and 529,794,759 bytes without publishing identities.

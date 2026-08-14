@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v3/gate2-readiness-pack.schema.json",
+  "title": "Gate 2 non-promoting readiness pack v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "content_sha256",
+    "criteria",
+    "criteria_source",
+    "evidence_schema",
+    "gate_2",
+    "generated_at_utc",
+    "observations",
+    "readiness_counts",
+    "sources",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "criteria_source_hash_verified": true,
+        "cross_source_bindings_verified": true,
+        "network_request_performed": false,
+        "phase3_authorized": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_identity"],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "criteria": {
+      "const": [
+        {
+          "blocker_codes": [
+            "candle-repair-source-gap-remains",
+            "eligible-funding-repair-candidate-unavailable"
+          ],
+          "criterion_id": "deterministic-rerun-and-repair",
+          "criterion_text": "deterministic re-run and repair",
+          "evidence_roles": [
+            "full-history-landing",
+            "full-history-canonical-publication",
+            "canonical-integrity-fault-injection",
+            "candle-gap-repair-execution",
+            "funding-repair-candidate-audit"
+          ],
+          "readiness": "blocked"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "preflight-before-mutation",
+          "criterion_text": "no mutation before preflight succeeds",
+          "evidence_roles": [
+            "full-history-preflight-performance",
+            "full-history-canonical-publication",
+            "full-history-catalog",
+            "stale-output-fault-injection",
+            "trade-compaction-50x90"
+          ],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "no-duplicate-or-conflicting-keys",
+          "criterion_text": "no duplicate/conflicting canonical keys",
+          "evidence_roles": [
+            "full-history-coverage-audit",
+            "full-history-catalog",
+            "coverage-audit-100x31",
+            "trade-compaction-50x90",
+            "canonical-integrity-fault-injection"
+          ],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "stale-building-output-detected",
+          "criterion_text": "stale building outputs detected",
+          "evidence_roles": ["stale-output-fault-injection"],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [
+            "funding-cadence-policy-unresolved",
+            "historical-point-in-time-metadata-missing",
+            "official-announcement-history-insufficient",
+            "unaccepted-candle-absence-reasons"
+          ],
+          "criterion_id": "lifecycle-explains-expected-coverage",
+          "criterion_text": "expected coverage explained by listing/delisting metadata",
+          "evidence_roles": [
+            "full-history-coverage-audit",
+            "full-history-boundary-diagnostic",
+            "candle-gap-repair-execution",
+            "announcement-archive-depth",
+            "coverage-audit-100x31",
+            "funding-repair-candidate-audit",
+            "instrument-timeline-current-policy"
+          ],
+          "readiness": "blocked"
+        },
+        {
+          "blocker_codes": ["full-history-end-to-end-performance-envelope-unqualified"],
+          "criterion_id": "performance-within-envelope",
+          "criterion_text": "performance remains within measured envelope",
+          "evidence_roles": [
+            "full-history-landing",
+            "full-history-canonical-publication",
+            "full-history-boundary-diagnostic",
+            "full-history-preflight-performance",
+            "full-history-catalog",
+            "incremental-catalog-performance"
+          ],
+          "readiness": "blocked"
+        }
+      ]
+    },
+    "criteria_source": {
+      "const": {
+        "artifact": "14_ROADMAP_AND_GATES.md",
+        "artifact_sha256": "492458c7126bb6768dbc1b328ec5959095e67e0cdbf865b7de54b05ecc94f534",
+        "criteria_count": 6
+      }
+    },
+    "evidence_schema": {"const": "grid.gate2-readiness-pack/v3"},
+    "gate_2": {
+      "const": {
+        "automatic_phase3_authorization": false,
+        "blocker_codes": [
+          "candle-repair-source-gap-remains",
+          "eligible-funding-repair-candidate-unavailable",
+          "full-history-end-to-end-performance-envelope-unqualified",
+          "funding-cadence-policy-unresolved",
+          "historical-point-in-time-metadata-missing",
+          "official-announcement-history-insufficient",
+          "unaccepted-candle-absence-reasons"
+        ],
+        "data_quality_owner_decision_required": true,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner"
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candle_gap_topology",
+        "candle_repair",
+        "canonical_integrity",
+        "compaction_50x90",
+        "controlled_100x31",
+        "full_history_candle_campaign",
+        "full_history_catalog",
+        "funding_repair_candidates",
+        "instrument_timeline",
+        "official_announcement_archive",
+        "performance",
+        "stale_output"
+      ],
+      "properties": {
+        "candle_gap_topology": {"$ref": "#/$defs/observation"},
+        "candle_repair": {"$ref": "#/$defs/observation"},
+        "canonical_integrity": {"$ref": "#/$defs/observation"},
+        "compaction_50x90": {"$ref": "#/$defs/observation"},
+        "controlled_100x31": {"$ref": "#/$defs/observation"},
+        "full_history_candle_campaign": {"$ref": "#/$defs/observation"},
+        "full_history_catalog": {"$ref": "#/$defs/observation"},
+        "funding_repair_candidates": {"$ref": "#/$defs/observation"},
+        "instrument_timeline": {"$ref": "#/$defs/observation"},
+        "official_announcement_archive": {"$ref": "#/$defs/observation"},
+        "performance": {"$ref": "#/$defs/observation"},
+        "stale_output": {"$ref": "#/$defs/observation"}
+      }
+    },
+    "readiness_counts": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "announcement-archive-depth",
+        "candle-gap-repair-execution",
+        "canonical-integrity-fault-injection",
+        "coverage-audit-100x31",
+        "full-history-boundary-diagnostic",
+        "full-history-canonical-publication",
+        "full-history-catalog",
+        "full-history-coverage-audit",
+        "full-history-landing",
+        "full-history-preflight-performance",
+        "funding-repair-candidate-audit",
+        "incremental-catalog-performance",
+        "instrument-timeline-current-policy",
+        "stale-output-fault-injection",
+        "trade-compaction-50x90"
+      ],
+      "properties": {
+        "announcement-archive-depth": {"$ref": "#/$defs/sourceRecord"},
+        "candle-gap-repair-execution": {"$ref": "#/$defs/sourceRecord"},
+        "canonical-integrity-fault-injection": {"$ref": "#/$defs/sourceRecord"},
+        "coverage-audit-100x31": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-boundary-diagnostic": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-canonical-publication": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-catalog": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-coverage-audit": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-landing": {"$ref": "#/$defs/sourceRecord"},
+        "full-history-preflight-performance": {"$ref": "#/$defs/sourceRecord"},
+        "funding-repair-candidate-audit": {"$ref": "#/$defs/sourceRecord"},
+        "incremental-catalog-performance": {"$ref": "#/$defs/sourceRecord"},
+        "instrument-timeline-current-policy": {"$ref": "#/$defs/sourceRecord"},
+        "stale-output-fault-injection": {"$ref": "#/$defs/sourceRecord"},
+        "trade-compaction-50x90": {"$ref": "#/$defs/sourceRecord"}
+      }
+    },
+    "status": {"const": "blocked-pending-gate2-evidence-and-policy"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "observation": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": ["integer", "boolean"]
+      }
+    },
+    "sourceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "content_sha256", "contract", "status"],
+      "properties": {
+        "artifact": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.json$"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
