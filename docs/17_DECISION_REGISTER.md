@@ -68,6 +68,7 @@
 | D-062 | Gate 2 stale-output behavior is evidenced by offline post-merge fault injection against named production preflights | accepted | Five canonical/catalog cases, marker preservation, zero target mutation, temporary fixtures, sanitized proof, and ADR-0062 |
 | D-063 | Current Gate 2 readiness is aggregated without changing criteria, accepting the gate, or authorizing Phase 3 | accepted | Eight fixed receipt/schema/content-hash sources, exact roadmap hash, four blocked criteria, two evidence-ready criteria, and ADR-0063 |
 | D-064 | Canonical orphan and partial-write detection is evidenced only in temporary cloned commits | accepted | Candle/funding production verifiers, six named faults, complete tree-fingerprint preservation, sanitized post-merge proof, and ADR-0064 |
+| D-065 | Ambiguous same-partition incremental catalog fragments require bounded streaming exact-key admission | accepted | Receipt/file reverification, candle/funding key-column merge, exact duplicate rejection, 4,096-row batches, 128-stream ceiling, and ADR-0065 |
 
 ## Decisions requiring benchmark or owner evidence
 

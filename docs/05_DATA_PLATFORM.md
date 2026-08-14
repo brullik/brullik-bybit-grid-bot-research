@@ -432,6 +432,10 @@ audit, accept a general cadence policy, register the child, or close Gate 2.
 ## Incremental operation
 
 - New daily/hourly ranges append as new immutable files.
+- Catalog selection admits same-partition incremental fragments only after exact key
+  disjointness is proven. Strictly separated first/last bounds retain a metadata-only fast path;
+  ambiguous multi-instrument bounds use ADR-0065's bounded streaming exact-key merge and reject
+  duplicates/conflicts or an over-fragmented partition before returning any selection.
 - Late corrections create a new dataset version or partition replacement with lineage; committed files are not edited in place.
 - Gap repair is planned from a recomputed blocked audit; planning never edits the committed dataset or performs a market request.
 - Repair execution uses standard receipted Landing jobs after whole-plan resource admission; a

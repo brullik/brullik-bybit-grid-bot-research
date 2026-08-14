@@ -6,8 +6,10 @@ import json
 import os
 import re
 import shutil
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from heapq import merge
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Any, Final, cast
@@ -32,6 +34,8 @@ CATALOG_REGISTRATION_CONTRACT: Final = "grid.canonical-dataset-catalog-registrat
 CATALOG_SELECTION_REQUEST_CONTRACT: Final = "grid.canonical-dataset-selection-request/v1"
 CATALOG_SELECTION_CONTRACT: Final = "grid.canonical-dataset-selection/v1"
 CATALOG_SCHEMA_VERSION: Final = 1
+EXACT_KEY_BATCH_ROWS: Final = 4_096
+MAX_EXACT_KEY_STREAMS: Final = 128
 GIT_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 PARTITION_RE: Final = re.compile(
     r"^dataset=(trade_kline_1m|mark_kline_1m|funding_event)/schema=(v1)/"
@@ -1164,6 +1168,94 @@ def _is_ancestor(
     return False
 
 
+def _iter_file_keys(
+    path: Path,
+    *,
+    time_column: str,
+) -> Iterator[tuple[int, int]]:
+    """Yield one verified canonical file's exact keys with bounded batch memory."""
+
+    previous: tuple[int, int] | None = None
+    try:
+        parquet = pq.ParquetFile(path)
+        for batch in parquet.iter_batches(
+            batch_size=EXACT_KEY_BATCH_ROWS,
+            columns=["instrument_id", time_column],
+            use_threads=False,
+        ):
+            instrument_ids = batch.column(0)
+            timestamps = batch.column(1)
+            for index in range(batch.num_rows):
+                instrument_id = instrument_ids[index].as_py()
+                timestamp_ms = timestamps[index].as_py()
+                if (
+                    isinstance(instrument_id, bool)
+                    or not isinstance(instrument_id, int)
+                    or isinstance(timestamp_ms, bool)
+                    or not isinstance(timestamp_ms, int)
+                ):
+                    raise CatalogError("canonical file key columns must contain exact integers")
+                key = (instrument_id, timestamp_ms)
+                if previous is not None and key <= previous:
+                    raise CatalogError("canonical file keys are not strictly sorted and unique")
+                previous = key
+                yield key
+    except CatalogError:
+        raise
+    except (OSError, TypeError, ValueError) as error:
+        raise CatalogError("canonical file keys cannot be streamed for exact admission") from error
+
+
+def _assert_selected_keys_disjoint(
+    store_root: Path,
+    dataset_type: DatasetType,
+    selected_files: list[tuple[CatalogDatasetRecord, CatalogFileRecord]],
+) -> None:
+    """Resolve ambiguous file bounds by merging exact sorted keys per partition."""
+
+    time_column = "funding_time_ms" if dataset_type is DatasetType.FUNDING_EVENT else "open_time_ms"
+    by_partition: dict[str, list[tuple[CatalogDatasetRecord, CatalogFileRecord]]] = {}
+    for record, item in selected_files:
+        by_partition.setdefault(record.partition_path, []).append((record, item))
+
+    for partition_files in by_partition.values():
+        ordered = sorted(
+            partition_files,
+            key=lambda value: (
+                value[1].first_instrument_id,
+                value[1].first_time_ms,
+                value[0].dataset_id,
+                value[1].ordinal,
+            ),
+        )
+        if all(
+            (left_file.last_instrument_id, left_file.last_time_ms)
+            < (right_file.first_instrument_id, right_file.first_time_ms)
+            for (_left_record, left_file), (_right_record, right_file) in pairwise(ordered)
+        ):
+            continue
+        if len(ordered) > MAX_EXACT_KEY_STREAMS:
+            raise CatalogError(
+                "ambiguous canonical fragment count exceeds the exact-key admission bound; "
+                "compact the partition before selection"
+            )
+
+        streams = [
+            _iter_file_keys(
+                store_root / "datasets" / record.dataset_id / item.dataset_relative_path,
+                time_column=time_column,
+            )
+            for record, item in ordered
+        ]
+        previous: tuple[int, int] | None = None
+        for key in merge(*streams):
+            if key == previous:
+                raise CatalogError(
+                    "selected canonical objects contain duplicate or conflicting exact keys"
+                )
+            previous = key
+
+
 def select_catalog_range(
     request: CatalogSelectionRequest,
     store_root: Path,
@@ -1226,13 +1318,7 @@ def select_catalog_range(
             value[1].ordinal,
         ),
     )
-    for (left_record, left_file), (right_record, right_file) in pairwise(sorted_files):
-        if left_record.partition_path != right_record.partition_path:
-            continue
-        left_last = (left_file.last_instrument_id, left_file.last_time_ms)
-        right_first = (right_file.first_instrument_id, right_file.first_time_ms)
-        if left_last >= right_first:
-            raise CatalogError("selected canonical objects have overlapping key ranges")
+    _assert_selected_keys_disjoint(store_root.resolve(), request.dataset_type, sorted_files)
     objects = tuple(
         SelectedCatalogObject(
             dataset_id=record.dataset_id,
