@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Post-merge stale-output fault-injection evidence bound to merge `5ba2811`: all five named
+  production preflight cases detected and preserved their injected marker, with zero target
+  mutations, zero network access, and a receipt-verified sanitized artifact.
 - ADR-0062 offline stale-output fault injection: five named production preflight boundaries,
   unchanged marker preservation, zero target mutation, temporary fixtures, and schema-bound
   post-merge evidence without network, private/live capability, paths, or market values.
