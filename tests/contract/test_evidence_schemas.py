@@ -2830,6 +2830,108 @@ def test_full_history_catalog_performance_is_receipt_bound_and_sanitized() -> No
         assert forbidden not in rendered
 
 
+def test_pooled_public_rest_performance_is_receipt_bound_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks/results/m2-pooled-public-rest-performance-20260814.json"
+    receipt_path = artifact.with_name(f"{artifact.name}.receipt.json")
+    schema = load_json(
+        ROOT / "schemas/evidence/v1/phase2-pooled-public-rest-performance.schema.json"
+    )
+    payload = load_json(artifact)
+    receipt = load_json(receipt_path)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert embedded_hash == "4e96f03cbe6831952c3a0d99c26286d1926fe3b894164deff4f00bc244854e87"
+    assert verify_evidence(artifact)
+    artifact_sha256 = "7b35117f0e09eb1c65b860a3cc915913cbca375063cb4eb5746b85f4120d58d1"
+    assert sha256_file(artifact) == artifact_sha256
+    assert receipt == {
+        "artifact": artifact.name,
+        "artifact_sha256": artifact_sha256,
+        "receipt_schema": "grid.evidence-receipt/v1",
+        "status": "complete",
+    }
+    assert payload["evidence_schema"] == "grid.phase2-pooled-public-rest-performance/v1"
+    assert payload["status"] == "measured-pooled-public-rest-throughput"
+    assert payload["bindings"] == {
+        "baseline_artifact_sha256": (
+            "563b74622cbbbe3470a4bba341fe293f2b2eacd508548b94b81b7396fd942c5c"
+        ),
+        "implementation_identity": "git:6fc48f1af3244c4c73e4455f5f3ddbc9c1af889b",
+        "inventory_artifact_sha256": (
+            "f679091e55fbc7b7d1c650fc64fc907b6ec608c6b87d91ed851891073366a78a"
+        ),
+        "source_assessment_artifact_sha256": (
+            "53442fb4357ca81ec80f8b46e11bcc12158646dbbfc3d5b129afe657e37c508d"
+        ),
+        "workstation_artifact_sha256": (
+            "b60b577b4c1a66943fe7bb572f5ef51865b5533012f5ebd4b5505f48d76e05da"
+        ),
+    }
+    assert payload["comparison"] == {
+        "observed_request_rate_speedup_ratio": "1.250496",
+        "wall_elapsed_reduction_percent": "20.031716",
+    }
+    assert payload["configuration"] == {
+        "max_connections": 24,
+        "planned_request_count": 100,
+        "sample_size": 8,
+        "stage_seconds": 10,
+        "target_requests_per_second": 10,
+        "transport_max_attempts": 1,
+        "transport_policy": "bounded-http11-keep-alive-v1",
+        "workers": 24,
+    }
+    assert payload["measurement"] == {
+        "actual_request_count": 100,
+        "error_count": 0,
+        "full_page_count": 100,
+        "latency_ms": {
+            "max": "1352.474",
+            "min": "241.863",
+            "p50": "412.869",
+            "p95": "998.815",
+            "p99": "1326.396",
+        },
+        "observed_requests_per_second": "9.709345",
+        "observed_rows_per_second": "9709.344840",
+        "response_hash_aggregate": (
+            "f678abddd8fda870683da857acafb8b47b5b8cd06a8090c9289b73739b552477"
+        ),
+        "row_count": 100_000,
+        "status": "passed",
+        "success_count": 100,
+        "target_attainment_ratio": "0.970934",
+        "wall_elapsed_ns": 10_299_356_000,
+    }
+    assert (
+        payload["baseline"]["response_hash_aggregate"]
+        == (payload["measurement"]["response_hash_aggregate"])
+    )
+    assert payload["assurances"] == {
+        "adaptive_rate_limit_policy_changed": False,
+        "credentials_or_private_endpoint_used": False,
+        "market_rows_or_values_persisted": False,
+        "network_request_count": 100,
+        "request_retry_or_rate_ceiling_changed": False,
+        "source_response_pages_validated_in_memory": True,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        '"command"',
+        '"symbol"',
+        '"instrument_id"',
+        '"benchmark_end_ms"',
+        '"api_key"',
+        '"api_secret"',
+    ):
+        assert forbidden not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 

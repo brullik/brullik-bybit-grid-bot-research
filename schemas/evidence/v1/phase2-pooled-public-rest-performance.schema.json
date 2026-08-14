@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-pooled-public-rest-performance.schema.json",
+  "title": "Sanitized pooled public REST performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "baseline",
+    "bindings",
+    "comparison",
+    "configuration",
+    "content_sha256",
+    "environment",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "measurement",
+    "status"
+  ],
+  "properties": {
+    "assurances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adaptive_rate_limit_policy_changed",
+        "credentials_or_private_endpoint_used",
+        "market_rows_or_values_persisted",
+        "network_request_count",
+        "request_retry_or_rate_ceiling_changed",
+        "source_response_pages_validated_in_memory"
+      ],
+      "properties": {
+        "adaptive_rate_limit_policy_changed": {"const": false},
+        "credentials_or_private_endpoint_used": {"const": false},
+        "market_rows_or_values_persisted": {"const": false},
+        "network_request_count": {"const": 100},
+        "request_retry_or_rate_ceiling_changed": {"const": false},
+        "source_response_pages_validated_in_memory": {"const": true}
+      }
+    },
+    "baseline": {"$ref": "#/$defs/measurement"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_artifact_sha256",
+        "implementation_identity",
+        "inventory_artifact_sha256",
+        "source_assessment_artifact_sha256",
+        "workstation_artifact_sha256"
+      ],
+      "properties": {
+        "baseline_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "implementation_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+        "inventory_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "source_assessment_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "workstation_artifact_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_request_rate_speedup_ratio", "wall_elapsed_reduction_percent"],
+      "properties": {
+        "observed_request_rate_speedup_ratio": {"$ref": "#/$defs/decimal"},
+        "wall_elapsed_reduction_percent": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_connections",
+        "planned_request_count",
+        "sample_size",
+        "stage_seconds",
+        "target_requests_per_second",
+        "transport_max_attempts",
+        "transport_policy",
+        "workers"
+      ],
+      "properties": {
+        "max_connections": {"const": 24},
+        "planned_request_count": {"const": 100},
+        "sample_size": {"const": 8},
+        "stage_seconds": {"const": 10},
+        "target_requests_per_second": {"const": 10},
+        "transport_max_attempts": {"const": 1},
+        "transport_policy": {"const": "bounded-http11-keep-alive-v1"},
+        "workers": {"const": 24}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_cpu_count",
+        "memory_available_bytes",
+        "memory_total_bytes",
+        "platform_machine",
+        "platform_system",
+        "python_version",
+        "storage_kind",
+        "volume_free_bytes"
+      ],
+      "properties": {
+        "logical_cpu_count": {"type": "integer", "minimum": 1},
+        "memory_available_bytes": {"type": "integer", "minimum": 1},
+        "memory_total_bytes": {"type": "integer", "minimum": 1},
+        "platform_machine": {"type": "string", "minLength": 1},
+        "platform_system": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "storage_kind": {"enum": ["nvme", "ssd", "unknown"]},
+        "volume_free_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "evidence_schema": {"const": "grid.phase2-pooled-public-rest-performance/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 20}
+    },
+    "measurement": {"$ref": "#/$defs/measurement"},
+    "status": {
+      "enum": ["measured-pooled-public-rest-throughput", "measured-no-speedup"]
+    }
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^-?[0-9]+\\.[0-9]+$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "p50", "p95", "p99", "max"],
+      "properties": {
+        "min": {"$ref": "#/$defs/decimal"},
+        "p50": {"$ref": "#/$defs/decimal"},
+        "p95": {"$ref": "#/$defs/decimal"},
+        "p99": {"$ref": "#/$defs/decimal"},
+        "max": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_request_count",
+        "error_count",
+        "full_page_count",
+        "latency_ms",
+        "observed_requests_per_second",
+        "observed_rows_per_second",
+        "response_hash_aggregate",
+        "row_count",
+        "status",
+        "success_count",
+        "target_attainment_ratio",
+        "wall_elapsed_ns"
+      ],
+      "properties": {
+        "actual_request_count": {"type": "integer", "minimum": 1, "maximum": 100},
+        "error_count": {"type": "integer", "minimum": 0, "maximum": 100},
+        "full_page_count": {"type": "integer", "minimum": 0, "maximum": 100},
+        "latency_ms": {"$ref": "#/$defs/latency"},
+        "observed_requests_per_second": {"$ref": "#/$defs/decimal"},
+        "observed_rows_per_second": {"$ref": "#/$defs/decimal"},
+        "response_hash_aggregate": {"$ref": "#/$defs/sha256"},
+        "row_count": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["passed", "under-target", "failed"]},
+        "success_count": {"type": "integer", "minimum": 0, "maximum": 100},
+        "target_attainment_ratio": {"$ref": "#/$defs/decimal"},
+        "wall_elapsed_ns": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

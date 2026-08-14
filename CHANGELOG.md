@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified post-merge ADR-0083 throughput evidence: the unchanged 100-page/10-RPS public
+  workload completed at 9.709345 requests/second, 1.250496x the prior confirmation, with the same
+  aggregate response hash, zero errors, and no retained market values.
 - ADR-0083 and a bounded standard-library HTTPS/1.1 connection pool for high-volume public REST
   acquisition, preserving the existing global RPS pacer, retry ceilings, receipts, and resume
   behavior while reusing successful sessions across sequential campaign children.
