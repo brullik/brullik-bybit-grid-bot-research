@@ -49,8 +49,6 @@ class CanonicalCandleBatch:
     def __post_init__(self) -> None:
         if self.dataset_type not in SUPPORTED_CANDLE_TYPES:
             raise PhysicalContractError("canonical candle batch has an unsupported dataset type")
-        if self.table.num_rows <= 0:
-            raise PhysicalContractError("canonical candle batch cannot be empty")
         verify_canonical_candle_schema(self.table.schema, self.dataset_type)
 
 
@@ -362,6 +360,29 @@ def build_canonical_candle_batch(
     return CanonicalCandleBatch(
         dataset_type=dataset_type,
         partition_path=next(iter(partitions)),
+        table=table,
+    )
+
+
+def build_empty_canonical_candle_batch(
+    dataset_type: DatasetType,
+    *,
+    instrument_id: int,
+    open_time_ms: int,
+) -> CanonicalCandleBatch:
+    """Build an explicit schema-only batch for a verified zero-admission source partition."""
+
+    if dataset_type not in SUPPORTED_CANDLE_TYPES:
+        raise PhysicalContractError("canonical batch requires a candle dataset type")
+    partition = canonical_partition_path(
+        dataset_type,
+        instrument_id=instrument_id,
+        open_time_ms=open_time_ms,
+    )
+    table = pa.Table.from_batches([], schema=canonical_candle_schema(dataset_type))
+    return CanonicalCandleBatch(
+        dataset_type=dataset_type,
+        partition_path=partition,
         table=table,
     )
 

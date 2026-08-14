@@ -76,7 +76,7 @@
         "manifest_sha256": {"$ref": "#/$defs/sha256"},
         "parquet_bytes": {"type": "integer", "minimum": 1},
         "publication_request_sha256": {"$ref": "#/$defs/sha256"},
-        "row_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
         "sequence": {"type": "integer", "minimum": 0, "maximum": 2879},
         "source_job_manifest_sha256": {"$ref": "#/$defs/sha256"}
       }

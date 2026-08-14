@@ -775,6 +775,11 @@ after preflight passes. Writers run sequentially; each emits progress JSON only 
 canonical completion receipt verifies. If interrupted, rerun the same command: already committed
 datasets are hash-verified and reused, never rewritten.
 
+A verified candle child with zero admitted rows is not skipped. ADR-0067 publishes a receipt-bound
+schema-only Parquet child so the subsequent coverage audit can report the complete missing range
+and any quarantined-source reason without inventing market data. A zero-row canonical child is not
+coverage acceptance and must not be registered for research unless its separate audit passes.
+
 Aggregate preflight decodes each verified Landing page once through the typed child handoff and
 releases that child's Arrow batch before moving to the next child. It is still intentionally a
 full exact verification and can take several minutes for multi-million-row campaigns. A long

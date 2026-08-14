@@ -294,6 +294,12 @@ for that child's publication preflight, and no batch survives into the aggregate
 still performs a fresh complete child verification immediately before that child can mutate the
 canonical store, and final aggregate verification remains independent.
 
+ADR-0067 covers a verified candle child whose admitted table is empty. The same writer stores one
+schema-only Parquet file in the request-derived month/bucket partition and receipts a zero-row,
+zero-instrument manifest with null bounds. It does not skip the child, admit quarantined values, or
+claim coverage; ADR-0026 still reports every requested missing minute and ADR-0053 preserves the
+quarantine reason.
+
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact
 records their canonical hashes, requested ranges, exact 1m coverage, counts, immutable publisher

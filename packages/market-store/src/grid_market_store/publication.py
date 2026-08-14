@@ -185,13 +185,13 @@ class _ParquetFacts:
     row_count: int
     row_group_count: int
     instrument_count: int
-    min_time_ms: int
-    max_time_ms: int
-    min_instrument_id: int
-    max_instrument_id: int
+    min_time_ms: int | None
+    max_time_ms: int | None
+    min_instrument_id: int | None
+    max_instrument_id: int | None
     instrument_ids: frozenset[int]
-    first_key: tuple[int, int]
-    last_key: tuple[int, int]
+    first_key: tuple[int, int] | None
+    last_key: tuple[int, int] | None
 
 
 def _table_sha256(table: pa.Table) -> str:
@@ -394,8 +394,11 @@ def _target_classification(size_bytes: int) -> str:
 def _file_stats(
     batch: CanonicalCandleBatch, relative_path: PurePosixPath, path: Path
 ) -> DatasetFile:
-    times = cast(dict[str, int], pc.min_max(batch.table.column("open_time_ms")).as_py())
-    instruments = cast(dict[str, int], pc.min_max(batch.table.column("instrument_id")).as_py())
+    times = cast(dict[str, int | None], pc.min_max(batch.table.column("open_time_ms")).as_py())
+    instruments = cast(
+        dict[str, int | None],
+        pc.min_max(batch.table.column("instrument_id")).as_py(),
+    )
     return DatasetFile(
         path=relative_path.as_posix(),
         sha256=sha256_file(path),
@@ -442,11 +445,19 @@ def _parquet_facts(
         )
         if pc.all(strictly_ordered).as_py() is not True:
             raise PublicationError("Parquet canonical keys are not strictly sorted and unique")
-    times = cast(dict[str, int], pc.min_max(open_times).as_py())
-    instruments = cast(dict[str, int], pc.min_max(instrument_ids).as_py())
+    times = cast(dict[str, int | None], pc.min_max(open_times).as_py())
+    instruments = cast(dict[str, int | None], pc.min_max(instrument_ids).as_py())
     unique_instruments = cast(list[int], pc.unique(instrument_ids).to_pylist())
-    first_key = (cast(int, instrument_ids[0].as_py()), cast(int, open_times[0].as_py()))
-    last_key = (cast(int, instrument_ids[-1].as_py()), cast(int, open_times[-1].as_py()))
+    first_key = (
+        (cast(int, instrument_ids[0].as_py()), cast(int, open_times[0].as_py()))
+        if keys.num_rows
+        else None
+    )
+    last_key = (
+        (cast(int, instrument_ids[-1].as_py()), cast(int, open_times[-1].as_py()))
+        if keys.num_rows
+        else None
+    )
     return _ParquetFacts(
         row_count=keys.num_rows,
         row_group_count=row_group_count,
@@ -548,7 +559,7 @@ def publish_candle_dataset(
         temporary_parquet,
         compression=COMPRESSION,
         compression_level=COMPRESSION_LEVEL,
-        row_group_size=min(ROW_GROUP_ROWS, plan.batch.table.num_rows),
+        row_group_size=max(1, min(ROW_GROUP_ROWS, plan.batch.table.num_rows)),
         use_dictionary=("category", "source_id", "ingestion_id"),
         write_statistics=True,
         data_page_version="2.0",
@@ -782,12 +793,20 @@ def verify_committed_candle_dataset(dataset_root: Path) -> PublishedDataset:
     ):
         raise PublicationError("manifest Parquet inventory must be path-sorted")
     for left, right in pairwise(verified_facts):
+        if left.last_key is None or right.first_key is None:
+            raise PublicationError("multi-file candle datasets cannot contain empty Parquet files")
         if left.last_key >= right.first_key:
             raise PublicationError("Parquet files are not globally sorted with unique keys")
     row_count = sum(item.row_count for item in manifest.files)
     instrument_ids = frozenset().union(*(item.instrument_ids for item in verified_facts))
-    min_time_ms = min(item.min_time_ms for item in verified_facts)
-    max_time_ms = max(item.max_time_ms for item in verified_facts)
+    observed_min_times = [
+        item.min_time_ms for item in verified_facts if item.min_time_ms is not None
+    ]
+    observed_max_times = [
+        item.max_time_ms for item in verified_facts if item.max_time_ms is not None
+    ]
+    min_time_ms = min(observed_min_times) if observed_min_times else None
+    max_time_ms = max(observed_max_times) if observed_max_times else None
     if (
         manifest.row_count != row_count
         or manifest.instrument_count != len(instrument_ids)

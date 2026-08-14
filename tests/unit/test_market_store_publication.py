@@ -15,6 +15,7 @@ from grid_market_store import (
     HostSnapshot,
     PublicationError,
     build_canonical_candle_batch,
+    build_empty_canonical_candle_batch,
     preflight_candle_dataset,
     publish_candle_dataset,
     verify_committed_candle_dataset,
@@ -151,6 +152,51 @@ def test_preflight_is_no_mutation_and_publication_writes_receipt_last_contract(
         "sorted_unique_keys": True,
         "upstream_coverage_evidence_bound": True,
     }
+
+
+def test_schema_only_source_partition_publishes_as_verified_empty_parquet(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "market-store"
+    empty_batch = build_empty_canonical_candle_batch(
+        DatasetType.TRADE_KLINE_1M,
+        instrument_id=9,
+        open_time_ms=1_767_225_600_000,
+    )
+    publication_plan = preflight_candle_dataset(
+        store,
+        spec(),
+        empty_batch,
+        budget(),
+        snapshot(tmp_path),
+        now_ms=1_001,
+    )
+
+    published = publish_candle_dataset(
+        publication_plan,
+        snapshot(tmp_path, observed_at_ms=1_002),
+        committed_at_ms=1_003,
+    )
+
+    assert published.manifest.row_count == 0
+    assert published.manifest.instrument_count == 0
+    assert published.manifest.min_time_ms is None
+    assert published.manifest.max_time_ms is None
+    assert len(published.manifest.files) == 1
+    dataset_file = published.manifest.files[0]
+    assert dataset_file.row_count == 0
+    assert dataset_file.min_time_ms is None
+    assert dataset_file.max_time_ms is None
+    assert dataset_file.min_instrument_id is None
+    assert dataset_file.max_instrument_id is None
+    parquet = pq.ParquetFile(published.dataset_root / dataset_file.path)
+    try:
+        assert parquet.metadata.num_rows == 0
+        assert parquet.metadata.num_row_groups == 1
+    finally:
+        parquet.close()
+    verified = verify_committed_candle_dataset(published.dataset_root)
+    assert verified.receipt == published.receipt
 
 
 def test_same_request_is_idempotent_but_changed_content_is_rejected(tmp_path: Path) -> None:
