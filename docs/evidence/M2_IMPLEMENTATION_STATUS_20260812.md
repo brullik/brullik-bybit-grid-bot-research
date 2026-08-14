@@ -1234,6 +1234,19 @@ The artifact SHA-256 is
 `c36612505d1b07f50ae6092efe4a158129ced9f25832e2f9a757924a514366d0`; its embedded content
 SHA-256 is `5836c774e353f6deaae7e5642c8390a45dea7a66f396944ae45f46a2def858f8`.
 
+## Full-history catalog performance implementation
+
+ADR-0082 adds a bounded read-only benchmark that reuses the public catalog result and the four
+private topology-scoped request/evidence pairs. It measures concurrent production selection plus
+an immediate repeat while retaining receipt/file verification inside the timed path. Exact result
+equality, complete public inventory reconciliation, unchanged catalog/dataset state, and a
+post-measurement catalog verification are mandatory.
+
+The implementation repeats no Bybit acquisition, canonical publication, coverage scan, repair, or
+catalog registration. A post-merge sanitized result remains required before timings become GitHub
+evidence. This component cannot qualify the end-to-end envelope, close Gate 2, or authorize Phase
+3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
