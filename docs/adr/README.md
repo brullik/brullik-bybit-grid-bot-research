@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0066 - Offline incremental catalog selection performance evidence](ADR-0066-offline-incremental-catalog-selection-performance-evidence.md)
 - [ADR-0065 - Bounded exact-key admission for incremental catalog selection](ADR-0065-bounded-exact-incremental-catalog-key-admission.md)
 - [ADR-0064 - Offline canonical integrity fault-injection evidence](ADR-0064-offline-canonical-integrity-fault-injection.md)
 - [ADR-0063 - Receipt-bound non-promoting Gate 2 readiness pack](ADR-0063-receipt-bound-gate2-readiness-pack.md)

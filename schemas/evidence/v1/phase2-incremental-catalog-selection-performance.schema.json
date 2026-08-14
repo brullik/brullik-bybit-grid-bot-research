@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-incremental-catalog-selection-performance.schema.json",
+  "title": "Phase 2 incremental catalog exact-key selection performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "configuration",
+    "content_sha256",
+    "correctness",
+    "environment",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "measurement",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "catalog_and_dataset_state_preserved": true,
+        "network_request_performed": false,
+        "private_or_live_capability_used": false,
+        "production_catalog_selector_exercised": true,
+        "retained_market_store_accessed": false,
+        "temporary_fixture_removed": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_identity"],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_key_batch_rows",
+        "fragment_count",
+        "instrument_count",
+        "max_exact_key_streams",
+        "minutes_per_fragment",
+        "total_row_count"
+      ],
+      "properties": {
+        "exact_key_batch_rows": {"const": 4096},
+        "fragment_count": {"type": "integer", "minimum": 2, "maximum": 64},
+        "instrument_count": {"type": "integer", "minimum": 2, "maximum": 128},
+        "max_exact_key_streams": {"const": 128},
+        "minutes_per_fragment": {"type": "integer", "minimum": 1, "maximum": 1440},
+        "total_row_count": {"type": "integer", "minimum": 4, "maximum": 5000000}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "correctness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ambiguous_adjacent_bound_count",
+        "catalog_revision",
+        "deterministic_repeat_equal",
+        "selected_object_count",
+        "selected_row_count",
+        "selection_fingerprint_sha256",
+        "store_fingerprint_equal_before_after"
+      ],
+      "properties": {
+        "ambiguous_adjacent_bound_count": {"type": "integer", "minimum": 1},
+        "catalog_revision": {"const": 1},
+        "deterministic_repeat_equal": {"const": true},
+        "selected_object_count": {"type": "integer", "minimum": 2},
+        "selected_row_count": {"type": "integer", "minimum": 4, "maximum": 5000000},
+        "selection_fingerprint_sha256": {"$ref": "#/$defs/sha256"},
+        "store_fingerprint_equal_before_after": {"const": true}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cache_state",
+        "duckdb_version",
+        "logical_cpu_count",
+        "memory_total_bytes",
+        "platform_machine",
+        "platform_system",
+        "pyarrow_version",
+        "python_version"
+      ],
+      "properties": {
+        "cache_state": {"const": "uncontrolled-first-then-immediate-repeat"},
+        "duckdb_version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "logical_cpu_count": {"type": "integer", "minimum": 1},
+        "memory_total_bytes": {"type": "integer", "minimum": 1},
+        "platform_machine": {"type": "string", "minLength": 1, "maxLength": 64},
+        "platform_system": {"type": "string", "minLength": 1, "maxLength": 64},
+        "pyarrow_version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "python_version": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "evidence_schema": {"const": "grid.phase2-incremental-catalog-selection-performance/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "const": [
+        "Synthetic exact-key selection is measured evidence, not full-history performance.",
+        "The result does not prove coverage, accept Gate 2, or authorize Phase 3 or live use.",
+        "Elapsed time includes receipt/file reverification and may reflect host cache state."
+      ]
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first_selection_elapsed_ns",
+        "first_selection_rows_per_second",
+        "repeat_selection_elapsed_ns",
+        "repeat_selection_rows_per_second"
+      ],
+      "properties": {
+        "first_selection_elapsed_ns": {"type": "integer", "minimum": 1},
+        "first_selection_rows_per_second": {"type": "integer", "minimum": 1},
+        "repeat_selection_elapsed_ns": {"type": "integer", "minimum": 1},
+        "repeat_selection_rows_per_second": {"type": "integer", "minimum": 1}
+      }
+    },
+    "status": {"const": "measured-incremental-catalog-selection"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_or_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_fixture_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

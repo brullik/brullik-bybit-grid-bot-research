@@ -202,6 +202,12 @@ Final thresholds must be set after the benchmark spike. Initial targets on docum
 
 These are acceptance hypotheses, not guarantees. The benchmark report must state hardware, versions, cache status, input layout, and exact commands.
 
+ADR-0066 adds a separate offline measurement for ADR-0065 same-partition incremental catalog
+selection. It runs production publication, registration, receipt/file reverification, and the
+exact-key selector over bounded temporary synthetic fragments, then records both first and repeat
+duration while proving the store fingerprint is unchanged. This measurement defines no Gate 2
+threshold and is not a substitute for the blocked full-history end-to-end performance run.
+
 ## Gate 1 benchmark matrix — completed
 
 The original 8/16/32-bucket and 128/256/512-MB matrix could not attain its per-file targets at
