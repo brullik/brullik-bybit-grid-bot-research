@@ -723,8 +723,11 @@ def build_current_universe_funding_evidence(
                 contract=BOUNDARY_EVIDENCE_CONTRACT,
                 statuses={"verified-public-funding-source-boundary"},
             )
+            boundary_symbols = _array(boundary_request, "symbols")
+            request_symbols = _array(request, "symbols")
             _require(
-                _array(boundary_request, "symbols") == _array(request, "symbols")
+                len(boundary_symbols) == len(request_symbols)
+                and set(boundary_symbols) == set(request_symbols)
                 and _integer(boundary_request, "start_ms") == _integer(request, "start_ms")
                 and _integer(boundary_request, "end_ms") == _integer(request, "end_ms"),
                 "funding boundary/request scope differs",

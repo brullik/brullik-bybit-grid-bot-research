@@ -241,6 +241,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Current-universe funding evidence now compares the boundary's required sorted symbol list with
+  the campaign's unique source-order list by exact membership, preventing a false scope mismatch
+  without weakening range or identity checks.
 - Resumed history campaigns now use ADR-0046 receipt-integrity verification for already completed
   Landing children and reuse each verified result within the same preflight/execute invocation;
   partial children and explicit semantic verifiers still decode and validate every source row.
