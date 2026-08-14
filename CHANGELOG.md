@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0086 and a preordered, single-parse canonical candle publication path that preserves exact
+  Landing/admission/Arrow contracts, rejects order drift, and avoids a global sort or full admitted
+  key set on multi-million-row history children.
 - ADR-0085 and a receipt-resumable multi-campaign catalog selection bundle that derives exact
   topology segments, rejects overlapping source key space, verifies one catalog snapshot, and
   publishes only an identifier-free aggregate without repeating Bybit acquisition.

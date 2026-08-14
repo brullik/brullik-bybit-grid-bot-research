@@ -311,6 +311,13 @@ publication binds source/admitted/excluded counts, a complete reason counter, an
 hash into plan, manifest, build identity, and source evidence. It publishes no key or market value,
 never rounds, and uses ADR-0067 if the admitted canonical table becomes empty.
 
+ADR-0086 makes this publication verification path single-parse and linear-order. Each Landing row
+is semantically decoded once, admission bindings retain their original source/task ordering, and
+reversing each strict reverse-chronological page in ascending task order yields canonical key
+order. A dedicated physical adapter then rejects any non-increasing or duplicate key before using
+the unchanged exact conversion. The general adapter still sorts arbitrary input, and publication
+still materializes one bounded child batch before the receipt-last immutable write.
+
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact
 records their canonical hashes, requested ranges, exact 1m coverage, counts, immutable publisher

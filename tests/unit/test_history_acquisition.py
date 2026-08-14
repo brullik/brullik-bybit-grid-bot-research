@@ -18,6 +18,7 @@ from grid_data.history_acquisition import (
     HistorySeries,
     execute_history_job,
     load_completed_history_batch,
+    load_verified_completed_history_publication_batch,
     preflight_history_job,
     verify_completed_history_job,
     verify_completed_history_job_integrity,
@@ -345,6 +346,40 @@ def test_fixed_page_plan_is_no_mutation_and_completed_job_loads_exact_batch(tmp_
         value.startswith("bybit-page-sha256:")
         for value in batch.table.column("ingestion_id").to_pylist()
     )
+    assert (
+        batch.table.column("open_time_ms").to_pylist()
+        == [
+            JANUARY_1_2026_MS,
+            JANUARY_1_2026_MS + 60_000,
+            JANUARY_1_2026_MS + 120_000,
+        ]
+        * 2
+    )
+
+
+def test_publication_batch_parses_each_exact_decimal_once_and_preserves_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient())
+    original = history_acquisition._parse_decimal
+    parse_count = 0
+
+    def counted(name: str, raw: str):  # type: ignore[no-untyped-def]
+        nonlocal parse_count
+        parse_count += 1
+        return original(name, raw)
+
+    monkeypatch.setattr(history_acquisition, "_parse_decimal", counted)
+    verified, batch, admission = load_verified_completed_history_publication_batch(
+        completed.job_root
+    )
+
+    assert verified.manifest_sha256 == completed.manifest_sha256
+    assert parse_count == completed.row_count * 6
+    assert admission.source_row_count == completed.row_count
+    assert admission.excluded_row_count == 0
+    assert batch.table.column("instrument_id").to_pylist() == [1, 1, 1, 9, 9, 9]
     assert (
         batch.table.column("open_time_ms").to_pylist()
         == [

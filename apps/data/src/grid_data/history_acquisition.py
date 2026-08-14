@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from itertools import pairwise
 from pathlib import Path
 from threading import local
 from typing import Final, Literal, Protocol, cast
@@ -25,8 +26,8 @@ from grid_market_store import (
     CanonicalCandleBatch,
     CapacityBudget,
     HostSnapshot,
-    build_canonical_candle_batch,
     build_empty_canonical_candle_batch,
+    build_preordered_canonical_candle_batch,
     canonical_partition_path,
 )
 
@@ -479,9 +480,12 @@ def _task_page_path(paths: HistoryJobPaths, task: HistoryPageTask) -> Path:
     return paths.pages_root / task.artifact_name
 
 
-def _validate_page_payload(
-    payload: Mapping[str, object], task: HistoryPageTask
-) -> PageSourceQuality:
+def _validate_page_payload_rows(
+    payload: Mapping[str, object],
+    task: HistoryPageTask,
+    *,
+    ingestion_id: str,
+) -> tuple[PageSourceQuality, tuple[Candle1m | MarkCandle1m, ...]]:
     expected = {
         "category": task.category,
         "end_ms": task.end_ms,
@@ -571,10 +575,10 @@ def _validate_page_payload(
             pass
         else:  # pragma: no cover - guarded by source_row_count arithmetic
             raise HistoryAcquisitionError("staged page admitted row inventory is invalid")
-        verified_rows, verified_quarantine = _partition_source_rows(
+        verified_rows, verified_quarantine, logical_rows = _partition_source_rows(
             task,
             cast(list[tuple[str, ...]], source_rows),
-            ingestion_id="history-page-verification",
+            ingestion_id=ingestion_id,
         )
         if [list(row) for row in verified_rows] != rows or verified_quarantine != raw_quarantined:
             raise HistoryAcquisitionError("staged page quarantine classification does not verify")
@@ -591,7 +595,7 @@ def _validate_page_payload(
     else:
         if len(rows) > task.limit:
             raise HistoryAcquisitionError("staged page exceeds its requested row limit")
-        _logical_rows(task, typed_rows, ingestion_id="history-page-verification")
+        logical_rows = _logical_rows(task, typed_rows, ingestion_id=ingestion_id)
         quality = PageSourceQuality(
             source_row_count=len(rows),
             quarantined_row_count=0,
@@ -601,6 +605,17 @@ def _validate_page_payload(
     expected_rows_sha = canonical_sha256(rows)
     if payload.get("rows_sha256") != expected_rows_sha or payload.get("row_count") != len(rows):
         raise HistoryAcquisitionError("staged page row hash/count mismatch")
+    return quality, logical_rows
+
+
+def _validate_page_payload(
+    payload: Mapping[str, object], task: HistoryPageTask
+) -> PageSourceQuality:
+    quality, _logical = _validate_page_payload_rows(
+        payload,
+        task,
+        ingestion_id="history-page-verification",
+    )
     return quality
 
 
@@ -716,50 +731,34 @@ def _logical_rows(
     *,
     ingestion_id: str,
 ) -> tuple[Candle1m | MarkCandle1m, ...]:
-    expected_width = 7 if task.kind == "trade" else 5
     timestamps: list[int] = []
     logical: list[Candle1m | MarkCandle1m] = []
-    source_id = "bybit-v5-kline/v1" if task.kind == "trade" else "bybit-v5-mark-kline/v1"
     for row in rows:
-        if len(row) != expected_width or not row[0].isdigit():
-            raise HistoryAcquisitionError("Bybit kline row has invalid width or timestamp")
-        timestamp = int(row[0])
-        if timestamp < task.start_ms or timestamp > task.end_ms or timestamp % MINUTE_MS:
-            raise HistoryAcquisitionError("Bybit kline timestamp escapes its planned page")
+        timestamp, parsed, quarantine_reason = _parse_source_row(
+            task,
+            row,
+            ingestion_id=ingestion_id,
+        )
         timestamps.append(timestamp)
-        common = {
-            "category": task.category,
-            "instrument_id": task.instrument_id,
-            "open_time_ms": timestamp,
-            "open": _parse_decimal("open", row[1]),
-            "high": _parse_decimal("high", row[2]),
-            "low": _parse_decimal("low", row[3]),
-            "close": _parse_decimal("close", row[4]),
-            "source_id": source_id,
-            "ingestion_id": ingestion_id,
-            "quality_flags": 0,
-        }
-        try:
-            if task.kind == "trade":
-                logical.append(
-                    Candle1m(
-                        **common,  # type: ignore[arg-type]
-                        volume=_parse_decimal("volume", row[5]),
-                        turnover=_parse_decimal("turnover", row[6]),
-                    )
-                )
-            else:
-                logical.append(MarkCandle1m(**common))  # type: ignore[arg-type]
-        except ValueError as error:
-            raise HistoryAcquisitionError(
-                "Bybit kline violates the logical candle contract"
-            ) from error
-    if timestamps != sorted(timestamps, reverse=True) or len(timestamps) != len(set(timestamps)):
-        raise HistoryAcquisitionError("Bybit kline page must be unique reverse chronological data")
+        if quarantine_reason is not None or parsed is None:
+            raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
+        logical.append(parsed)
+    _assert_reverse_chronological(timestamps)
     return tuple(logical)
 
 
-def _quarantine_reason(row: tuple[str, ...]) -> str | None:
+def _parse_source_row(
+    task: HistoryPageTask,
+    row: tuple[str, ...],
+    *,
+    ingestion_id: str,
+) -> tuple[int, Candle1m | MarkCandle1m | None, str | None]:
+    expected_width = 7 if task.kind == "trade" else 5
+    if len(row) != expected_width or not row[0].isdigit():
+        raise HistoryAcquisitionError("Bybit kline row has invalid width or timestamp")
+    timestamp = int(row[0])
+    if timestamp < task.start_ms or timestamp > task.end_ms or timestamp % MINUTE_MS:
+        raise HistoryAcquisitionError("Bybit kline timestamp escapes its planned page")
     prices = {
         "open": _parse_decimal("open", row[1]),
         "high": _parse_decimal("high", row[2]),
@@ -768,13 +767,50 @@ def _quarantine_reason(row: tuple[str, ...]) -> str | None:
     }
     if any(value <= 0 for value in prices.values()):
         raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
+    reason: str | None = None
     if prices["low"] > prices["high"]:
-        return "low_exceeds_high"
-    if not prices["low"] <= prices["open"] <= prices["high"]:
-        return "open_outside_low_high"
-    if not prices["low"] <= prices["close"] <= prices["high"]:
-        return "close_outside_low_high"
-    return None
+        reason = "low_exceeds_high"
+    elif not prices["low"] <= prices["open"] <= prices["high"]:
+        reason = "open_outside_low_high"
+    elif not prices["low"] <= prices["close"] <= prices["high"]:
+        reason = "close_outside_low_high"
+    volume: Decimal | None = None
+    turnover: Decimal | None = None
+    if task.kind == "trade":
+        volume = _parse_decimal("volume", row[5])
+        turnover = _parse_decimal("turnover", row[6])
+        if volume < 0 or turnover < 0:
+            raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
+    if reason is not None:
+        return timestamp, None, reason
+    common = {
+        "category": task.category,
+        "instrument_id": task.instrument_id,
+        "open_time_ms": timestamp,
+        **prices,
+        "source_id": ("bybit-v5-kline/v1" if task.kind == "trade" else "bybit-v5-mark-kline/v1"),
+        "ingestion_id": ingestion_id,
+        "quality_flags": 0,
+    }
+    try:
+        logical: Candle1m | MarkCandle1m
+        if task.kind == "trade":
+            assert volume is not None and turnover is not None
+            logical = Candle1m(
+                **common,  # type: ignore[arg-type]
+                volume=volume,
+                turnover=turnover,
+            )
+        else:
+            logical = MarkCandle1m(**common)  # type: ignore[arg-type]
+    except ValueError as error:
+        raise HistoryAcquisitionError("Bybit kline violates the logical candle contract") from error
+    return timestamp, logical, None
+
+
+def _assert_reverse_chronological(timestamps: Sequence[int]) -> None:
+    if any(newer <= older for newer, older in pairwise(timestamps)):
+        raise HistoryAcquisitionError("Bybit kline page must be unique reverse chronological data")
 
 
 def _partition_source_rows(
@@ -782,28 +818,28 @@ def _partition_source_rows(
     rows: Sequence[tuple[str, ...]],
     *,
     ingestion_id: str,
-) -> tuple[tuple[tuple[str, ...], ...], list[dict[str, object]]]:
+) -> tuple[
+    tuple[tuple[str, ...], ...],
+    list[dict[str, object]],
+    tuple[Candle1m | MarkCandle1m, ...],
+]:
     """Admit exact logical rows and retain only recognized OHLC anomalies verbatim."""
 
-    expected_width = 7 if task.kind == "trade" else 5
     timestamps: list[int] = []
     admitted: list[tuple[str, ...]] = []
     quarantined: list[dict[str, object]] = []
+    logical: list[Candle1m | MarkCandle1m] = []
     for source_index, row in enumerate(rows):
-        if len(row) != expected_width or not row[0].isdigit():
-            raise HistoryAcquisitionError("Bybit kline row has invalid width or timestamp")
-        timestamp = int(row[0])
-        if timestamp < task.start_ms or timestamp > task.end_ms or timestamp % MINUTE_MS:
-            raise HistoryAcquisitionError("Bybit kline timestamp escapes its planned page")
+        timestamp, parsed, reason = _parse_source_row(
+            task,
+            row,
+            ingestion_id=ingestion_id,
+        )
         timestamps.append(timestamp)
-        reason = _quarantine_reason(row)
-        if task.kind == "trade":
-            volume = _parse_decimal("volume", row[5])
-            turnover = _parse_decimal("turnover", row[6])
-            if volume < 0 or turnover < 0:
-                raise HistoryAcquisitionError("Bybit kline violates the logical candle contract")
         if reason is None:
+            assert parsed is not None
             admitted.append(row)
+            logical.append(parsed)
         else:
             serialized = list(row)
             quarantined.append(
@@ -814,16 +850,14 @@ def _partition_source_rows(
                     "source_row_sha256": canonical_sha256(serialized),
                 }
             )
-    if timestamps != sorted(timestamps, reverse=True) or len(timestamps) != len(set(timestamps)):
-        raise HistoryAcquisitionError("Bybit kline page must be unique reverse chronological data")
-    _logical_rows(task, admitted, ingestion_id=ingestion_id)
-    return tuple(admitted), quarantined
+    _assert_reverse_chronological(timestamps)
+    return tuple(admitted), quarantined, tuple(logical)
 
 
 def _page_payload(
     task: HistoryPageTask, rows: Sequence[tuple[str, ...]], attempts: int
 ) -> dict[str, object]:
-    admitted, quarantined = _partition_source_rows(
+    admitted, quarantined, _logical = _partition_source_rows(
         task,
         rows,
         ingestion_id="history-page-validation",
@@ -1200,7 +1234,11 @@ def _verify_completed_history_job(
         raise HistoryAcquisitionError("history batch loading requires semantic page verification")
     if admit_canonical_representation and not load_batch:
         raise HistoryAcquisitionError("canonical admission requires history batch loading")
-    logical_rows: list[Candle1m | MarkCandle1m] | None = [] if load_batch else None
+    preordered_logical_rows: list[Candle1m | MarkCandle1m] | None = [] if load_batch else None
+    loaded_logical_row_count = 0
+    excluded_bindings: list[dict[str, object]] = []
+    excluded_source_keys: list[tuple[int, int]] = []
+    admission_reason_counts = {reason: 0 for reason in CANONICAL_ADMISSION_REASONS}
     batch_dataset_type: DatasetType | None = None
     expected_files = {
         "plan.json",
@@ -1222,9 +1260,18 @@ def _verify_completed_history_job(
             raise HistoryAcquisitionError("history task/page sequence is not canonical")
         page = root / "pages" / task.artifact_name
         payload: dict[str, object] | None
+        page_logical_rows: tuple[Candle1m | MarkCandle1m, ...] = ()
         if verify_page_semantics:
             payload, digest = _verify_artifact(page)
-            page_quality = _validate_page_payload(payload, task)
+            page_quality, page_logical_rows = _validate_page_payload_rows(
+                payload,
+                task,
+                ingestion_id=(
+                    f"bybit-page-sha256:{digest}"
+                    if preordered_logical_rows is not None
+                    else "history-page-verification"
+                ),
+            )
             row_count = cast(int, payload["row_count"])
             attempt_count = cast(int, payload["attempt_count"])
         else:
@@ -1287,16 +1334,28 @@ def _verify_completed_history_job(
                     quarantined_rows_sha256=canonical_sha256([]),
                     reason_counts={reason: 0 for reason in QUARANTINE_REASONS},
                 )
-        if logical_rows is not None:
-            assert payload is not None
-            raw_rows = cast(list[list[str]], payload["rows"])
-            logical_rows.extend(
-                _logical_rows(
-                    task,
-                    [tuple(item) for item in raw_rows],
-                    ingestion_id=f"bybit-page-sha256:{digest}",
-                )
-            )
+        if preordered_logical_rows is not None:
+            preordered_logical_rows.extend(reversed(page_logical_rows))
+            loaded_logical_row_count += len(page_logical_rows)
+            if admit_canonical_representation:
+                for row in page_logical_rows:
+                    admission_reason: str | None = None
+                    if isinstance(row, Candle1m):
+                        scaled_volume = row.volume.scaleb(VOLUME_SCALE)
+                        if scaled_volume != scaled_volume.to_integral_value():
+                            admission_reason = "volume_exceeds_canonical_scale"
+                    if admission_reason is None:
+                        continue
+                    admission_reason_counts[admission_reason] += 1
+                    excluded_source_keys.append((row.instrument_id, row.open_time_ms))
+                    excluded_bindings.append(
+                        {
+                            "instrument_id": row.instrument_id,
+                            "open_time_ms": row.open_time_ms,
+                            "reason": admission_reason,
+                            "source_row_sha256": canonical_sha256(row),
+                        }
+                    )
             current_type = (
                 DatasetType.TRADE_KLINE_1M if task.kind == "trade" else DatasetType.MARK_KLINE_1M
             )
@@ -1474,38 +1533,22 @@ def _verify_completed_history_job(
 
     batch: CanonicalCandleBatch | None = None
     canonical_admission: CanonicalCandleAdmission | None = None
-    if logical_rows is not None:
+    if preordered_logical_rows is not None:
         if batch_dataset_type is None:
             raise HistoryAcquisitionError("completed history job has no task dataset type")
-        admitted_rows = logical_rows
+        admitted_rows = preordered_logical_rows
         if admit_canonical_representation:
-            admitted_rows = []
-            excluded_bindings: list[dict[str, object]] = []
-            excluded_source_keys: list[tuple[int, int]] = []
-            admission_reason_counts = {reason: 0 for reason in CANONICAL_ADMISSION_REASONS}
-            for row in logical_rows:
-                admission_reason: str | None = None
-                if isinstance(row, Candle1m):
-                    scaled_volume = row.volume.scaleb(VOLUME_SCALE)
-                    if scaled_volume != scaled_volume.to_integral_value():
-                        admission_reason = "volume_exceeds_canonical_scale"
-                if admission_reason is None:
-                    admitted_rows.append(row)
-                    continue
-                admission_reason_counts[admission_reason] += 1
-                excluded_source_keys.append((row.instrument_id, row.open_time_ms))
-                excluded_bindings.append(
-                    {
-                        "instrument_id": row.instrument_id,
-                        "open_time_ms": row.open_time_ms,
-                        "reason": admission_reason,
-                        "source_row_sha256": canonical_sha256(row),
-                    }
-                )
+            if excluded_source_keys:
+                excluded_key_set = set(excluded_source_keys)
+                admitted_rows = [
+                    row
+                    for row in preordered_logical_rows
+                    if (row.instrument_id, row.open_time_ms) not in excluded_key_set
+                ]
             canonical_admission = CanonicalCandleAdmission(
                 policy=CANONICAL_ADMISSION_POLICY,
-                source_row_count=len(logical_rows),
-                admitted_row_count=len(admitted_rows),
+                source_row_count=loaded_logical_row_count,
+                admitted_row_count=loaded_logical_row_count - len(excluded_bindings),
                 excluded_row_count=len(excluded_bindings),
                 excluded_rows_sha256=canonical_sha256(excluded_bindings),
                 reason_counts=admission_reason_counts,
@@ -1513,7 +1556,10 @@ def _verify_completed_history_job(
             )
         try:
             if admitted_rows:
-                batch = build_canonical_candle_batch(admitted_rows, batch_dataset_type)
+                batch = build_preordered_canonical_candle_batch(
+                    admitted_rows,
+                    batch_dataset_type,
+                )
             else:
                 first_series = verified_spec.series[0]
                 batch = build_empty_canonical_candle_batch(
