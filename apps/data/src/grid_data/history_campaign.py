@@ -18,12 +18,6 @@ from grid_contracts.market import MINUTE_MS, InstrumentSnapshot
 from grid_market_store import BUCKET_COUNT, MAX_MEMORY_PERCENT, HostSnapshot
 
 from grid_data.funding_acquisition import (
-    MAX_PAGE_ARTIFACT_BYTES as FUNDING_MAX_PAGE_ARTIFACT_BYTES,
-)
-from grid_data.funding_acquisition import (
-    STAGING_METADATA_BYTES as FUNDING_STAGING_METADATA_BYTES,
-)
-from grid_data.funding_acquisition import (
     CompletedFundingJob,
     FundingClient,
     FundingJobPlan,
@@ -39,12 +33,6 @@ from grid_data.funding_request import (
 from grid_data.funding_source_boundary import (
     FundingSourceBoundaryError,
     verify_completed_funding_source_boundary,
-)
-from grid_data.history_acquisition import (
-    MAX_PAGE_ARTIFACT_BYTES as HISTORY_MAX_PAGE_ARTIFACT_BYTES,
-)
-from grid_data.history_acquisition import (
-    STAGING_METADATA_BYTES as HISTORY_STAGING_METADATA_BYTES,
 )
 from grid_data.history_acquisition import (
     CompletedHistoryJob,
@@ -733,22 +721,16 @@ def preflight_history_campaign(
 
     active_and_building = active_and_building_bytes_from_capacity(capacity)
     operating_reserve = jobs[0].plan.budget.operating_reserve_bytes
-    remaining_staging = 0
+    required_free = active_and_building + operating_reserve
     planned_peak_memory = 0
     for job in jobs:
         planned_peak_memory = max(planned_peak_memory, job.plan.planned_peak_memory_bytes)
         if job.existing_complete:
             continue
-        if job.kind == "funding":
-            remaining_staging += FUNDING_STAGING_METADATA_BYTES
-            remaining_staging += job.pending_page_count * FUNDING_MAX_PAGE_ARTIFACT_BYTES
-        else:
-            remaining_staging += HISTORY_STAGING_METADATA_BYTES
-            remaining_staging += job.pending_page_count * HISTORY_MAX_PAGE_ARTIFACT_BYTES
-    required_free = active_and_building + operating_reserve + remaining_staging
+        required_free = max(required_free, job.plan.required_free_bytes)
     if snapshot.volume_free_bytes < required_free:
         raise HistoryCampaignError(
-            "insufficient free space for the aggregate pending campaign and active/building reserve"
+            "insufficient free space for the largest pending child and active/building reserve"
         )
     if planned_peak_memory > snapshot.memory_available_bytes:
         raise HistoryCampaignError("insufficient available memory for campaign workers")
