@@ -69,6 +69,7 @@
 | D-063 | Current Gate 2 readiness is aggregated without changing criteria, accepting the gate, or authorizing Phase 3 | accepted | Eight fixed receipt/schema/content-hash sources, exact roadmap hash, four blocked criteria, two evidence-ready criteria, and ADR-0063 |
 | D-064 | Canonical orphan and partial-write detection is evidenced only in temporary cloned commits | accepted | Candle/funding production verifiers, six named faults, complete tree-fingerprint preservation, sanitized post-merge proof, and ADR-0064 |
 | D-065 | Ambiguous same-partition incremental catalog fragments require bounded streaming exact-key admission | accepted | Receipt/file reverification, candle/funding key-column merge, exact duplicate rejection, 4,096-row batches, 128-stream ceiling, and ADR-0065 |
+| D-066 | Incremental exact-key selection performance is measured only in bounded temporary production-path fixtures | accepted | Two deterministic selection passes, unchanged store fingerprint, sanitized aggregate evidence, no PM threshold, and ADR-0066 |
 
 ## Decisions requiring benchmark or owner evidence
 

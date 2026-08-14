@@ -364,6 +364,15 @@ and over-fragmented partitions fail closed. The external v1 schemas remain uncha
 proves deterministic range pruning and exact selected-object key disjointness only; separate
 coverage acceptance remains mandatory.
 
+`grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
+GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
+identity, bounded fragment/instrument/minute counts, exact selector constants, two measured
+selection passes, aggregate correctness, deterministic equality, and unchanged store
+fingerprints. Software versions, non-identifying CPU/RAM/platform facts, and explicit cache state
+make the measurement interpretable. It contains no dataset/instrument identity, timestamp,
+runtime path, market value, host/device/account identity, or credential. It is not full-history
+performance or Gate 2 evidence.
+
 ADR-0035 extends these catalog contracts with `funding_event`. Funding registration invokes the
 strict funding receipt/manifest/audit/Parquet verifier and extracts first/last keys from
 `instrument_id, funding_time_ms`; candle behavior is unchanged. A selection request still carries

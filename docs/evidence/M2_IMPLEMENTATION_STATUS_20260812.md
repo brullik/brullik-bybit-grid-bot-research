@@ -988,6 +988,25 @@ does not prove coverage, accept Gate 2, or authorize Phase 3. The implementation
 regression proofs are tracked in
 [PR #85](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/85).
 
+## Incremental catalog selection performance boundary
+
+ADR-0066 adds an offline temporary-store benchmark for the ADR-0065 exact-key fallback. The
+runner publishes bounded synthetic same-partition fragments through the production candle writer,
+registers them through the production DuckDB catalog, requires ambiguous file bounds, and then
+executes the identical exact snapshot-bound selection twice. A complete tree fingerprint before
+and after both passes must remain equal, both selections must be identical and complete, and the
+temporary fixture must be removed before evidence publication.
+
+The default post-merge profile is 16 fragments x 32 instruments x 720 minutes, or 368,640 rows.
+The schema exposes only aggregate configuration, durations, integer throughput, correctness
+facts, hashes, immutable implementation identity, software versions, non-identifying CPU/RAM
+facts, and explicit cache state. It excludes dataset/instrument identities, timestamps, paths,
+market values, host/device/account identity, credentials, private endpoints, and live capability.
+A post-merge measurement remains required. It will qualify this synthetic incremental boundary
+only; full-history end-to-end performance and Gate 2 remain blocked. The implementation and
+regression proofs are tracked in
+[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
