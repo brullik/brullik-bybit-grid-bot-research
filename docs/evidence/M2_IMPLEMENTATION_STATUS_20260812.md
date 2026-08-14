@@ -969,6 +969,23 @@ authorize cleanup, repair, Gate 2 acceptance, or Phase 3. Publication and pinned
 assertions are tracked in
 [PR #84](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/84).
 
+## Incremental catalog exact-key admission
+
+ADR-0065 closes a functional gap in the documented immutable incremental workflow without
+changing the external catalog/selection v1 schemas. The prior selector rejected every pair of
+same-partition files whose first/last composite bounds overlapped. That was safe but incorrect
+for ordinary multi-instrument daily fragments: earlier and later files can have disjoint exact
+keys while both span the same instrument range.
+
+The selector now retains the metadata-only path when bounds prove separation. Ambiguous candle
+or funding partitions stream only their exact key columns in 4,096-row batches and merge at most
+128 files at once. Any repeated exact key, internally unsorted file, or input above that bound
+fails closed; the operator must compact an over-fragmented partition. Tests cover disjoint
+two-instrument candle and funding fragments, duplicates across candle fragments, multi-batch
+streaming, and the hard stream ceiling. No catalog/dataset mutation, network, credential,
+private endpoint, or live capability is added. This enables bounded incremental selection but
+does not prove coverage, accept Gate 2, or authorize Phase 3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

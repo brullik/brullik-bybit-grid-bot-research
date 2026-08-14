@@ -356,8 +356,13 @@ absolute path. `not-assessed-by-dataset-receipt` must not be treated as complete
 sorted explicit dataset IDs, one candle type, inclusive minute-aligned range, explicit all/include
 instrument filter, and consumer Git SHA. `grid.canonical-dataset-selection/v1` re-verifies the
 selected datasets and produces hash-bound store-relative object keys. It rejects implicit latest,
-missing month/bucket partitions, ancestor-plus-child inputs, and overlapping key ranges. It proves
-deterministic range pruning only; separate coverage acceptance remains mandatory.
+missing month/bucket partitions, ancestor-plus-child inputs, and overlapping exact keys.
+ADR-0065 retains the metadata-only fast path for provably separated file bounds. Ambiguous
+multi-instrument bounds are admitted only by a bounded exact-key merge over receipt-verified
+Parquet key columns, with a 4,096-row batch per stream and 128-stream ceiling; exact duplicates
+and over-fragmented partitions fail closed. The external v1 schemas remain unchanged. Selection
+proves deterministic range pruning and exact selected-object key disjointness only; separate
+coverage acceptance remains mandatory.
 
 ADR-0035 extends these catalog contracts with `funding_event`. Funding registration invokes the
 strict funding receipt/manifest/audit/Parquet verifier and extracts first/last keys from

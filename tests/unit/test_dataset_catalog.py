@@ -81,11 +81,14 @@ def publish_dataset(
     minutes: tuple[int, ...],
     parent_dataset_ids: tuple[str, ...] = (),
     instrument_id: int = 9,
+    instrument_ids: tuple[int, ...] | None = None,
 ) -> None:
     digest = f"{len(dataset_id):064x}"
+    selected_instrument_ids = (instrument_id,) if instrument_ids is None else instrument_ids
     batch = build_canonical_candle_batch(
         tuple(
-            candle(JANUARY_1_2026_MS + minute * 60_000, instrument_id=instrument_id)
+            candle(JANUARY_1_2026_MS + minute * 60_000, instrument_id=selected_instrument_id)
+            for selected_instrument_id in selected_instrument_ids
             for minute in minutes
         ),
         DatasetType.TRADE_KLINE_1M,
@@ -123,30 +126,24 @@ def publish_funding_dataset_fixture(
     store: Path,
     dataset_id: str,
     *,
-    instrument_id: int = 9,
+    event_offsets_minutes: tuple[int, ...] = (0, 480),
+    instrument_ids: tuple[int, ...] = (9,),
 ) -> None:
     coverage = "8" * 64
     boundary = "9" * 64
     batch = build_canonical_funding_batch(
-        (
+        tuple(
             FundingEvent(
                 category="linear",
                 instrument_id=instrument_id,
-                funding_time_ms=JANUARY_1_2026_MS,
+                funding_time_ms=JANUARY_1_2026_MS + offset_minutes * 60_000,
                 funding_rate=Decimal("0.0001"),
                 funding_interval_minutes=480,
                 source_id="bybit-v5-funding-history",
-                ingestion_id="funding-fixture-0",
-            ),
-            FundingEvent(
-                category="linear",
-                instrument_id=instrument_id,
-                funding_time_ms=JANUARY_1_2026_MS + 480 * 60_000,
-                funding_rate=Decimal("-0.0002"),
-                funding_interval_minutes=480,
-                source_id="bybit-v5-funding-history",
-                ingestion_id="funding-fixture-1",
-            ),
+                ingestion_id=f"funding-fixture-{instrument_id}-{offset_minutes}",
+            )
+            for instrument_id in instrument_ids
+            for offset_minutes in event_offsets_minutes
         )
     )
     plan = preflight_funding_dataset(
@@ -423,11 +420,13 @@ def test_catalog_requires_complete_registered_parent_lineage(tmp_path: Path) -> 
 
 def test_incremental_registration_preserves_prior_snapshot_and_selects_disjoint_fragments(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("grid_market_store.catalog.EXACT_KEY_BATCH_ROWS", 1)
     store = tmp_path / "market-store"
     first_id = "trade-incremental-first"
     second_id = "trade-incremental-second"
-    publish_dataset(tmp_path, store, first_id, minutes=(0, 1))
+    publish_dataset(tmp_path, store, first_id, minutes=(0, 1), instrument_ids=(9, 17))
     catalog = store / "catalog" / "canonical.duckdb"
     first_plan = preflight_catalog_registration(
         (first_id,),
@@ -437,7 +436,7 @@ def test_incremental_registration_preserves_prior_snapshot_and_selects_disjoint_
     )
     first = register_catalog_datasets(first_plan, registered_at_ms=2_000)
 
-    publish_dataset(tmp_path, store, second_id, minutes=(2, 3))
+    publish_dataset(tmp_path, store, second_id, minutes=(2, 3), instrument_ids=(9, 17))
     second_plan = preflight_catalog_registration(
         (second_id,),
         store,
@@ -464,6 +463,148 @@ def test_incremental_registration_preserves_prior_snapshot_and_selects_disjoint_
     selection = select_catalog_range(request, store, catalog)
     assert len(selection.objects) == 2
     assert [item.dataset_id for item in selection.objects] == [first_id, second_id]
+
+
+def test_incremental_selection_keeps_the_strict_bounds_metadata_fast_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = tmp_path / "market-store"
+    first_id = "trade-incremental-fast-first"
+    second_id = "trade-incremental-fast-second"
+    publish_dataset(tmp_path, store, first_id, minutes=(0, 1))
+    publish_dataset(tmp_path, store, second_id, minutes=(2, 3))
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        (first_id, second_id),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    snapshot_after = register_catalog_datasets(plan, registered_at_ms=2_000)
+
+    def fail_exact_stream(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("strict bounds must not stream Parquet keys")
+
+    monkeypatch.setattr("grid_market_store.catalog._iter_file_keys", fail_exact_stream)
+    request = CatalogSelectionRequest(
+        catalog_revision=snapshot_after.revision,
+        catalog_content_sha256=snapshot_after.content_sha256,
+        dataset_ids=tuple(sorted((first_id, second_id))),
+        dataset_type=DatasetType.TRADE_KLINE_1M,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS + 3 * 60_000,
+        instrument_ids=(9,),
+        consumer_software_identity=CONSUMER,
+    )
+    selection = select_catalog_range(request, store, catalog)
+    assert len(selection.objects) == 2
+
+
+def test_incremental_selection_rejects_exact_duplicate_keys_across_fragments(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("grid_market_store.catalog.EXACT_KEY_BATCH_ROWS", 1)
+    store = tmp_path / "market-store"
+    first_id = "trade-incremental-duplicate-first"
+    second_id = "trade-incremental-duplicate-second"
+    publish_dataset(tmp_path, store, first_id, minutes=(0, 1), instrument_ids=(9, 17))
+    publish_dataset(tmp_path, store, second_id, minutes=(1, 2), instrument_ids=(9, 17))
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        (first_id, second_id),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    snapshot_after = register_catalog_datasets(plan, registered_at_ms=2_000)
+    request = CatalogSelectionRequest(
+        catalog_revision=snapshot_after.revision,
+        catalog_content_sha256=snapshot_after.content_sha256,
+        dataset_ids=tuple(sorted((first_id, second_id))),
+        dataset_type=DatasetType.TRADE_KLINE_1M,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS + 2 * 60_000,
+        instrument_ids=(9, 17),
+        consumer_software_identity=CONSUMER,
+    )
+    with pytest.raises(CatalogError, match="duplicate or conflicting exact keys"):
+        select_catalog_range(request, store, catalog)
+
+
+def test_incremental_selection_fails_closed_above_the_exact_stream_bound(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("grid_market_store.catalog.MAX_EXACT_KEY_STREAMS", 1)
+    store = tmp_path / "market-store"
+    first_id = "trade-incremental-bound-first"
+    second_id = "trade-incremental-bound-second"
+    publish_dataset(tmp_path, store, first_id, minutes=(0, 1), instrument_ids=(9, 17))
+    publish_dataset(tmp_path, store, second_id, minutes=(2, 3), instrument_ids=(9, 17))
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        (first_id, second_id),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    snapshot_after = register_catalog_datasets(plan, registered_at_ms=2_000)
+    request = CatalogSelectionRequest(
+        catalog_revision=snapshot_after.revision,
+        catalog_content_sha256=snapshot_after.content_sha256,
+        dataset_ids=tuple(sorted((first_id, second_id))),
+        dataset_type=DatasetType.TRADE_KLINE_1M,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS + 3 * 60_000,
+        instrument_ids=(9, 17),
+        consumer_software_identity=CONSUMER,
+    )
+    with pytest.raises(CatalogError, match="exact-key admission bound"):
+        select_catalog_range(request, store, catalog)
+
+
+def test_incremental_funding_selection_streams_the_funding_timestamp_key(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "market-store"
+    first_id = "funding-incremental-first"
+    second_id = "funding-incremental-second"
+    publish_funding_dataset_fixture(
+        tmp_path,
+        store,
+        first_id,
+        event_offsets_minutes=(0, 480),
+        instrument_ids=(9, 17),
+    )
+    publish_funding_dataset_fixture(
+        tmp_path,
+        store,
+        second_id,
+        event_offsets_minutes=(960, 1_440),
+        instrument_ids=(9, 17),
+    )
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        (first_id, second_id),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    snapshot_after = register_catalog_datasets(plan, registered_at_ms=2_000)
+    request = CatalogSelectionRequest(
+        catalog_revision=snapshot_after.revision,
+        catalog_content_sha256=snapshot_after.content_sha256,
+        dataset_ids=tuple(sorted((first_id, second_id))),
+        dataset_type=DatasetType.FUNDING_EVENT,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS + 1_440 * 60_000,
+        instrument_ids=(9, 17),
+        consumer_software_identity=CONSUMER,
+    )
+    selection = select_catalog_range(request, store, catalog)
+    assert len(selection.objects) == 2
 
 
 def test_catalog_registration_rejects_duplicate_ids_and_cleans_failed_atomic_replace(
