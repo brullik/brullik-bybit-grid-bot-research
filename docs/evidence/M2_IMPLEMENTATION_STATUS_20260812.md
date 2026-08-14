@@ -1129,6 +1129,21 @@ Implementation and observed-source compatibility are tracked in
 measured artifact and receipt are tracked in
 [PR #98](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/98).
 
+## Current Gate 2 readiness successor
+
+ADR-0075 adds `grid.gate2-readiness-pack/v2` instead of modifying the immutable v1 result. The
+offline builder verifies twelve exact GitHub evidence artifacts and their campaign, publication,
+coverage, boundary, registry, and announcement bindings. It performs no Bybit request, retained
+market-store read, publication, audit, or benchmark rerun.
+
+The successor removes only the obsolete claims that the representative candle campaign and its
+canonical publication/audit are missing. Preflight-before-mutation, duplicate/conflicting-key
+freedom, and stale-output detection are evidence-ready. Deterministic repair, lifecycle coverage,
+and performance remain blocked by seven explicit current evidence/policy codes. Gate 2 remains
+closed, data-quality-owner review remains mandatory, and Phase 3 authorization remains false. A
+post-merge artifact bound to the merged implementation is still required before v2 becomes the
+current GitHub readiness result.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

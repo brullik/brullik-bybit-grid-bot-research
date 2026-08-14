@@ -1,0 +1,376 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v2/gate2-readiness-pack.schema.json",
+  "title": "Gate 2 non-promoting readiness pack v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "content_sha256",
+    "criteria",
+    "criteria_source",
+    "evidence_schema",
+    "gate_2",
+    "generated_at_utc",
+    "observations",
+    "readiness_counts",
+    "sources",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "criteria_source_hash_verified": true,
+        "cross_source_bindings_verified": true,
+        "network_request_performed": false,
+        "phase3_authorized": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_identity"],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "criteria": {
+      "const": [
+        {
+          "blocker_codes": [
+            "genuine-candle-gap-repair-evidence-missing",
+            "measured-funding-repair-evidence-missing"
+          ],
+          "criterion_id": "deterministic-rerun-and-repair",
+          "criterion_text": "deterministic re-run and repair",
+          "evidence_roles": [
+            "full-history-landing",
+            "full-history-canonical-publication",
+            "canonical-integrity-fault-injection"
+          ],
+          "readiness": "blocked"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "preflight-before-mutation",
+          "criterion_text": "no mutation before preflight succeeds",
+          "evidence_roles": [
+            "full-history-preflight-performance",
+            "full-history-canonical-publication",
+            "stale-output-fault-injection",
+            "trade-compaction-50x90"
+          ],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "no-duplicate-or-conflicting-keys",
+          "criterion_text": "no duplicate/conflicting canonical keys",
+          "evidence_roles": [
+            "full-history-coverage-audit",
+            "coverage-audit-100x31",
+            "trade-compaction-50x90",
+            "canonical-integrity-fault-injection"
+          ],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [],
+          "criterion_id": "stale-building-output-detected",
+          "criterion_text": "stale building outputs detected",
+          "evidence_roles": ["stale-output-fault-injection"],
+          "readiness": "evidence-ready"
+        },
+        {
+          "blocker_codes": [
+            "funding-cadence-policy-unresolved",
+            "historical-point-in-time-metadata-missing",
+            "official-announcement-history-insufficient",
+            "unaccepted-candle-absence-reasons"
+          ],
+          "criterion_id": "lifecycle-explains-expected-coverage",
+          "criterion_text": "expected coverage explained by listing/delisting metadata",
+          "evidence_roles": [
+            "full-history-coverage-audit",
+            "full-history-boundary-diagnostic",
+            "announcement-archive-depth",
+            "coverage-audit-100x31",
+            "instrument-timeline-current-policy"
+          ],
+          "readiness": "blocked"
+        },
+        {
+          "blocker_codes": ["full-history-end-to-end-performance-envelope-unqualified"],
+          "criterion_id": "performance-within-envelope",
+          "criterion_text": "performance remains within measured envelope",
+          "evidence_roles": [
+            "full-history-landing",
+            "full-history-canonical-publication",
+            "full-history-boundary-diagnostic",
+            "full-history-preflight-performance",
+            "incremental-catalog-performance"
+          ],
+          "readiness": "blocked"
+        }
+      ]
+    },
+    "criteria_source": {
+      "const": {
+        "artifact": "14_ROADMAP_AND_GATES.md",
+        "artifact_sha256": "492458c7126bb6768dbc1b328ec5959095e67e0cdbf865b7de54b05ecc94f534",
+        "criteria_count": 6
+      }
+    },
+    "evidence_schema": {"const": "grid.gate2-readiness-pack/v2"},
+    "gate_2": {
+      "const": {
+        "automatic_phase3_authorization": false,
+        "blocker_codes": [
+          "full-history-end-to-end-performance-envelope-unqualified",
+          "funding-cadence-policy-unresolved",
+          "genuine-candle-gap-repair-evidence-missing",
+          "historical-point-in-time-metadata-missing",
+          "measured-funding-repair-evidence-missing",
+          "official-announcement-history-insufficient",
+          "unaccepted-candle-absence-reasons"
+        ],
+        "data_quality_owner_decision_required": true,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner"
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "observations": {
+      "const": {
+        "candle_gap_topology": {
+          "accepted_reason_count": 0,
+          "internal_missing_minute_count": 76,
+          "leading_missing_minute_count": 11981670,
+          "trailing_missing_minute_count": 0
+        },
+        "canonical_integrity": {
+          "case_count": 6,
+          "detected_count": 6,
+          "filesystem_state_preserved_count": 6
+        },
+        "compaction_50x90": {
+          "conflicting_key_count": 0,
+          "duplicate_key_count": 0,
+          "logical_table_equal": true,
+          "parent_datasets_mutated": false,
+          "row_count": 2160000
+        },
+        "controlled_100x31": {
+          "funding_duplicate_key_count": 0,
+          "funding_unexplained_interval_change_count": 7,
+          "row_count": 8938466
+        },
+        "full_history_candle_campaign": {
+          "campaign_elapsed_ms": 34778220,
+          "canonical_dataset_count": 978,
+          "canonical_representation_excluded_row_count": 74,
+          "canonical_row_count": 30832334,
+          "canonical_verification_elapsed_ms": 90912,
+          "conflicting_key_count": 0,
+          "duplicate_key_count": 0,
+          "job_count": 978,
+          "landing_row_count": 30832408,
+          "missing_minute_count": 11981746,
+          "month_count": 103,
+          "quarantined_source_row_count": 1,
+          "symbol_count": 5
+        },
+        "instrument_timeline": {
+          "historical_point_in_time_metadata_complete": false,
+          "partial_snapshot_count": 2,
+          "snapshot_count": 3
+        },
+        "official_announcement_archive": {
+          "all_selected_registry_launches_within_new_listing_archive": false,
+          "selected_launch_before_new_listing_archive_count": 5
+        },
+        "performance": {
+          "incremental_first_rows_per_second": 451584,
+          "incremental_repeat_rows_per_second": 457972,
+          "preflight_elapsed_ms": 3284,
+          "preflight_speedup_milli": 38246
+        },
+        "stale_output": {
+          "case_count": 5,
+          "detected_count": 5,
+          "marker_preserved_count": 5,
+          "target_mutation_count": 0
+        }
+      }
+    },
+    "readiness_counts": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "announcement-archive-depth",
+        "canonical-integrity-fault-injection",
+        "coverage-audit-100x31",
+        "full-history-boundary-diagnostic",
+        "full-history-canonical-publication",
+        "full-history-coverage-audit",
+        "full-history-landing",
+        "full-history-preflight-performance",
+        "incremental-catalog-performance",
+        "instrument-timeline-current-policy",
+        "stale-output-fault-injection",
+        "trade-compaction-50x90"
+      ],
+      "properties": {
+        "announcement-archive-depth": {"$ref": "#/$defs/announcementSource"},
+        "canonical-integrity-fault-injection": {"$ref": "#/$defs/integritySource"},
+        "coverage-audit-100x31": {"$ref": "#/$defs/controlledCoverageSource"},
+        "full-history-boundary-diagnostic": {"$ref": "#/$defs/boundarySource"},
+        "full-history-canonical-publication": {"$ref": "#/$defs/canonicalSource"},
+        "full-history-coverage-audit": {"$ref": "#/$defs/fullCoverageSource"},
+        "full-history-landing": {"$ref": "#/$defs/landingSource"},
+        "full-history-preflight-performance": {"$ref": "#/$defs/preflightSource"},
+        "incremental-catalog-performance": {"$ref": "#/$defs/incrementalSource"},
+        "instrument-timeline-current-policy": {"$ref": "#/$defs/timelineSource"},
+        "stale-output-fault-injection": {"$ref": "#/$defs/staleSource"},
+        "trade-compaction-50x90": {"$ref": "#/$defs/compactionSource"}
+      }
+    },
+    "status": {"const": "blocked-pending-gate2-evidence-and-policy"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "announcementSource": {
+      "const": {
+        "artifact": "m2-announcement-archive-depth-oldest-5-20260814.json",
+        "artifact_sha256": "68c12ffbf7b5824175a0e56e68f591665e8e3e480ccf6765aa3285dfc8437688",
+        "content_sha256": "11913c639a63b04af9b518ea7db73df64b9dbd8346bb9b3ae57fd3e8343bee1e",
+        "contract": "grid.phase2-announcement-archive-depth/v1",
+        "status": "blocked-insufficient-official-announcement-history"
+      }
+    },
+    "integritySource": {
+      "const": {
+        "artifact": "m2-canonical-integrity-fault-injection-20260814.json",
+        "artifact_sha256": "93af2d7b5cf73e7f672a9d846a19bbc858e770cde2ed54780150a1ce2222e8a1",
+        "content_sha256": "9dff752b91209daae385473120a06c6235f603ececcc0fe24f013d469752c3d2",
+        "contract": "grid.phase2-canonical-integrity-fault-injection/v1",
+        "status": "verified-canonical-integrity-fault-injection"
+      }
+    },
+    "controlledCoverageSource": {
+      "const": {
+        "artifact": "m2-history-campaign-coverage-audit-100x31-20260813.json",
+        "artifact_sha256": "6b9fab62147a78bedf2879cadfcd6031af5d6b1f6566e42e716b902b12236358",
+        "content_sha256": "0349cf9bb4621134501604bc1bb87a64a1c957d967093afb414c57c1835fc8e8",
+        "contract": "grid.history-campaign-coverage-audit/v1",
+        "status": "blocked"
+      }
+    },
+    "boundarySource": {
+      "const": {
+        "artifact": "m2-candle-boundary-diagnostic-20260814.json",
+        "artifact_sha256": "f5917d3ba23d83d56e704662126212ba18148cb6a92c009f51c75f4868872f03",
+        "content_sha256": "43921e9764727ec6cb583a3874ca2b15bbb5a4332af908b1a653ed33006da381",
+        "contract": "grid.phase2-candle-boundary-diagnostic/v1",
+        "status": "diagnosed-unaccepted-candle-boundaries"
+      }
+    },
+    "canonicalSource": {
+      "const": {
+        "artifact": "m2-canonical-history-campaign-20260814.json",
+        "artifact_sha256": "5f8598d4bc343c9384f0d9df5c1476659bd2bf86ecc11fb7faa4103ac642a74d",
+        "content_sha256": "117d8fbcf04ebd959851cd4474ed6b319758aa3e0c0ac8fa03247385fe719677",
+        "contract": "grid.phase2-history-campaign-publication/v1",
+        "status": "verified-canonical-history-campaign-publication"
+      }
+    },
+    "fullCoverageSource": {
+      "const": {
+        "artifact": "m2-history-campaign-coverage-audit-20260814.json",
+        "artifact_sha256": "98d6d15dfc5a5e036b79c8d653199112a75596e7fdf397b256553295f8e1c58f",
+        "content_sha256": "a8d1b9b9dfdbd0d1a2e030aa2e6a2333c64ff7e266af3e67b940cca2ba038587",
+        "contract": "grid.history-campaign-coverage-audit/v1",
+        "status": "blocked"
+      }
+    },
+    "landingSource": {
+      "const": {
+        "artifact": "m2-public-history-oldest-5-full-candles-20260814.json",
+        "artifact_sha256": "c5deda196b79d028f0f9c14325576c2fe90412a171020be89d74dab281862f57",
+        "content_sha256": "68c9bd39a38c30f878dc9f1134a33f1c5504cf47eb3d3b8f4b308f4cb8ca2d5d",
+        "contract": "grid.phase2-public-history-campaign/v1",
+        "status": "verified-public-landing-campaign"
+      }
+    },
+    "preflightSource": {
+      "const": {
+        "artifact": "m2-history-campaign-preflight-performance-5xfull-20260813.json",
+        "artifact_sha256": "579c0906fec9fbf9906db5a8b9cad6c55ee8818ea64d33a4830440eee4eb1047",
+        "content_sha256": "3ee0eb78079900d203c102af3142dbe536c06c4c5eabfa7d4cf35946fb48a340",
+        "contract": "grid.phase2-history-campaign-preflight-performance/v1",
+        "status": "qualified-full-history-campaign-preflight-performance"
+      }
+    },
+    "incrementalSource": {
+      "const": {
+        "artifact": "m2-incremental-catalog-selection-performance-20260814.json",
+        "artifact_sha256": "5987c967f049342e54c5f81c3546bc9232e94c500c370a3376b764c3fadfa7a7",
+        "content_sha256": "2a39c2ee7507f63ab8e634d3fb9c54d997e430910dd61f122cea21e7f7973834",
+        "contract": "grid.phase2-incremental-catalog-selection-performance/v1",
+        "status": "measured-incremental-catalog-selection"
+      }
+    },
+    "timelineSource": {
+      "const": {
+        "artifact": "m2-instrument-timeline-current-policy-20260813.json",
+        "artifact_sha256": "df349a854a1453e762dde3c11a18641904dc3f525f0dfd291c35974bf66bc5ee",
+        "content_sha256": "424acbba90d346c5043802bc62856d982b84c99da03cab72f4dbe0b1439cba5e",
+        "contract": "grid.instrument-timeline-summary/v1",
+        "status": "blocked"
+      }
+    },
+    "staleSource": {
+      "const": {
+        "artifact": "m2-stale-output-fault-injection-20260814.json",
+        "artifact_sha256": "8cec6fac0cbd1e14eb2bbcc53b4fe9af5d8a07cd6b434f7a31a38b4428688c10",
+        "content_sha256": "8931046401916b97f342e0404a5ce98faf859e63b9a9eb6b21307e322f1685d3",
+        "contract": "grid.phase2-stale-output-fault-injection/v1",
+        "status": "verified-stale-output-fault-injection"
+      }
+    },
+    "compactionSource": {
+      "const": {
+        "artifact": "m2-trade-april-50x90-compaction-20260813.json",
+        "artifact_sha256": "c584fb9595d1bef05c96b84f65a2e2edb4070e1d986a0f77bf614a4a21bb1e8a",
+        "content_sha256": "93961c98b5f4ae6c57da708a71e40fdc59a3eda4d43b3185743f2026dc529e4e",
+        "contract": "grid.canonical-1m-compaction/v1",
+        "status": "passed"
+      }
+    }
+  }
+}

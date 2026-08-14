@@ -333,6 +333,13 @@ verification. It records two `evidence-ready` and four blocked criteria plus sev
 blockers. Evidence readiness is not acceptance: data-quality-owner review remains mandatory,
 Gate 2 remains closed, and automatic Phase 3 authorization is always false.
 
+`grid.gate2-readiness-pack/v2` is the append-only current-evidence successor. It verifies twelve
+exact GitHub artifacts and their campaign/publication/coverage/registry lineage in one offline
+pass, then records three evidence-ready and three blocked criteria with seven current blocker
+codes. It performs no Bybit request, retained-store read, or repeated benchmark. The contract
+cannot accept Gate 2, authorize Phase 3, expose runtime identities/market values, or reinterpret
+the immutable v1 result; see ADR-0075.
+
 `grid.phase2-canonical-integrity-fault-injection/v1` binds a merged implementation identity to
 six offline candle/funding verifier cases: orphan file, missing manifest-bound Parquet, and missing
 completion receipt for each dataset type. Every case must be detected and retain an identical

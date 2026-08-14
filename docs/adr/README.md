@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0075 - Current-evidence Gate 2 readiness successor](ADR-0075-current-evidence-gate2-readiness-successor.md)
 - [ADR-0074 - Lifecycle-scoped announcement order evidence](ADR-0074-lifecycle-scoped-announcement-order-evidence.md)
 - [ADR-0073 - Optional legacy announcement publish time](ADR-0073-optional-legacy-announcement-publish-time.md)
 - [ADR-0072 - Announcement date ordering and archive-depth bound](ADR-0072-announcement-date-ordering-and-depth-bound.md)
