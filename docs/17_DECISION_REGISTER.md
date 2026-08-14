@@ -79,6 +79,7 @@
 | D-073 | Missing legacy announcement `publishTime` remains absent | accepted | Required `dateTimestamp`, nullable publish bounds, explicit presence counts, and ADR-0073 |
 | D-074 | Strict announcement order validation is limited to lifecycle partitions | accepted | Source-order preservation, explicit inversion counts, `new_crypto`/`delistings` checks, and ADR-0074 |
 | D-075 | Current Gate 2 readiness is rebuilt from existing evidence without repeating source work | accepted | Twelve exact receipt-bound sources, three evidence-ready and three blocked criteria, seven current blockers, unchanged owner authority, and ADR-0075 |
+| D-076 | Verified candle-repair executions receive an identifier-free GitHub projection | accepted | Aggregate limits and hashes, explicit repaired/source-gap-remains classification, immutable parent, idempotent reuse, and ADR-0076 |
 
 ## Decisions requiring benchmark or owner evidence
 

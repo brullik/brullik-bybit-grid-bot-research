@@ -419,6 +419,11 @@ or performance runs. Three criteria are evidence-ready and three remain blocked 
 repair, lifecycle, cadence, absence-policy, and performance-envelope codes. Gate 2 remains closed
 pending the unchanged data-quality-owner decision.
 
+ADR-0076 adds an identifier-free public projection for a receipt-verified candle-gap repair
+execution. It records aggregate limits, immutable bindings, and whether exact repair completed or
+the source gap remained. Existing private execution output is reused without another public
+request; a blocked outcome cannot publish a replacement or accept the missing candle.
+
 ADR-0064 adds post-merge orphan/partial-write detection evidence. Temporary cloned candle and
 funding commits receive an orphan file, missing Parquet, or missing completion receipt; the real
 production verifiers must reject all six cases while preserving the complete injected filesystem

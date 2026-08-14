@@ -280,6 +280,13 @@ empty/partial REST observation is committed as `blocked`; it is never reclassifi
 absence. The execution artifact contains ranges, hashes, counts, and software identity but no
 market values, credentials, host identity, or local paths.
 
+`grid.bybit-1m-gap-repair-execution-public/v1` is the ADR-0076 GitHub-safe projection of that
+verified private execution. It retains only aggregate request/row/missing counts, immutable chain
+hashes, executor Git identity, and `exact-gap-repair-completed` or `source-gap-remains`. Symbols,
+instrument/dataset identifiers, minute timestamps, market values, account data, credentials, and
+runtime paths are excluded. A blocked projection proves a bounded source observation but does not
+accept the gap, authorize retries, publish a replacement, close Gate 2, or authorize Phase 3.
+
 `grid.canonical-1m-gap-replacement-publication/v1` combines a passed execution with its verified
 canonical parent. It rejects overlapping, duplicate, shifted, and unrequested keys and proves the
 exact original requested coverage before invoking the canonical writer. The resulting manifest

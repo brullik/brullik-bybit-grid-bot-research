@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0076 and `grid.bybit-1m-gap-repair-execution-public/v1`: a receipt-reverified,
+  identifier-free GitHub projection records exact repair completion or a persistent source gap,
+  while preserving the private execution as the no-repeat marker and keeping Gate 2 closed.
 - Receipt-verified Gate 2 readiness v2 evidence bound to merge `847de3e`: all twelve source chains
   verify offline, three criteria are evidence-ready, three remain blocked by seven current codes,
   Gate 2 stays closed, and automatic Phase 3 authorization remains false.

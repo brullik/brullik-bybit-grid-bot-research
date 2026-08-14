@@ -26,6 +26,10 @@ from grid_data.history_repair_execution import (
     verify_gap_repair_execution,
 )
 from grid_data.history_repair_plan import build_gap_repair_plan
+from grid_data.history_repair_public_evidence import (
+    build_candle_repair_execution_public_evidence,
+    verify_candle_repair_execution_public_evidence,
+)
 from grid_data.history_repair_publication import (
     build_gap_replacement_evidence,
     preflight_repaired_history_publication,
@@ -447,6 +451,65 @@ def test_empty_repair_execution_is_preserved_as_blocked_and_cannot_publish(
             now_ms=4_001,
             software_identity=REPLACEMENT_IDENTITY,
         )
+
+
+@pytest.mark.parametrize(
+    ("client_factory", "expected_status", "expected_classification"),
+    [
+        (ExactRepairClient, "passed", "exact-gap-repair-completed"),
+        (EmptyRepairClient, "blocked", "source-gap-remains"),
+    ],
+)
+def test_repair_execution_public_projection_is_receipted_and_identifier_free(
+    tmp_path: Path,
+    client_factory: type[ExactRepairClient] | type[EmptyRepairClient],
+    expected_status: str,
+    expected_classification: str,
+) -> None:
+    (
+        result,
+        execution_path,
+        repair_plan,
+        audit,
+        job_root,
+        registry,
+        capacity,
+        store,
+        repair_staging,
+    ) = execute_repair_fixture(tmp_path, client_factory=client_factory)
+    verified = verify_gap_repair_execution(
+        execution_path,
+        repair_plan,
+        audit,
+        job_root,
+        registry,
+        capacity,
+        store,
+        repair_staging,
+    )
+    payload = build_candle_repair_execution_public_evidence(
+        verified,
+        generated_at_utc="2026-08-14T10:00:00Z",
+    )
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/bybit-1m-gap-repair-execution-public.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    rendered = json.dumps(payload, sort_keys=True)
+    private_task = result.payload["tasks"][0]
+    assert "AAAUSDT" not in rendered
+    assert str(private_task["start_ms"]) not in rendered
+    assert '"instrument_id"' not in rendered
+    assert '"dataset_id"' not in rendered
+    assert "tasks" not in payload
+    assert payload["status"] == expected_status
+    assert payload["outcome"]["classification"] == expected_classification
+    assert payload["storage_policy"]["github_commit_eligible"] is True
+
+    public_path, _ = publish_evidence(tmp_path / "repair-execution-public.json", payload)
+    assert verify_candle_repair_execution_public_evidence(public_path, verified) == payload
 
 
 def test_repair_execution_rejects_a_substituted_plan_before_landing_mutation(

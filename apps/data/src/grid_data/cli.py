@@ -140,6 +140,10 @@ from grid_data.history_repair_execution import (
     verify_gap_repair_execution,
 )
 from grid_data.history_repair_plan import build_gap_repair_plan
+from grid_data.history_repair_public_evidence import (
+    build_candle_repair_execution_public_evidence,
+    verify_candle_repair_execution_public_evidence,
+)
 from grid_data.history_repair_publication import (
     build_gap_replacement_evidence,
     preflight_repaired_history_publication,
@@ -740,6 +744,21 @@ def parser() -> argparse.ArgumentParser:
         help="make bounded public requests and write Landing/evidence; omitted is preflight",
     )
     repair_execute.set_defaults(handler=_execute_history_repair)
+
+    repair_public_evidence = commands.add_parser(
+        "history-repair-execution-evidence",
+        help="publish identifier- and value-free aggregate evidence for a verified 1m repair",
+    )
+    repair_public_evidence.add_argument("--repair-execution", type=Path, required=True)
+    repair_public_evidence.add_argument("--repair-plan", type=Path, required=True)
+    repair_public_evidence.add_argument("--coverage-audit", type=Path, required=True)
+    repair_public_evidence.add_argument("--job-root", type=Path, required=True)
+    repair_public_evidence.add_argument("--instrument-registry", type=Path, required=True)
+    repair_public_evidence.add_argument("--capacity-evidence", type=Path, required=True)
+    repair_public_evidence.add_argument("--store-root", type=Path, required=True)
+    repair_public_evidence.add_argument("--repair-staging-root", type=Path, required=True)
+    repair_public_evidence.add_argument("--output", type=Path, required=True)
+    repair_public_evidence.set_defaults(handler=_history_repair_execution_evidence)
 
     repair_publish = commands.add_parser(
         "publish-history-repair",
@@ -2152,6 +2171,44 @@ def _execute_history_repair(args: argparse.Namespace) -> int:
     )
     print(json.dumps(summary))
     return 0 if payload["status"] == "passed" else 2
+
+
+def _history_repair_execution_evidence(args: argparse.Namespace) -> int:
+    verified = verify_gap_repair_execution(
+        args.repair_execution,
+        args.repair_plan,
+        args.coverage_audit,
+        args.job_root,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.repair_staging_root,
+    )
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    if output.exists() or receipt.exists():
+        payload = verify_candle_repair_execution_public_evidence(output, verified)
+        artifact = output
+    else:
+        preflight_evidence(output)
+        payload = build_candle_repair_execution_public_evidence(
+            verified,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "limits": payload["limits"],
+                "outcome": payload["outcome"],
+                "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
+                "status": payload["status"],
+                "storage_policy": payload["storage_policy"],
+            }
+        )
+    )
+    return 0
 
 
 def _publish_history_repair(args: argparse.Namespace) -> int:

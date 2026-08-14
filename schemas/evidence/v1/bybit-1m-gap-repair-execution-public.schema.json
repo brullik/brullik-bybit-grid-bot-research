@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/bybit-1m-gap-repair-execution-public.schema.json",
+  "title": "GitHub-safe aggregate Bybit 1m gap repair execution evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "content_sha256",
+    "contract",
+    "execution_software_identity",
+    "generated_at_utc",
+    "limitations",
+    "limits",
+    "outcome",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_parent_manifest_sha256",
+        "capacity_evidence_sha256",
+        "coverage_audit_artifact_sha256",
+        "coverage_audit_content_sha256",
+        "instrument_registry_sha256",
+        "original_history_manifest_sha256",
+        "private_execution_artifact_sha256",
+        "repair_plan_artifact_sha256",
+        "repair_plan_content_sha256"
+      ],
+      "properties": {
+        "canonical_parent_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "coverage_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "original_history_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "private_execution_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "repair_plan_content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.bybit-1m-gap-repair-execution-public/v1"},
+    "execution_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_http_requests",
+        "missing_minute_count",
+        "observed_row_count",
+        "planned_max_http_requests",
+        "task_count",
+        "total_missing_minutes"
+      ],
+      "properties": {
+        "actual_http_requests": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "observed_row_count": {"type": "integer", "minimum": 0},
+        "planned_max_http_requests": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "task_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "total_missing_minutes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "parent_dataset_mutated",
+        "replacement_dataset_published",
+        "replacement_eligible"
+      ],
+      "properties": {
+        "classification": {
+          "enum": ["exact-gap-repair-completed", "source-gap-remains"]
+        },
+        "parent_dataset_mutated": {"const": false},
+        "replacement_dataset_published": {"const": false},
+        "replacement_eligible": {"type": "boolean"}
+      }
+    },
+    "status": {"enum": ["passed", "blocked"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "credentials_included": false,
+        "github_commit_eligible": true,
+        "instrument_or_dataset_identifiers_included": false,
+        "market_values_included": false,
+        "minute_timestamps_included": false,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
