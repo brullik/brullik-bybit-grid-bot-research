@@ -1391,6 +1391,27 @@ The command replaces repeated manual log/plan arithmetic during the current-univ
 It is not authoritative page-level verification, performance-envelope evidence, Gate 2
 acceptance, or Phase 3 authorization.
 
+## Dated official funding-cadence policy evidence
+
+ADR-0094 adds a one-response official-policy verifier for the eleven cadence changes already
+reported by four April/July receipt-verified coverage audits. It validates exact policy markers,
+fully re-verifies every paired Landing page/receipt and audit binding, and uses exact Decimal rates
+inside a strict default-to-one-hour-to-aligned-default state machine. A simple missing settlement,
+pre-policy observation, unstable default, or threshold failure remains unexplained.
+
+The receipt-verified measured artifact is
+[`m2-funding-cadence-policy-20260815.json`](../../benchmarks/results/m2-funding-cadence-policy-20260815.json).
+It binds implementation commit `41c48c0`, four blocked audit/Landing chains and one official
+announcement response. Across 86 audited series, all eleven changes in the five affected series
+match the dated policy: four completed hourly episodes have qualifying-count distribution
+`16:3, 17:1`, while one open episode remains nonqualifying at its retained boundary. The result
+contains zero unexplained changes.
+
+The sanitized v1 artifact exposes only source hashes and aggregate episode/change counts; article
+body, rates, instrument identities, observed settlement timestamps, and runtime paths remain out
+of Git. Even this verified result is input to a separate owner/governance decision: it cannot
+rewrite the immutable audits, remove the current blocker, open Gate 2, or authorize Phase 3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
@@ -1401,11 +1422,10 @@ acceptance, or Phase 3 authorization.
   minutes across the current-universe bootstrap; ADR-0070 now proves aggregate topology but does
   not turn first returned data into listing metadata, and 74 canonical representation overflows
   plus one quarantined source row remain unaccepted;
-- dated historical evidence or a separately owner-reviewed policy for the blocked April funding
-  cadence transitions;
+- a separate owner/governance decision over the verified ADR-0094 evidence for the blocked April
+  and July funding cadence transitions; evidence publication alone does not remove the blocker;
 - measured repair execution/replacement evidence when a genuine gap is observed;
-- further controlled scale-up and dated evidence/policy for the seven blocked July funding
-  cadence transitions; and
+- further controlled scale-up after the same funding-cadence owner review; and
 - measured funding repair publication/execution evidence when a genuine candidate exists,
   measured ADR-0054 funding-compaction execution when a genuine eligible pair appears (the current
   receipt-bound store has none), and the remaining PM-owned Gate 2 acceptance checklist;

@@ -62,6 +62,10 @@ from grid_data.funding_acquisition import (
     preflight_funding_job,
     verify_completed_funding_job,
 )
+from grid_data.funding_cadence_policy import (
+    UrllibOfficialPolicyClient,
+    build_funding_cadence_policy_evidence,
+)
 from grid_data.funding_compaction import (
     build_funding_compaction_evidence,
     preflight_funding_compaction,
@@ -263,6 +267,28 @@ def parser() -> argparse.ArgumentParser:
     announcement_depth.add_argument("--software-identity", required=True)
     announcement_depth.add_argument("--output", type=Path, required=True)
     announcement_depth.set_defaults(handler=_announcement_archive_depth)
+
+    funding_cadence_policy = commands.add_parser(
+        "funding-cadence-policy-evidence",
+        help="verify dated official cadence policy against receipt-bound funding audits",
+    )
+    funding_cadence_policy.add_argument(
+        "--coverage-audit",
+        action="append",
+        type=Path,
+        required=True,
+        help="receipt-verified blocked funding audit; repeat in job-root order",
+    )
+    funding_cadence_policy.add_argument(
+        "--funding-job-root",
+        action="append",
+        type=Path,
+        required=True,
+        help="matching completed funding Landing root; repeat in audit order",
+    )
+    funding_cadence_policy.add_argument("--software-identity", required=True)
+    funding_cadence_policy.add_argument("--output", type=Path, required=True)
+    funding_cadence_policy.set_defaults(handler=_funding_cadence_policy_evidence)
 
     archive = commands.add_parser(
         "archive-inventory", help="inventory official public.bybit.com daily trade archives"
@@ -1185,6 +1211,32 @@ def _announcement_archive_depth(args: argparse.Namespace) -> int:
         )
     )
     return 2 if payload["status"] == "blocked-insufficient-official-announcement-history" else 0
+
+
+def _funding_cadence_policy_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_funding_cadence_policy_evidence(
+        UrllibOfficialPolicyClient(),
+        coverage_audit_paths=tuple(args.coverage_audit),
+        funding_job_roots=tuple(args.funding_job_root),
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    quality = payload["quality"]
+    assert isinstance(quality, dict)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "explained_interval_change_count": quality["explained_interval_change_count"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+                "unexplained_interval_change_count": quality["unexplained_interval_change_count"],
+            }
+        )
+    )
+    return 0 if payload["status"] == "verified-official-funding-cadence-policy-consistency" else 2
 
 
 def _history_1m(args: argparse.Namespace) -> int:

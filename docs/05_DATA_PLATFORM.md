@@ -452,6 +452,15 @@ without a market request or retained-store scan. The criteria and readiness coun
 two stale evidence-missing descriptions become measured-negative blocker codes, while Gate 2 and
 Phase 3 remain closed pending the same owner evidence/policy decisions.
 
+ADR-0094 adds a bounded dated-policy path for the existing April/July funding cadence blockers.
+It makes one exact, credential-free official-announcement request, fully re-verifies the paired
+coverage-audit and funding-Landing receipts, and replays the documented one-hour restoration rule
+with exact Decimal rates. Only a stable documented default, one-hour episode, qualifying
+sixteen/seventeenth-period threshold, and whole-hour alignment back to a stable documented
+default are accepted; arbitrary non-hourly changes remain unexplained. The result is sanitized
+policy-consistency evidence only and cannot mutate the original audits or change Gate 2 without a
+separate owner/governance decision.
+
 ADR-0076 adds an identifier-free public projection for a receipt-verified candle-gap repair
 execution. It records aggregate limits, immutable bindings, and whether exact repair completed or
 the source gap remained. Existing private execution output is reused without another public

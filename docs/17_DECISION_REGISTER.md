@@ -90,6 +90,7 @@
 | D-091 | Current-universe catalog performance is measured by replaying the exact completed private bundle read-only | accepted | Two one-snapshot production batch passes, receipt/schema/hash binding, unchanged catalog/dataset fingerprints, sanitized timings, unchanged owner-reviewed Gate 2 envelope, and ADR-0091 |
 | D-092 | Current-universe observations extend the exact immutable v3 Gate 2 decision without repeating its fifteen-source build | accepted | Four receipt/schema/canonical/content-hash sources, exact cross-bindings, unchanged six criteria/seven blockers/closed gate, owner review required, and ADR-0092 |
 | D-093 | Concurrent history-campaign progress is observed from receipt-bound metadata without page reads | accepted | One bounded read-only multi-root snapshot, integer progress/rate/ETA, active-lock undercount, explicit non-authoritative scope, and ADR-0093 |
+| D-094 | Post-2026-02-26 funding-cadence changes are reviewed against Bybit's dated automatic restoration policy | accepted | Exact official-page markers, receipt-verified audits/Landing, Decimal threshold replay, strict default-hourly-alignment state machine, sanitized aggregates, unchanged Gate 2 owner authority, and ADR-0094 |
 
 ## Decisions requiring benchmark or owner evidence
 
