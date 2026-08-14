@@ -6,6 +6,8 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0072 source-order correction: official announcement pages are validated by descending
+  `dateTimestamp`, retain separate date/publish bounds, and never locally reorder source items.
 - ADR-0071 and a bounded official-announcement archive-depth command that replaces full archive
   downloads with at most 16 first/last-page responses, hashes but does not persist announcement
   bodies, and fails closed without turning archive depth into lifecycle acceptance.

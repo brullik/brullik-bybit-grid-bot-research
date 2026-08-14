@@ -202,11 +202,13 @@ listing metadata, and no topology or reason is accepted. See ADR-0070.
 hash-only selected identity set to a bounded probe of the official Bybit announcements API. It
 requests only the first and declared last page for each of the eight documented types, with a
 fixed 20-item page size and one transport attempt, so at most 16 responses replace a full archive
-download. The strict contract records only counts, publication-time bounds, and canonical result
+download. The strict contract records only counts, date/publish-time bounds, and canonical result
 hashes; it excludes announcement text/URLs, instrument identifiers, market values, paths,
 credentials, and account data. A selected registry launch before the official `new_crypto`
 archive start is an explicit blocker. Even a depth-compatible result still requires exact
-per-instrument record matching and cannot close Gate 2. See ADR-0071.
+per-instrument record matching and cannot close Gate 2. ADR-0072 aligns ordering with the
+source's descending `dateTimestamp`, records separate date/publish bounds, and uses only the
+source-order date bound for archive-depth comparison. See ADR-0071 and ADR-0072.
 
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and

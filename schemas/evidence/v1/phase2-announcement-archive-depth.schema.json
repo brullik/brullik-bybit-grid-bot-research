@@ -25,18 +25,18 @@
       "additionalProperties": false,
       "required": [
         "all_selected_registry_launches_within_new_listing_archive",
-        "delistings_oldest_publish_time_ms",
-        "global_oldest_publish_time_ms",
-        "new_crypto_oldest_publish_time_ms",
+        "delistings_oldest_date_timestamp_ms",
+        "global_oldest_date_timestamp_ms",
+        "new_crypto_oldest_date_timestamp_ms",
         "selected_launch_before_new_listing_archive_count",
         "selected_registry_launch_max_ms",
         "selected_registry_launch_min_ms"
       ],
       "properties": {
         "all_selected_registry_launches_within_new_listing_archive": {"type": "boolean"},
-        "delistings_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
-        "global_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
-        "new_crypto_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+        "delistings_oldest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
+        "global_oldest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
+        "new_crypto_oldest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
         "selected_launch_before_new_listing_archive_count": {"type": "integer", "minimum": 0, "maximum": 700},
         "selected_registry_launch_max_ms": {"$ref": "#/$defs/timestamp"},
         "selected_registry_launch_min_ms": {"$ref": "#/$defs/timestamp"}
@@ -149,7 +149,9 @@
           "last_page_item_count",
           "last_page_number",
           "last_page_result_sha256",
+          "latest_date_timestamp_ms",
           "latest_publish_time_ms",
+          "oldest_date_timestamp_ms",
           "oldest_publish_time_ms",
           "total_announcements"
         ],
@@ -160,7 +162,9 @@
           "last_page_item_count": {"type": "integer", "minimum": 1, "maximum": 20},
           "last_page_number": {"type": "integer", "minimum": 1, "maximum": 500000},
           "last_page_result_sha256": {"$ref": "#/$defs/sha256"},
+          "latest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
           "latest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+          "oldest_date_timestamp_ms": {"$ref": "#/$defs/timestamp"},
           "oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
           "total_announcements": {"type": "integer", "minimum": 1, "maximum": 10000000}
         }

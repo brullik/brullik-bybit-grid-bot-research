@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-08-14
 - Implements: non-promoting lifecycle-source discovery for Gate 2
+- Ordering semantics amended by: [ADR-0072](ADR-0072-announcement-date-ordering-and-depth-bound.md)
 
 ## Context
 
