@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0094 and `grid.phase2-funding-cadence-policy-evidence/v1`: one exact official announcement
+  response and paired receipt-verified funding audit/Landing chains are replayed with Decimal
+  threshold and schedule-alignment semantics, producing only sanitized aggregates and leaving the
+  immutable audits, Gate 2 blocker set, owner decision, and Phase 3 authorization unchanged.
 - ADR-0093 and `grid-data history-campaign-progress`: one bounded read-only invocation verifies
   receipt-bound metadata and reports page-weighted progress, recent rate, ETA, and free space for
   up to sixteen campaigns without reading Landing pages, making requests, writing runtime state,

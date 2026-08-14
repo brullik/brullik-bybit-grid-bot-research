@@ -740,6 +740,33 @@ dated evidence or an explicit governance decision. A passing bounded audit still
 independent venue ledger, full lifecycle/history, repair, compaction, catalog readiness, scale, or
 Gate 2.
 
+### Verify the dated official funding-cadence policy
+
+When one or more receipt-verified audits are blocked only by
+`unexplained_interval_change`, pair each audit with its exact completed funding Landing root. Run
+the command only with the full Git SHA that contains ADR-0094 and this verifier:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-cadence-policy-evidence `
+  --coverage-audit reports\private\funding-audit-a.json `
+  --funding-job-root data\history\.funding-landing\funding-a--<plan-prefix> `
+  --coverage-audit reports\private\funding-audit-b.json `
+  --funding-job-root data\history\.funding-landing\funding-b--<plan-prefix> `
+  --software-identity git:<full-verifier-commit-sha> `
+  --output benchmarks\results\m2-funding-cadence-policy-<date>.json
+```
+
+Output preflight occurs before the single credential-free request to the exact official Bybit
+announcement URL. The command then re-verifies every audit and Landing receipt/page, exact source
+binding, interval histogram, and retained Decimal rate. It publishes only response/source hashes
+and aggregate episode/change counts. Never commit raw article HTML, rates, instrument identities,
+observed settlement timestamps, or runtime paths.
+
+Exit `0` means every supplied change matches the post-2026-02-26 documented
+default-to-one-hour-to-aligned-default mechanism and the sixteen/seventeenth-period threshold.
+Exit `2` preserves an aggregate unexplained count. Neither result edits the original audits or
+changes Gate 2; blocker removal requires a separate reviewed owner/governance decision.
+
 ### Plan private funding repair discovery
 
 Only a receipt-verified blocked audit whose sole reason is `unexplained_interval_change` can be

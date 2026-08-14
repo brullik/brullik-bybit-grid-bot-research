@@ -666,6 +666,17 @@ requested bounds, counts, interval histograms, hashes, and identities but exclud
 settlement timestamps, runtime paths, host/account data, and credentials. `passed` is bounded
 source-parity/stable-cadence evidence, not full-history or Gate 2 acceptance; see ADR-0034.
 
+`grid.phase2-funding-cadence-policy-evidence/v1` binds one exact official Bybit announcement
+response to paired receipt-verified blocked coverage audits and completed funding Landing jobs. It
+accepts only post-effective-time transitions through a strict documented-default to one-hour to
+alignment/default state machine, verifies the exact Decimal `0.00025` restoration threshold over
+sixteen or seventeen trailing settlements, and reconciles every audit interval change. The
+GitHub-safe result contains response/source hashes and aggregate episode/change counts but no
+announcement body, rates, instruments, symbols, observed settlement timestamps, runtime paths,
+credentials, or account data. A verified result is policy-consistency evidence for a separate
+owner/governance review; it does not rewrite the blocked audits, remove a Gate 2 blocker, accept
+Gate 2, or authorize Phase 3. See ADR-0094.
+
 ## Dataset manifest
 
 Required fields:
