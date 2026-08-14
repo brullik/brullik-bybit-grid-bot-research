@@ -1170,6 +1170,17 @@ no market identity, timestamp, value, path, account data, or credential. Its art
 `f7d3efd6bab544c02ab63171040d99c364c94531c7e9fc08f31776f820d42cd5` and embedded content
 SHA-256 is `fb71a2e26afb3b209fda7d44d0d5e1de080e99eb998b8cc33491bf8d9811cea8`.
 
+## Funding repair candidate admission
+
+ADR-0077 adds one bounded offline audit over explicit receipt-verified blocked funding audits. It
+replays the unchanged ADR-0055 production planner and records whether each input has a complete
+isolated integer-multiple cadence sandwich before any public request. The detailed output remains
+private; its public contract exposes only binding hashes and aggregate counts.
+
+This is a no-repeat diagnostic, not Gate 2 acceptance. It makes no Bybit request, accepts no
+settlement or cadence, changes no parent, and does not replace the required measured funding
+repair workflow when a genuine eligible candidate exists.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

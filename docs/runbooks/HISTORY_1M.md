@@ -367,6 +367,39 @@ needed, publish only the verified aggregate projection:
 The public projection contains counts and binding hashes only. It does not qualify compaction;
 run `compact-funding` when the private audit identifies a real eligible pair.
 
+Before attempting funding repair discovery, classify all known blocked audits in one offline pass.
+Repeat each of the first three options in matching order:
+
+```powershell
+.venv\Scripts\grid-data.exe audit-funding-repair-candidates `
+  --coverage-audit data\evidence\<blocked-funding-audit>.json `
+  --job-root data\history\.funding-landing\<completed-job> `
+  --instrument-registry data\evidence\<registry>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --software-identity git:<auditor-commit-sha> `
+  --output reports\private\m2-funding-repair-candidates-<date>.json
+```
+
+Run first without `--execute`; repeat with `--execute` only to persist the detailed private audit
+and receipt. `eligible=0` means no supplied chronology admits an ADR-0055 repair plan, so make no
+funding request. Publish only the GitHub-safe aggregate:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-repair-candidate-evidence `
+  --audit reports\private\m2-funding-repair-candidates-<date>.json `
+  --coverage-audit data\evidence\<blocked-funding-audit>.json `
+  --job-root data\history\.funding-landing\<completed-job> `
+  --instrument-registry data\evidence\<registry>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --software-identity git:<publisher-commit-sha> `
+  --output benchmarks\results\m2-funding-repair-candidate-audit-<date>.json
+```
+
+The projection is a no-repeat diagnostic only. A future `eligible>0` result still requires the
+ordinary plan, bounded execution, immutable replacement, and post-publication audit workflow.
+
 ## 14. Register datasets and select a reproducible range
 
 Catalog registration is a separate transition after canonical publication, repair, or compaction.

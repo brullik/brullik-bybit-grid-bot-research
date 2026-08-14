@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-funding-repair-candidate-audit.schema.json",
+  "title": "Sanitized Phase 2 funding repair candidate audit evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "classification_counts",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "inventory",
+    "limitations",
+    "policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_coverage_audits_receipt_verified_and_recomputed": true,
+        "candidate_requests_executed": false,
+        "current_instrument_interval_used": false,
+        "parent_datasets_mutated": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_artifact_sha256",
+        "auditor_software_identity",
+        "capacity_evidence_sha256",
+        "input_set_sha256",
+        "publisher_software_identity"
+      ],
+      "properties": {
+        "audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "auditor_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "input_set_sha256": {"$ref": "#/$defs/sha256"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "classification_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eligible", "non-isolated-or-non-integer-chronology"],
+      "properties": {
+        "eligible": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "non-isolated-or-non-integer-chronology": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-funding-repair-candidate-audit/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_count",
+        "candidate_settlement_count",
+        "interval_change_count",
+        "planned_max_http_requests",
+        "task_count"
+      ],
+      "properties": {
+        "audit_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "candidate_settlement_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "planned_max_http_requests": {"type": "integer", "minimum": 0},
+        "task_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "policy": {"const": "receipt-verified-funding-repair-eligibility-v1"},
+    "status": {
+      "enum": [
+        "verified-eligible-funding-repair-candidates",
+        "verified-no-eligible-funding-repair-candidates"
+      ]
+    },
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_or_instrument_identities": false,
+        "evidence_contains_funding_rates_or_timestamps": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

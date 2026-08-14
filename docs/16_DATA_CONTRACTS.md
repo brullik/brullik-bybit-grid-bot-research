@@ -327,6 +327,16 @@ implementation identities, inventory counts, and aggregate outcomes only. It con
 partition, instrument, timestamp, rate, path, host, account, or credential identity. Neither
 contract performs compaction or replaces measured ADR-0054 evidence.
 
+`grid.funding-repair-candidate-audit/v1` is a detailed private, receipt-last eligibility audit over
+an explicit bounded set of blocked funding coverage audits and their immutable acquisition inputs.
+It reuses the unchanged ADR-0055 planner and classifies only its exact complete-sandwich rejection
+as ineligible; every other defect fails closed. The public
+`grid.phase2-funding-repair-candidate-audit/v1` projection binds the private audit, capacity and
+input-set hashes plus aggregate classification/task/request counts. It contains no dataset,
+instrument, settlement, rate, path, host, account, or credential identity. Neither contract makes
+a market request, accepts chronology, publishes a replacement, changes Gate 2, or authorizes
+Phase 3.
+
 `grid.phase2-stale-output-fault-injection/v1` binds a merged implementation identity to five
 offline production-preflight cases: candle/funding publication building directories, candle
 compaction building directory, catalog building file, and catalog write lock. Every case must be
