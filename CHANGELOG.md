@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified full-history catalog evidence bound to merge `bd79038`: one revision-5
+  registration and four topology-scoped selections reconcile 978 datasets/objects, 268
+  schema-only datasets, 30,832,334 rows, and 529,794,759 bytes without publishing identities.
 - ADR-0080 and `grid.phase2-full-history-catalog/v1`: four receipt-bound topology-scoped private
   selections reconcile exactly to one 978-dataset catalog registration while GitHub receives only
   hashes, aggregate counts, safety claims, and unchanged Gate 2 limitations.

@@ -1223,7 +1223,16 @@ the 978-dataset registration.
 The resulting public v1 contract contains only hashes and aggregate catalog, kind, topology,
 row/byte, and schema-only counts. It excludes dataset/instrument identities, symbols, object keys,
 time bounds, runtime paths, market values, account data, and credentials. Post-merge measured
-evidence remains a separate commit and does not change the blocked Gate 2 result.
+evidence does not change the blocked Gate 2 result.
+
+The receipt-verified 2026-08-14
+[full-history catalog artifact](../../benchmarks/results/m2-full-history-catalog-20260814.json) is
+bound to implementation merge `bd79038ff7f24013c3b300b662933b82f16db7a1`. Catalog revision 5
+contains the exact registered snapshot; four selections reconcile 978 datasets, objects, and
+required partitions, including 268 schema-only datasets, 30,832,334 rows, and 529,794,759 bytes.
+The artifact SHA-256 is
+`c36612505d1b07f50ae6092efe4a158129ced9f25832e2f9a757924a514366d0`; its embedded content
+SHA-256 is `5836c774e353f6deaae7e5642c8390a45dea7a66f396944ae45f46a2def858f8`.
 
 ## Still required before Gate 2
 
