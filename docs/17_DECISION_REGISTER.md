@@ -71,6 +71,7 @@
 | D-065 | Ambiguous same-partition incremental catalog fragments require bounded streaming exact-key admission | accepted | Receipt/file reverification, candle/funding key-column merge, exact duplicate rejection, 4,096-row batches, 128-stream ceiling, and ADR-0065 |
 | D-066 | Incremental exact-key selection performance is measured only in bounded temporary production-path fixtures | accepted | Two deterministic selection passes, unchanged store fingerprint, sanitized aggregate evidence, no PM threshold, and ADR-0066 |
 | D-067 | A verified zero-admission candle child publishes as one schema-only immutable canonical dataset | accepted | Exact request-derived partition, zero-row Parquet and null bounds, unchanged source lineage, fail-closed coverage, and ADR-0067 |
+| D-068 | Exact trade volumes outside Decimal128(38, 4) remain immutable in Landing and are hash-bound exclusions from canonical publication | accepted | No rounding or Landing rewrite; aggregate admission lineage, unaccepted `canonical_representation_overflow`, ordinary-repair rejection, unchanged P-001/Gate 2, and ADR-0068 |
 
 ## Decisions requiring benchmark or owner evidence
 

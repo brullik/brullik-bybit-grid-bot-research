@@ -182,6 +182,7 @@ def build_completed_history_coverage_audit(
     duplicate_total = 0
     unexpected_total = 0
     quarantined_missing_keys: set[tuple[int, int]] = set()
+    representation_missing_keys: set[tuple[int, int]] = set()
     quarantined_source_keys = verified.completed_history.quarantined_source_keys
     if quarantined_source_keys is None:  # pragma: no cover - semantic loading is mandatory above
         raise HistoryAcquisitionError("coverage audit requires quarantined source-key evidence")
@@ -210,6 +211,13 @@ def build_completed_history_coverage_audit(
         quarantined_missing_keys.update(
             (instrument_id, open_time_ms)
             for instrument_id, open_time_ms in quarantined_source_keys
+            if instrument_id == series.instrument_id
+            and series.start_ms <= open_time_ms <= series.end_ms
+            and open_time_ms not in in_range_set
+        )
+        representation_missing_keys.update(
+            (instrument_id, open_time_ms)
+            for instrument_id, open_time_ms in verified.canonical_admission.excluded_source_keys
             if instrument_id == series.instrument_id
             and series.start_ms <= open_time_ms <= series.end_ms
             and open_time_ms not in in_range_set
@@ -251,7 +259,29 @@ def build_completed_history_coverage_audit(
         raise HistoryAcquisitionError(
             "quarantined source key must belong to exactly one requested series"
         )
-    rest_missing_total = missing_total - len(quarantined_missing_keys)
+    if any(
+        sum(
+            key[0] == series.instrument_id and series.start_ms <= key[1] <= series.end_ms
+            for series in planned_series
+        )
+        != 1
+        for key in set(verified.canonical_admission.excluded_source_keys)
+    ):
+        raise HistoryAcquisitionError(
+            "canonical-admission source key must belong to exactly one requested series"
+        )
+    if (
+        len(set(verified.canonical_admission.excluded_source_keys))
+        != verified.canonical_admission.excluded_row_count
+    ):
+        raise HistoryAcquisitionError("canonical-admission source-key accounting is inconsistent")
+    if quarantined_missing_keys & representation_missing_keys:
+        raise HistoryAcquisitionError(
+            "source quarantine and canonical admission exclusions overlap"
+        )
+    rest_missing_total = (
+        missing_total - len(quarantined_missing_keys) - len(representation_missing_keys)
+    )
     if rest_missing_total < 0:  # pragma: no cover - guarded by exact gap membership
         raise HistoryAcquisitionError("quarantined missing-minute accounting is inconsistent")
     passed = bool(
@@ -263,6 +293,7 @@ def build_completed_history_coverage_audit(
         and unrequested_rows == 0
         and lifecycle_failures == 0
         and verified.completed_history.quarantined_row_count == 0
+        and verified.canonical_admission.excluded_row_count == 0
     )
     payload: dict[str, object] = {
         "audit_software_identity": audit_software_identity,
@@ -297,6 +328,15 @@ def build_completed_history_coverage_audit(
                 if verified.completed_history.quarantined_row_count
                 else []
             ),
+            *(
+                [
+                    "Canonical representation exclusions remain unaccepted and require a "
+                    "reviewed physical-contract or source-policy decision; ordinary REST gap "
+                    "repair is not eligible."
+                ]
+                if verified.canonical_admission.excluded_row_count
+                else []
+            ),
             "This audit does not repair data, compact files, register a catalog entry, or close "
             "Gate 2.",
         ],
@@ -315,6 +355,15 @@ def build_completed_history_coverage_audit(
             "accepted_reason_codes": [],
             "observed_reason_counts": {
                 **(
+                    {
+                        "canonical_representation_overflow": (
+                            verified.canonical_admission.excluded_row_count
+                        )
+                    }
+                    if verified.canonical_admission.excluded_row_count
+                    else {}
+                ),
+                **(
                     {"quarantined_source_row": verified.completed_history.quarantined_row_count}
                     if verified.completed_history.quarantined_row_count
                     else {}
@@ -324,6 +373,10 @@ def build_completed_history_coverage_audit(
             "unaccepted_reason_codes": [
                 reason
                 for reason, count in (
+                    (
+                        "canonical_representation_overflow",
+                        verified.canonical_admission.excluded_row_count,
+                    ),
                     (
                         "quarantined_source_row",
                         verified.completed_history.quarantined_row_count,

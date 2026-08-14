@@ -1028,6 +1028,21 @@ Coverage policy is unchanged. An empty canonical child remains exact source pari
 requested minutes are missing, and a quarantined source row remains an unaccepted ADR-0053 reason.
 The implementation does not accept a gap, register the child, close Gate 2, or authorize Phase 3.
 
+## Canonical representation admission quarantine
+
+The completed full-history candle campaign contains 30,832,408 Landing-admitted rows. A read-only
+aggregate semantic scan found 74 trade rows whose exact volume scale exceeds the accepted
+Decimal128(38, 4) physical contract; OHLC and turnover fit their accepted scales, and no
+non-plain decimal was observed. The initial canonical preflight failed before mutation, so neither
+Landing nor the canonical store was changed.
+
+ADR-0068 preserves P-001 and immutable Landing. Canonical publication excludes only those exact
+rows without rounding, binds aggregate admission counts and an exclusion hash into immutable
+lineage, and reports the missing minutes as unaccepted
+`canonical_representation_overflow`. Ordinary REST repair rejects that reason. This enables the
+remaining independent children to proceed but does not accept the 74 minutes, close Gate 2, or
+authorize Phase 3. Post-merge full-campaign publication and coverage evidence remain required.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

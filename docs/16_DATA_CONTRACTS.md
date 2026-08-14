@@ -224,6 +224,18 @@ silently classified as a no-trade interval. ADR-0053 additionally records a rece
 returned-but-quarantined candle as `quarantined_source_row`, removes its missing key from the
 REST-no-data reason count, and still blocks. Exact quarantine keys remain runtime-only.
 
+ADR-0068 extends the existing v1 publication artifacts with optional canonical-admission facts.
+A candle child may add `source_row_count` and `canonical_admission` containing exact
+source/admitted/excluded arithmetic, its policy, complete aggregate reason counts, and a SHA-256
+binding of private excluded rows. Those fields appear together only when at least one exact trade
+volume exceeds the accepted Decimal128(38, 4) scale. They contain no row, key, symbol, timestamp,
+or market value. The child build hash and source evidence bind the exclusion.
+
+The coverage reason `canonical_representation_overflow` is unaccepted and is not also counted as
+`rest_returned_no_data`. Public campaign-publication evidence may add an aggregate admission
+summary, and aggregate coverage may add only the reason count. These extensions do not alter
+P-001, accept a missing minute, register a dataset, close Gate 2, or authorize Phase 3.
+
 `grid.bybit-1m-gap-repair-plan/v1` is a receipt-last, no-network plan derived from a recomputed,
 receipt-verified blocked coverage audit. It is valid only when missing minutes classified as
 `rest_returned_no_data` are the sole blocker. It hash-binds the audit artifact/content, Landing
@@ -233,6 +245,8 @@ and 100,000 maximum HTTP attempts. It authorizes neither request execution nor m
 committed canonical dataset; repaired publication needs explicit immutable replacement lineage.
 `quarantined_source_row` is never eligible for this ordinary repair plan because repeating the
 same source endpoint does not reconcile a stable semantic defect.
+`canonical_representation_overflow` is also ineligible because retrying cannot make the same exact
+source value fit the accepted physical scale.
 
 `grid.bybit-1m-gap-repair-execution/v1` re-verifies that complete chain, preflights every embedded
 standard request under one aggregate staging bound, and inventories the independently receipted

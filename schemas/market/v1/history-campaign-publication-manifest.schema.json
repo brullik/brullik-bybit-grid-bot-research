@@ -51,6 +51,10 @@
     "dataset": {
       "type": "object",
       "additionalProperties": false,
+      "dependentRequired": {
+        "canonical_admission": ["source_row_count"],
+        "source_row_count": ["canonical_admission"]
+      },
       "required": [
         "dataset_id",
         "dataset_root",
@@ -65,6 +69,7 @@
         "source_job_manifest_sha256"
       ],
       "properties": {
+        "canonical_admission": {"$ref": "#/$defs/canonicalAdmission"},
         "dataset_id": {"type": "string", "pattern": "^(?:trade-1m|mark-1m|funding)-[0-9a-f]{24}$"},
         "dataset_root": {
           "type": "string",
@@ -78,7 +83,35 @@
         "publication_request_sha256": {"$ref": "#/$defs/sha256"},
         "row_count": {"type": "integer", "minimum": 0},
         "sequence": {"type": "integer", "minimum": 0, "maximum": 2879},
-        "source_job_manifest_sha256": {"$ref": "#/$defs/sha256"}
+        "source_job_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_row_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "canonicalAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admitted_row_count",
+        "excluded_row_count",
+        "excluded_rows_sha256",
+        "policy",
+        "reason_counts",
+        "source_row_count"
+      ],
+      "properties": {
+        "admitted_row_count": {"type": "integer", "minimum": 0},
+        "excluded_row_count": {"type": "integer", "minimum": 1},
+        "excluded_rows_sha256": {"$ref": "#/$defs/sha256"},
+        "policy": {"const": "canonical-candle-representation-admission-v1"},
+        "reason_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["volume_exceeds_canonical_scale"],
+          "properties": {
+            "volume_exceeds_canonical_scale": {"type": "integer", "minimum": 0}
+          }
+        },
+        "source_row_count": {"type": "integer", "minimum": 1}
       }
     }
   }

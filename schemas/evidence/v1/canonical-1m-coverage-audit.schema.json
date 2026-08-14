@@ -117,15 +117,22 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "canonical_representation_overflow": {"type": "integer", "minimum": 1},
             "quarantined_source_row": {"type": "integer", "minimum": 1},
             "rest_returned_no_data": {"type": "integer", "minimum": 1}
           }
         },
         "unaccepted_reason_codes": {
           "type": "array",
-          "maxItems": 2,
+          "maxItems": 3,
           "uniqueItems": true,
-          "items": {"enum": ["quarantined_source_row", "rest_returned_no_data"]}
+          "items": {
+            "enum": [
+              "canonical_representation_overflow",
+              "quarantined_source_row",
+              "rest_returned_no_data"
+            ]
+          }
         },
         "unknown_reason_count": {"const": 0}
       }

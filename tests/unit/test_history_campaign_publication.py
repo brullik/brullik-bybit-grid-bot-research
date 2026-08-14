@@ -63,6 +63,15 @@ class EmptyKlineClient(FakeKlineClient):
         return ()
 
 
+class OverScaleVolumeKlineClient(FakeKlineClient):
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        rows = [list(row) for row in super().kline_page(**kwargs)]
+        if kwargs["kind"] == "trade":
+            for row in rows:
+                row[5] = "100.00001"
+        return tuple(tuple(row) for row in rows)
+
+
 def completed_source_campaign(tmp_path: Path):  # type: ignore[no-untyped-def]
     source_plan = preflight_source_campaign(
         tmp_path,
@@ -271,6 +280,91 @@ def test_publication_campaign_retains_zero_row_child_as_schema_only_dataset(
         completed.publication_root,
         source.campaign_root,
     )
+
+
+def test_campaign_publication_records_representation_exclusion_and_blocks_coverage(
+    tmp_path: Path,
+) -> None:
+    source_plan = preflight_source_campaign(
+        tmp_path,
+        request=request_payload(
+            kinds=["trade", "funding"],
+            symbols=["AAAUSDT"],
+            end_ms=JANUARY_31_2026_2358_MS,
+        ),
+    )
+    source = execute_source_campaign(
+        source_plan,
+        OverScaleVolumeKlineClient(),
+        PublishingFundingClient(),
+    )
+    plan = preflight_publication(tmp_path, source.campaign_root)
+
+    assert [job.row_count for job in plan.jobs] == [0, 1]
+    assert plan.jobs[0].source_row_count == 1
+    admission = plan.jobs[0].canonical_admission
+    assert isinstance(admission, dict)
+    assert admission["admitted_row_count"] == 0
+    assert admission["excluded_row_count"] == 1
+    assert len(admission["excluded_rows_sha256"]) == 64
+    assert admission["policy"] == "canonical-candle-representation-admission-v1"
+    assert admission["reason_counts"] == {"volume_exceeds_canonical_scale": 1}
+    assert admission["source_row_count"] == 1
+    completed = execute_publication(plan)
+    assert completed.row_count == 1
+    verify_completed_history_campaign_publication(
+        completed.publication_root,
+        source.campaign_root,
+    )
+
+    schema_root = ROOT / "schemas/market/v1"
+    for schema_name, artifact in (
+        ("history-campaign-publication-plan.schema.json", completed.plan_path),
+        ("history-campaign-publication-manifest.schema.json", completed.manifest_path),
+    ):
+        schema = json.loads((schema_root / schema_name).read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(json.loads(artifact.read_text(encoding="utf-8")))
+
+    evidence = build_history_campaign_publication_evidence(
+        completed.publication_root,
+        source.campaign_root,
+        generated_at_utc="2026-08-14T06:10:00Z",
+        software_identity="git:" + "8" * 40,
+    )
+    assert evidence["canonical"]["admission"] == {  # type: ignore[index]
+        "admitted_row_count": 0,
+        "excluded_row_count": 1,
+        "policy": "canonical-candle-representation-admission-v1",
+        "reason_counts": {"volume_exceeds_canonical_scale": 1},
+        "source_row_count": 1,
+    }
+    evidence_schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-history-campaign-publication.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(evidence_schema).validate(evidence)
+
+    audit = build_history_campaign_coverage_audit(
+        completed.publication_root,
+        source.campaign_root,
+        tmp_path / "registry.json",
+        tmp_path / "capacity.json",
+        plan.store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity="git:" + "9" * 40,
+        generated_at_utc="2026-08-14T06:11:00Z",
+    )
+    assert audit.passed is False
+    assert audit.payload["reason_policy"]["observed_reason_counts"] == {  # type: ignore[index]
+        "canonical_representation_overflow": 1
+    }
+    audit_schema = json.loads(
+        (ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(audit_schema).validate(audit.payload)
 
 
 def test_interrupted_publication_resumes_from_canonical_receipts(tmp_path: Path) -> None:
