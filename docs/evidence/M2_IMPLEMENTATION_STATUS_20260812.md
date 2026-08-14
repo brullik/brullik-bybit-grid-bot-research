@@ -1088,6 +1088,13 @@ to 11,981,671 `rest_returned_no_data`, 74 `canonical_representation_overflow`, a
 prove immutable publication and quantify the remaining data-quality blockers; they do not close
 Gate 2, repair history, register datasets, or authorize Phase 3.
 
+ADR-0070 adds a receipt-bound follow-up diagnostic for this already-proven candle coverage. It
+reuses the canonical objects returned by the aggregate verifier and scans only instrument/time
+columns once, so topology analysis does not repeat the public download or Landing semantic decode.
+The sanitized result remains bound to the existing ADR-0041 audit and cannot accept first observed
+data as listing metadata. A post-merge run over the full campaign is still required before its
+measured topology and elapsed time are treated as GitHub evidence.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

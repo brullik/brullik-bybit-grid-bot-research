@@ -190,6 +190,14 @@ excluding symbols, instrument/dataset IDs, market values, event timestamps, runt
 data, and credentials. The aggregate passes only when every child passes; it never changes gap or
 funding-cadence acceptance policy. See ADR-0041.
 
+`grid.phase2-candle-boundary-diagnostic/v1` binds a candle-only aggregate publication, the exact
+receipt-verified ADR-0041 semantic coverage artifact, and the same registry/source lineage. It
+reuses canonical dataset verification and scans only instrument/time columns once to classify
+missing requested minutes as leading, internal, trailing, or fully absent. Public output contains
+only aggregate/per-kind counts and hashes; it excludes identities, observed timestamps, values,
+paths, account data, and credentials. First observed data is source-availability evidence, not
+listing metadata, and no topology or reason is accepted. See ADR-0070.
+
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and
 plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate

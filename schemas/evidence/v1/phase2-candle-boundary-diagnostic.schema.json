@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-candle-boundary-diagnostic.schema.json",
+  "title": "Sanitized Phase 2 canonical candle boundary diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bindings", "content_sha256", "contract", "diagnostic_software_identity", "generated_at_utc", "inventory", "limitations", "process", "reason_policy", "result", "status", "storage_policy"],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_coverage_artifact_sha256", "campaign_coverage_content_sha256", "instrument_registry_sha256", "publication_manifest_sha256", "publication_plan_sha256", "publisher_software_identity", "source_campaign_manifest_sha256", "source_campaign_plan_sha256"],
+      "properties": {
+        "campaign_coverage_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "campaign_coverage_content_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.phase2-candle-boundary-diagnostic/v1"},
+    "diagnostic_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by_kind", "dataset_count", "expected_minute_count", "missing_minute_count", "observed_row_count", "series_count"],
+      "properties": {
+        "by_kind": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"$ref": "#/$defs/kindSummary"}},
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "expected_minute_count": {"$ref": "#/$defs/count"},
+        "missing_minute_count": {"$ref": "#/$defs/count"},
+        "observed_row_count": {"$ref": "#/$defs/count"},
+        "series_count": {"type": "integer", "minimum": 1, "maximum": 1400}
+      }
+    },
+    "limitations": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_projection", "canonical_rows_scanned", "elapsed_ms", "network_request_count", "publication_integrity_verified", "published_dataset_verification_reused", "source_market_rows_decoded"],
+      "properties": {
+        "canonical_projection": {"const": "instrument-and-open-time-columns-once-v1"},
+        "canonical_rows_scanned": {"$ref": "#/$defs/count"},
+        "elapsed_ms": {"type": "integer", "minimum": 0, "maximum": 7200000},
+        "network_request_count": {"const": 0},
+        "publication_integrity_verified": {"const": true},
+        "published_dataset_verification_reused": {"const": true},
+        "source_market_rows_decoded": {"const": false}
+      }
+    },
+    "reason_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_reason_codes", "observed_reason_counts", "unaccepted_reason_codes"],
+      "properties": {
+        "accepted_reason_codes": {"type": "array", "maxItems": 0},
+        "observed_reason_counts": {"$ref": "#/$defs/reasonCounts"},
+        "unaccepted_reason_codes": {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"$ref": "#/$defs/reason"}}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_reconciled", "fully_absent_minute_count", "fully_absent_range_count", "internal_gap_range_count", "internal_missing_minute_count", "leading_gap_range_count", "leading_missing_minute_count", "registry_clipped_leading_gap_series_count", "registry_clipped_series_count", "source_child_gap_range_count", "trailing_gap_range_count", "trailing_missing_minute_count"],
+      "properties": {
+        "coverage_reconciled": {"const": true},
+        "fully_absent_minute_count": {"$ref": "#/$defs/count"},
+        "fully_absent_range_count": {"$ref": "#/$defs/count"},
+        "internal_gap_range_count": {"$ref": "#/$defs/count"},
+        "internal_missing_minute_count": {"$ref": "#/$defs/count"},
+        "leading_gap_range_count": {"$ref": "#/$defs/count"},
+        "leading_missing_minute_count": {"$ref": "#/$defs/count"},
+        "registry_clipped_leading_gap_series_count": {"type": "integer", "minimum": 0, "maximum": 1400},
+        "registry_clipped_series_count": {"type": "integer", "minimum": 0, "maximum": 1400},
+        "source_child_gap_range_count": {"$ref": "#/$defs/count"},
+        "trailing_gap_range_count": {"$ref": "#/$defs/count"},
+        "trailing_missing_minute_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "status": {"enum": ["diagnosed-unaccepted-candle-boundaries", "verified-no-candle-boundary-gap"]},
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "dataset_or_instrument_identities_included": false,
+        "market_values_included": false,
+        "observed_timestamps_included": false,
+        "runtime_paths_included": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000000000000},
+    "gapTopology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fully_absent_minute_count", "fully_absent_range_count", "internal_gap_range_count", "internal_missing_minute_count", "leading_gap_range_count", "leading_missing_minute_count", "trailing_gap_range_count", "trailing_missing_minute_count"],
+      "properties": {
+        "fully_absent_minute_count": {"$ref": "#/$defs/count"},
+        "fully_absent_range_count": {"$ref": "#/$defs/count"},
+        "internal_gap_range_count": {"$ref": "#/$defs/count"},
+        "internal_missing_minute_count": {"$ref": "#/$defs/count"},
+        "leading_gap_range_count": {"$ref": "#/$defs/count"},
+        "leading_missing_minute_count": {"$ref": "#/$defs/count"},
+        "trailing_gap_range_count": {"$ref": "#/$defs/count"},
+        "trailing_missing_minute_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "kindSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_count", "expected_minute_count", "gap_topology", "kind", "missing_minute_count", "observed_row_count", "series_count", "source_child_gap_range_count"],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "expected_minute_count": {"$ref": "#/$defs/count"},
+        "gap_topology": {"$ref": "#/$defs/gapTopology"},
+        "kind": {"enum": ["trade", "mark"]},
+        "missing_minute_count": {"$ref": "#/$defs/count"},
+        "observed_row_count": {"$ref": "#/$defs/count"},
+        "series_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "source_child_gap_range_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "reason": {"enum": ["canonical_representation_overflow", "quarantined_source_row", "rest_returned_no_data"]},
+    "reasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "canonical_representation_overflow": {"type": "integer", "minimum": 1},
+        "quarantined_source_row": {"type": "integer", "minimum": 1},
+        "rest_returned_no_data": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

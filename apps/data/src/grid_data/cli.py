@@ -104,6 +104,9 @@ from grid_data.history_campaign import (
     preflight_history_campaign,
     verify_completed_history_campaign,
 )
+from grid_data.history_campaign_boundary_diagnostic import (
+    build_history_campaign_boundary_diagnostic,
+)
 from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_evidence import build_history_campaign_evidence
 from grid_data.history_campaign_publication import (
@@ -422,6 +425,18 @@ def parser() -> argparse.ArgumentParser:
     campaign_coverage_audit.add_argument("--audit-software-identity", required=True)
     campaign_coverage_audit.add_argument("--output", type=Path, required=True)
     campaign_coverage_audit.set_defaults(handler=_audit_history_campaign)
+
+    campaign_boundary_diagnostic = commands.add_parser(
+        "diagnose-history-campaign-boundaries",
+        help="classify canonical candle gaps without downloading or decoding Landing rows",
+    )
+    campaign_boundary_diagnostic.add_argument("--publication-root", type=Path, required=True)
+    campaign_boundary_diagnostic.add_argument("--campaign-root", type=Path, required=True)
+    campaign_boundary_diagnostic.add_argument("--instrument-registry", type=Path, required=True)
+    campaign_boundary_diagnostic.add_argument("--coverage-audit", type=Path, required=True)
+    campaign_boundary_diagnostic.add_argument("--software-identity", required=True)
+    campaign_boundary_diagnostic.add_argument("--output", type=Path, required=True)
+    campaign_boundary_diagnostic.set_defaults(handler=_diagnose_history_campaign_boundaries)
 
     funding_boundary = commands.add_parser(
         "funding-source-boundary",
@@ -1337,6 +1352,31 @@ def _audit_history_campaign(args: argparse.Namespace) -> int:
         )
     )
     return 0 if audit.passed else 2
+
+
+def _diagnose_history_campaign_boundaries(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    diagnostic = build_history_campaign_boundary_diagnostic(
+        args.publication_root,
+        args.campaign_root,
+        args.instrument_registry,
+        args.coverage_audit,
+        diagnostic_software_identity=args.software_identity,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    artifact, receipt = publish_evidence(output, diagnostic.payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": diagnostic.payload["content_sha256"],
+                "receipt": str(receipt),
+                "result": diagnostic.payload["result"],
+                "status": diagnostic.payload["status"],
+            }
+        )
+    )
+    return 2 if diagnostic.unresolved else 0
 
 
 def _verify_history_1m(args: argparse.Namespace) -> int:

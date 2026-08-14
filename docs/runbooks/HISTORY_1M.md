@@ -871,6 +871,25 @@ children remain blocked. Inspect aggregate reason counts, then reproduce only th
 private child audits when detailed repair or dated cadence evidence is needed. Never convert a
 blocked aggregate to passed by editing the output or weakening ADR-0026/ADR-0034.
 
+When the semantic aggregate is already receipt-verified, classify its candle-gap topology without
+downloading history or repeating the Landing JSON/Decimal/Arrow decode:
+
+```powershell
+.venv\Scripts\grid-data.exe diagnose-history-campaign-boundaries `
+  --publication-root data\market-store\.publication-campaigns\m2-representative-5x24--<plan-prefix> `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<source-plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --coverage-audit benchmarks\results\m2-history-campaign-coverage-audit-<date>.json `
+  --software-identity git:<boundary-diagnostic-merge-commit-sha> `
+  --output benchmarks\results\m2-candle-boundary-diagnostic-<date>.json
+```
+
+The command re-verifies immutable publication/source integrity, reuses the already verified
+canonical dataset objects, and reads only instrument/time columns once. Exit code 2 means the
+sanitized topology artifact was committed successfully and missing minutes remain unaccepted.
+The first returned candle is not listing metadata; do not use this diagnostic to alter lifecycle
+bounds, repair data, or bypass the data-quality-owner Gate 2 decision.
+
 ## 20. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never

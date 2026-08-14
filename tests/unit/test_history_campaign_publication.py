@@ -11,8 +11,12 @@ import grid_data.history_campaign_publication as campaign_publication
 import pytest
 from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.cli import parser as command_parser
+from grid_data.evidence import publish_evidence
 from grid_data.funding_coverage_audit import FundingCoverageAudit
 from grid_data.history_campaign import HistoryCampaignError
+from grid_data.history_campaign_boundary_diagnostic import (
+    build_history_campaign_boundary_diagnostic,
+)
 from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_publication import (
     HistoryCampaignPublicationError,
@@ -30,6 +34,7 @@ from jsonschema import Draft202012Validator
 from tests.unit.test_history_campaign import (
     JANUARY_31_2026_2358_MS,
     FakeKlineClient,
+    inventory_record,
     request_payload,
     snapshot,
 )
@@ -74,6 +79,12 @@ class OverScaleVolumeKlineClient(FakeKlineClient):
             for row in rows:
                 row[5] = "100.00001"
         return tuple(tuple(row) for row in rows)
+
+
+class LeadingGapKlineClient(FakeKlineClient):
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        rows = super().kline_page(**kwargs)
+        return tuple(row for row in rows if int(row[0]) != JANUARY_31_2026_2358_MS)
 
 
 def completed_source_campaign(tmp_path: Path):  # type: ignore[no-untyped-def]
@@ -200,6 +211,25 @@ def test_publication_campaign_cli_exposes_exclusive_prepare_and_fast_resume_mode
     assert resumed.publication_root == Path("store/.publication-campaigns/prepared")
     with pytest.raises(SystemExit):
         command_parser().parse_args([*common, "--prepare-plan", "--execute"])
+
+    diagnostic = command_parser().parse_args(
+        [
+            "diagnose-history-campaign-boundaries",
+            "--publication-root",
+            "publication",
+            "--campaign-root",
+            "source",
+            "--instrument-registry",
+            "registry.json",
+            "--coverage-audit",
+            "coverage.json",
+            "--software-identity",
+            SOFTWARE_IDENTITY,
+            "--output",
+            "boundary.json",
+        ]
+    )
+    assert diagnostic.coverage_audit == Path("coverage.json")
 
 
 def test_publication_preflight_uses_one_verified_page_read_per_child(
@@ -821,6 +851,138 @@ def test_campaign_coverage_audit_is_schema_valid_aggregate_only_and_redacted(
         "funding_rate",
         "api_key",
         "device_identity",
+    ):
+        assert forbidden not in rendered
+
+
+def test_candle_boundary_diagnostic_reuses_verified_publication_and_reconciles_topology(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_plan = preflight_source_campaign(
+        tmp_path,
+        request=request_payload(
+            kinds=["trade"],
+            symbols=["AAAUSDT"],
+            start_ms=JANUARY_31_2026_2358_MS,
+            end_ms=JANUARY_31_2026_2358_MS + 3 * 60_000,
+        ),
+        records=[
+            inventory_record(
+                "AAAUSDT",
+                1,
+                launch_time_ms=JANUARY_31_2026_2358_MS,
+            )
+        ],
+    )
+    source = execute_source_campaign(
+        source_plan,
+        LeadingGapKlineClient(),
+        PublishingFundingClient(),
+    )
+    plan = preflight_publication(tmp_path, source.campaign_root)
+    completed = execute_publication(plan)
+    verified = verify_completed_history_campaign_publication(
+        completed.publication_root,
+        source.campaign_root,
+    )
+    assert len(verified.published_datasets) == completed.dataset_count == 2
+
+    coverage = build_history_campaign_coverage_audit(
+        completed.publication_root,
+        source.campaign_root,
+        tmp_path / "registry.json",
+        tmp_path / "capacity.json",
+        plan.store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity="git:" + "9" * 40,
+        generated_at_utc="2026-08-14T16:00:00Z",
+    )
+    assert coverage.passed is False
+    coverage_path, _ = publish_evidence(tmp_path / "coverage.json", coverage.payload)
+
+    monkeypatch.setattr(
+        history_acquisition,
+        "load_verified_completed_history_publication_batch",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("boundary diagnostic repeated Landing semantic decode")
+        ),
+    )
+    diagnostic = build_history_campaign_boundary_diagnostic(
+        completed.publication_root,
+        source.campaign_root,
+        tmp_path / "registry.json",
+        coverage_path,
+        diagnostic_software_identity="git:" + "a" * 40,
+        generated_at_utc="2026-08-14T16:01:00Z",
+    )
+
+    assert diagnostic.unresolved is True
+    assert diagnostic.payload["status"] == "diagnosed-unaccepted-candle-boundaries"
+    assert diagnostic.payload["process"]["source_market_rows_decoded"] is False  # type: ignore[index]
+    assert diagnostic.payload["process"]["published_dataset_verification_reused"] is True  # type: ignore[index]
+    assert diagnostic.payload["inventory"] == {  # type: ignore[index]
+        "by_kind": [
+            {
+                "dataset_count": 2,
+                "expected_minute_count": 4,
+                "gap_topology": {
+                    "fully_absent_minute_count": 0,
+                    "fully_absent_range_count": 0,
+                    "internal_gap_range_count": 0,
+                    "internal_missing_minute_count": 0,
+                    "leading_gap_range_count": 1,
+                    "leading_missing_minute_count": 1,
+                    "trailing_gap_range_count": 0,
+                    "trailing_missing_minute_count": 0,
+                },
+                "kind": "trade",
+                "missing_minute_count": 1,
+                "observed_row_count": 3,
+                "series_count": 1,
+                "source_child_gap_range_count": 1,
+            }
+        ],
+        "dataset_count": 2,
+        "expected_minute_count": 4,
+        "missing_minute_count": 1,
+        "observed_row_count": 3,
+        "series_count": 1,
+    }
+    assert diagnostic.payload["result"] == {  # type: ignore[index]
+        "coverage_reconciled": True,
+        "fully_absent_minute_count": 0,
+        "fully_absent_range_count": 0,
+        "internal_gap_range_count": 0,
+        "internal_missing_minute_count": 0,
+        "leading_gap_range_count": 1,
+        "leading_missing_minute_count": 1,
+        "registry_clipped_leading_gap_series_count": 1,
+        "registry_clipped_series_count": 1,
+        "source_child_gap_range_count": 1,
+        "trailing_gap_range_count": 0,
+        "trailing_missing_minute_count": 0,
+    }
+    hash_input = dict(diagnostic.payload)
+    embedded = hash_input.pop("content_sha256")
+    assert embedded == canonical_sha256(hash_input)
+    schema = json.loads(
+        (ROOT / "schemas/evidence/v1/phase2-candle-boundary-diagnostic.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(diagnostic.payload)
+    rendered = json.dumps(diagnostic.payload).lower()
+    for forbidden in (
+        "aaausdt",
+        '"dataset_id"',
+        '"instrument_id"',
+        '"symbol"',
+        "c:\\",
+        "/home/",
+        '"open"',
+        '"volume"',
+        "api_key",
     ):
         assert forbidden not in rendered
 
