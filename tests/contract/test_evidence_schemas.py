@@ -2408,6 +2408,76 @@ def test_incremental_catalog_selection_performance_is_bound_measured_and_sanitiz
         assert forbidden not in rendered
 
 
+def test_announcement_archive_depth_is_bound_blocked_and_sanitized() -> None:
+    artifact = (
+        ROOT / "benchmarks" / "results" / "m2-announcement-archive-depth-oldest-5-20260814.json"
+    )
+    receipt_path = artifact.with_name(f"{artifact.name}.receipt.json")
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-announcement-archive-depth.schema.json"
+    )
+    payload = load_json(artifact)
+    receipt = load_json(receipt_path)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert embedded_hash == "11913c639a63b04af9b518ea7db73df64b9dbd8346bb9b3ae57fd3e8343bee1e"
+    assert verify_evidence(artifact)
+    artifact_sha256 = "68c12ffbf7b5824175a0e56e68f591665e8e3e480ccf6765aa3285dfc8437688"
+    assert sha256_file(artifact) == artifact_sha256
+    assert receipt == {
+        "artifact": artifact.name,
+        "artifact_sha256": artifact_sha256,
+        "receipt_schema": "grid.evidence-receipt/v1",
+        "status": "complete",
+    }
+    assert payload["evidence_schema"] == "grid.phase2-announcement-archive-depth/v1"
+    assert payload["status"] == "blocked-insufficient-official-announcement-history"
+    assert payload["process"] == {
+        "documented_announcement_type_count": 8,
+        "first_and_last_page_only": True,
+        "lifecycle_depth_type_count": 2,
+        "maximum_response_count": 16,
+        "response_count": 15,
+        "reused_single_page_count": 1,
+        "software_identity": "git:777f3c8745da3b83125f9178734538d700a0accd",
+    }
+    assert payload["archive_depth"] == {
+        "all_selected_registry_launches_within_new_listing_archive": False,
+        "delistings_declared_last_page_min_date_timestamp_ms": 1_660_194_000_000,
+        "documented_types_declared_last_page_min_date_timestamp_ms": 1_651_831_200_000,
+        "new_crypto_declared_last_page_min_date_timestamp_ms": 1_654_063_851_000,
+        "selected_launch_before_new_listing_archive_count": 5,
+        "selected_registry_launch_max_ms": 1_584_230_400_000,
+        "selected_registry_launch_min_ms": 1_514_764_800_000,
+    }
+    probes = {item["announcement_type"]: item for item in payload["type_probes"]}
+    assert probes["new_crypto"]["lifecycle_depth_type"] is True
+    assert probes["new_crypto"]["declared_page_date_order_consistent"] is True
+    assert probes["delistings"]["lifecycle_depth_type"] is True
+    assert probes["delistings"]["declared_page_date_order_consistent"] is True
+    assert probes["latest_activities"]["lifecycle_depth_type"] is False
+    assert probes["latest_activities"]["declared_page_date_order_consistent"] is False
+    assert probes["latest_activities"]["first_page_adjacent_date_inversion_count"] == 1
+    assert sum(item["last_page_publish_time_present_count"] == 0 for item in probes.values()) == 7
+
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        '"api_key"',
+        '"api_secret"',
+        '"description"',
+        '"instrument_id"',
+        '"symbol"',
+        '"title"',
+        '"url"',
+    ):
+        assert forbidden not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 

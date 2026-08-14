@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified official announcement-depth evidence: 15 one-attempt public responses prove
+  all five selected registry launch bounds precede the `new_crypto` declared-last-page minimum in
+  June 2022; exact instrument lifecycle remains unproven and Gate 2 stays closed.
 - ADR-0074 lifecycle-scoped order evidence: source order is preserved for all announcement types,
   inversions are counted, and strict first/last date ordering is required only for the
   `new_crypto`/`delistings` partitions used by the depth diagnostic.

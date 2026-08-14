@@ -1102,10 +1102,39 @@ launch boundary. The sanitized result remains bound to the unchanged blocked ADR
 current launch metadata and first returned data do not prove historical listing time, so no minute
 or reason is accepted.
 
+## Official announcement archive-depth evidence
+
+ADR-0071 through ADR-0074 add a bounded official Bybit announcement-depth diagnostic. The final
+contract reflects the source behavior observed during fail-closed post-merge runs: pages are not
+universally date-ordered across all announcement types, and legacy rows may omit the newer
+`publishTime`. Source order is never rewritten; `publishTime` is never synthesized; inversion and
+field-presence counts remain explicit. Strict first/declared-last date ordering applies only to
+the lifecycle-relevant `new_crypto` and `delistings` partitions.
+
+The receipt-verified 2026-08-14 artifact used 15 one-attempt public responses for all eight types
+(one type reused its single page), retained no announcement body, and bound implementation merge
+`777f3c8745da3b83125f9178734538d700a0accd`. All five selected current-registry launch bounds are
+earlier than the official `new_crypto` declared-last-page minimum `1654063851000` (June 2022); the
+corresponding `delistings` bound is `1660194000000`. Seven last pages have no `publishTime`, and
+one non-lifecycle `latest_activities` first page exposes one date inversion. The result is
+`blocked-insufficient-official-announcement-history`: it proves that this bounded official API
+view cannot supply the required legacy lifecycle evidence, not that any missing candle is
+accepted.
+
+Implementation and observed-source compatibility are tracked in
+[PR #94](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/94),
+[PR #95](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/95),
+[PR #96](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/96), and
+[PR #97](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/97). The immutable
+measured artifact and receipt are tracked in
+[PR #98](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/98).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
-  timeline begins on 2026-08-12 and does not reconstruct earlier point-in-time metadata;
+  timeline begins on 2026-08-12 and does not reconstruct earlier point-in-time metadata, while
+  ADR-0071 through ADR-0074 prove that the official announcements API's declared last pages begin
+  only in 2022 for the required lifecycle partitions;
 - owner-reviewed lifecycle evidence/policy for 11,981,671 historical `rest_returned_no_data`
   minutes across the current-universe bootstrap; ADR-0070 now proves aggregate topology but does
   not turn first returned data into listing metadata, and 74 canonical representation overflows
