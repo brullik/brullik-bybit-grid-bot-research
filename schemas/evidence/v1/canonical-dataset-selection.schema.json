@@ -38,17 +38,38 @@
           "dataset_id": {"$ref": "#/$defs/datasetId"},
           "file_sha256": {"$ref": "#/$defs/sha256"},
           "manifest_sha256": {"$ref": "#/$defs/sha256"},
-          "max_instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
-          "max_time_ms": {"type": "integer", "minimum": 0},
-          "min_instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
-          "min_time_ms": {"type": "integer", "minimum": 0},
+          "max_instrument_id": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 4294967295}, {"type": "null"}]},
+          "max_time_ms": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+          "min_instrument_id": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 4294967295}, {"type": "null"}]},
+          "min_time_ms": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
           "object_key": {
             "type": "string",
             "pattern": "^datasets/[a-z0-9][a-z0-9._-]{2,127}/dataset=(trade_kline_1m|mark_kline_1m|funding_event)/schema=v1/year=[0-9]{4}/month=(0[1-9]|1[0-2])/bucket=0[0-7]/[a-z0-9][a-z0-9._-]*\\.parquet$"
           },
-          "row_count": {"type": "integer", "minimum": 1},
+          "row_count": {"type": "integer", "minimum": 0},
           "size_bytes": {"type": "integer", "minimum": 1}
-        }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"row_count": {"const": 0}}, "required": ["row_count"]},
+            "then": {
+              "properties": {
+                "max_instrument_id": {"type": "null"},
+                "max_time_ms": {"type": "null"},
+                "min_instrument_id": {"type": "null"},
+                "min_time_ms": {"type": "null"}
+              }
+            },
+            "else": {
+              "properties": {
+                "max_instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+                "max_time_ms": {"type": "integer", "minimum": 0},
+                "min_instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+                "min_time_ms": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        ]
       }
     },
     "request": {
@@ -110,7 +131,7 @@
       "required": ["object_count", "selected_row_inventory", "selected_size_bytes"],
       "properties": {
         "object_count": {"type": "integer", "minimum": 1},
-        "selected_row_inventory": {"type": "integer", "minimum": 1},
+        "selected_row_inventory": {"type": "integer", "minimum": 0},
         "selected_size_bytes": {"type": "integer", "minimum": 1}
       }
     },
@@ -128,6 +149,31 @@
     },
     "status": {"const": "passed"}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "request": {
+            "properties": {"dataset_type": {"const": "funding_event"}},
+            "required": ["dataset_type"]
+          }
+        },
+        "required": ["request"]
+      },
+      "then": {
+        "properties": {
+          "objects": {
+            "items": {"properties": {"row_count": {"type": "integer", "minimum": 1}}}
+          },
+          "selection": {
+            "properties": {
+              "selected_row_inventory": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "datasetId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}

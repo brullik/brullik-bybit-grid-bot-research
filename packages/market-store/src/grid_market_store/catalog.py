@@ -66,14 +66,14 @@ class CatalogFileRecord:
     sha256: str
     size_bytes: int
     row_count: int
-    min_time_ms: int
-    max_time_ms: int
-    min_instrument_id: int
-    max_instrument_id: int
-    first_instrument_id: int
-    first_time_ms: int
-    last_instrument_id: int
-    last_time_ms: int
+    min_time_ms: int | None
+    max_time_ms: int | None
+    min_instrument_id: int | None
+    max_instrument_id: int | None
+    first_instrument_id: int | None
+    first_time_ms: int | None
+    last_instrument_id: int | None
+    last_time_ms: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,8 +86,8 @@ class CatalogDatasetRecord:
     parent_dataset_ids: tuple[str, ...]
     instrument_count: int
     row_count: int
-    min_time_ms: int
-    max_time_ms: int
+    min_time_ms: int | None
+    max_time_ms: int | None
     files: tuple[CatalogFileRecord, ...]
     source_evidence_sha256: tuple[str, ...]
     audit_report_sha256: tuple[str, ...]
@@ -216,10 +216,10 @@ class SelectedCatalogObject:
     file_sha256: str
     size_bytes: int
     row_count: int
-    min_time_ms: int
-    max_time_ms: int
-    min_instrument_id: int
-    max_instrument_id: int
+    min_time_ms: int | None
+    max_time_ms: int | None
+    min_instrument_id: int | None
+    max_instrument_id: int | None
     partition_path: str
 
 
@@ -258,15 +258,34 @@ def _validate_catalog_record(record: CatalogDatasetRecord) -> None:
     ):
         raise CatalogError("catalog contains invalid parent lineage")
     if (
-        record.instrument_count <= 0
-        or record.row_count <= 0
-        or record.min_time_ms < 0
-        or record.min_time_ms > record.max_time_ms
+        record.instrument_count < 0
+        or record.row_count < 0
         or not record.files
         or sum(item.row_count for item in record.files) != record.row_count
         or tuple(item.ordinal for item in record.files) != tuple(range(len(record.files)))
     ):
         raise CatalogError("catalog contains invalid dataset or file aggregate facts")
+    empty_dataset = record.row_count == 0
+    if empty_dataset:
+        if (
+            record.dataset_type is DatasetType.FUNDING_EVENT
+            or record.instrument_count != 0
+            or record.min_time_ms is not None
+            or record.max_time_ms is not None
+            or any(item.row_count != 0 for item in record.files)
+        ):
+            raise CatalogError(
+                "empty candle catalog dataset requires zero counts and absent bounds"
+            )
+    elif (
+        record.instrument_count <= 0
+        or record.min_time_ms is None
+        or record.max_time_ms is None
+        or record.min_time_ms < 0
+        or record.min_time_ms > record.max_time_ms
+        or any(item.row_count <= 0 for item in record.files)
+    ):
+        raise CatalogError("non-empty catalog dataset requires positive counts and key bounds")
     match = PARTITION_RE.fullmatch(record.partition_path)
     if (
         match is None
@@ -289,13 +308,37 @@ def _validate_catalog_record(record: CatalogDatasetRecord) -> None:
             or item.object_key != expected_key
             or not SHA256_RE.fullmatch(item.sha256)
             or item.size_bytes <= 0
-            or item.row_count <= 0
-            or item.min_time_ms < 0
-            or item.min_time_ms > item.max_time_ms
-            or item.min_instrument_id <= 0
-            or item.min_instrument_id > item.max_instrument_id
-            or (item.first_instrument_id, item.first_time_ms)
-            > (item.last_instrument_id, item.last_time_ms)
+            or item.row_count < 0
+        ):
+            raise CatalogError("catalog contains an invalid file/object binding")
+        bounds = (
+            item.min_time_ms,
+            item.max_time_ms,
+            item.min_instrument_id,
+            item.max_instrument_id,
+            item.first_instrument_id,
+            item.first_time_ms,
+            item.last_instrument_id,
+            item.last_time_ms,
+        )
+        if item.row_count == 0:
+            if any(value is not None for value in bounds):
+                raise CatalogError("empty catalog file requires absent key bounds")
+            continue
+        if any(value is None for value in bounds):
+            raise CatalogError("non-empty catalog file requires complete key bounds")
+        min_time_ms = cast(int, item.min_time_ms)
+        max_time_ms = cast(int, item.max_time_ms)
+        min_instrument_id = cast(int, item.min_instrument_id)
+        max_instrument_id = cast(int, item.max_instrument_id)
+        first_key = (cast(int, item.first_instrument_id), cast(int, item.first_time_ms))
+        last_key = (cast(int, item.last_instrument_id), cast(int, item.last_time_ms))
+        if (
+            min_time_ms < 0
+            or min_time_ms > max_time_ms
+            or min_instrument_id <= 0
+            or min_instrument_id > max_instrument_id
+            or first_key > last_key
         ):
             raise CatalogError("catalog contains an invalid file/object binding")
     registration_values = (
@@ -425,14 +468,6 @@ def _file_record(
     *,
     ordinal: int,
 ) -> CatalogFileRecord:
-    if (
-        item.row_count <= 0
-        or item.min_time_ms is None
-        or item.max_time_ms is None
-        or item.min_instrument_id is None
-        or item.max_instrument_id is None
-    ):
-        raise CatalogError("canonical files require non-empty key statistics")
     time_column = (
         "funding_time_ms"
         if published.manifest.dataset_type is DatasetType.FUNDING_EVENT
@@ -444,10 +479,28 @@ def _file_record(
     )
     if keys.num_rows != item.row_count:
         raise CatalogError("catalog key read conflicts with the verified manifest")
-    first_instrument_id = cast(int, keys.column("instrument_id")[0].as_py())
-    first_time_ms = cast(int, keys.column(time_column)[0].as_py())
-    last_instrument_id = cast(int, keys.column("instrument_id")[-1].as_py())
-    last_time_ms = cast(int, keys.column(time_column)[-1].as_py())
+    if item.row_count == 0:
+        manifest_bounds = (
+            item.min_time_ms,
+            item.max_time_ms,
+            item.min_instrument_id,
+            item.max_instrument_id,
+        )
+        if any(value is not None for value in manifest_bounds):
+            raise CatalogError("empty canonical files require absent key statistics")
+        first_instrument_id = first_time_ms = last_instrument_id = last_time_ms = None
+    else:
+        if (
+            item.min_time_ms is None
+            or item.max_time_ms is None
+            or item.min_instrument_id is None
+            or item.max_instrument_id is None
+        ):
+            raise CatalogError("non-empty canonical files require key statistics")
+        first_instrument_id = cast(int, keys.column("instrument_id")[0].as_py())
+        first_time_ms = cast(int, keys.column(time_column)[0].as_py())
+        last_instrument_id = cast(int, keys.column("instrument_id")[-1].as_py())
+        last_time_ms = cast(int, keys.column(time_column)[-1].as_py())
     return CatalogFileRecord(
         ordinal=ordinal,
         dataset_relative_path=item.path,
@@ -485,8 +538,6 @@ def _record_from_store(store_root: Path, dataset_id: str) -> CatalogDatasetRecor
         or manifest.dataset_type not in SUPPORTED_DATASET_TYPES
     ):
         raise CatalogError("catalog v1 accepts only complete canonical datasets")
-    if manifest.min_time_ms is None or manifest.max_time_ms is None:
-        raise CatalogError("canonical manifest requires time bounds")
     partition_path, year, month, bucket = _partition_facts(manifest)
     files = tuple(
         _file_record(published, item, ordinal=index) for index, item in enumerate(manifest.files)
@@ -671,6 +722,24 @@ def _create_schema(connection: Any) -> None:
     )
 
 
+def _stored_bound(value: int | None) -> int:
+    """Encode absent zero-row bounds in the backward-compatible v1 physical schema."""
+
+    return 0 if value is None else value
+
+
+def _logical_bound(value: object, *, row_count: int) -> int | None:
+    """Decode and validate the v1 zero-row sentinel without weakening non-empty bounds."""
+
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise CatalogError("catalog contains an invalid physical key bound")
+    if row_count == 0:
+        if value != 0:
+            raise CatalogError("empty catalog rows require zero physical key-bound sentinels")
+        return None
+    return value
+
+
 def _read_catalog_datasets(connection: Any) -> tuple[CatalogDatasetRecord, ...]:
     dataset_rows = connection.execute(
         """
@@ -695,6 +764,16 @@ def _read_catalog_datasets(connection: Any) -> tuple[CatalogDatasetRecord, ...]:
                 [dataset_id],
             ).fetchall()
         )
+        file_rows = connection.execute(
+            """
+                SELECT ordinal, dataset_relative_path, object_key, file_sha256,
+                       size_bytes, row_count, min_time_ms, max_time_ms,
+                       min_instrument_id, max_instrument_id, first_instrument_id,
+                       first_time_ms, last_instrument_id, last_time_ms
+                FROM dataset_files WHERE dataset_id = ? ORDER BY ordinal
+                """,
+            [dataset_id],
+        ).fetchall()
         files = tuple(
             CatalogFileRecord(
                 ordinal=cast(int, item[0]),
@@ -703,25 +782,16 @@ def _read_catalog_datasets(connection: Any) -> tuple[CatalogDatasetRecord, ...]:
                 sha256=cast(str, item[3]),
                 size_bytes=cast(int, item[4]),
                 row_count=cast(int, item[5]),
-                min_time_ms=cast(int, item[6]),
-                max_time_ms=cast(int, item[7]),
-                min_instrument_id=cast(int, item[8]),
-                max_instrument_id=cast(int, item[9]),
-                first_instrument_id=cast(int, item[10]),
-                first_time_ms=cast(int, item[11]),
-                last_instrument_id=cast(int, item[12]),
-                last_time_ms=cast(int, item[13]),
+                min_time_ms=_logical_bound(item[6], row_count=cast(int, item[5])),
+                max_time_ms=_logical_bound(item[7], row_count=cast(int, item[5])),
+                min_instrument_id=_logical_bound(item[8], row_count=cast(int, item[5])),
+                max_instrument_id=_logical_bound(item[9], row_count=cast(int, item[5])),
+                first_instrument_id=_logical_bound(item[10], row_count=cast(int, item[5])),
+                first_time_ms=_logical_bound(item[11], row_count=cast(int, item[5])),
+                last_instrument_id=_logical_bound(item[12], row_count=cast(int, item[5])),
+                last_time_ms=_logical_bound(item[13], row_count=cast(int, item[5])),
             )
-            for item in connection.execute(
-                """
-                SELECT ordinal, dataset_relative_path, object_key, file_sha256,
-                       size_bytes, row_count, min_time_ms, max_time_ms,
-                       min_instrument_id, max_instrument_id, first_instrument_id,
-                       first_time_ms, last_instrument_id, last_time_ms
-                FROM dataset_files WHERE dataset_id = ? ORDER BY ordinal
-                """,
-                [dataset_id],
-            ).fetchall()
+            for item in file_rows
         )
         try:
             dataset_type = DatasetType(cast(str, row[1]))
@@ -741,8 +811,8 @@ def _read_catalog_datasets(connection: Any) -> tuple[CatalogDatasetRecord, ...]:
             parent_dataset_ids=parents,
             instrument_count=cast(int, row[5]),
             row_count=cast(int, row[6]),
-            min_time_ms=cast(int, row[7]),
-            max_time_ms=cast(int, row[8]),
+            min_time_ms=_logical_bound(row[7], row_count=cast(int, row[6])),
+            max_time_ms=_logical_bound(row[8], row_count=cast(int, row[6])),
             files=files,
             source_evidence_sha256=tuple(raw_source_hashes),
             audit_report_sha256=tuple(raw_audit_hashes),
@@ -944,8 +1014,8 @@ def _insert_record(
             record.status.value,
             record.instrument_count,
             record.row_count,
-            record.min_time_ms,
-            record.max_time_ms,
+            _stored_bound(record.min_time_ms),
+            _stored_bound(record.max_time_ms),
             json.dumps(list(record.source_evidence_sha256), separators=(",", ":")),
             json.dumps(list(record.audit_report_sha256), separators=(",", ":")),
             record.build_config_sha256,
@@ -980,14 +1050,14 @@ def _insert_record(
                 item.sha256,
                 item.size_bytes,
                 item.row_count,
-                item.min_time_ms,
-                item.max_time_ms,
-                item.min_instrument_id,
-                item.max_instrument_id,
-                item.first_instrument_id,
-                item.first_time_ms,
-                item.last_instrument_id,
-                item.last_time_ms,
+                _stored_bound(item.min_time_ms),
+                _stored_bound(item.max_time_ms),
+                _stored_bound(item.min_instrument_id),
+                _stored_bound(item.max_instrument_id),
+                _stored_bound(item.first_instrument_id),
+                _stored_bound(item.first_time_ms),
+                _stored_bound(item.last_instrument_id),
+                _stored_bound(item.last_time_ms),
             ],
         )
 
@@ -1282,21 +1352,29 @@ def _assert_selected_keys_disjoint(
     time_column = "funding_time_ms" if dataset_type is DatasetType.FUNDING_EVENT else "open_time_ms"
     by_partition: dict[str, list[tuple[CatalogDatasetRecord, CatalogFileRecord]]] = {}
     for record, item in selected_files:
+        if item.row_count == 0:
+            continue
         by_partition.setdefault(record.partition_path, []).append((record, item))
 
     for partition_files in by_partition.values():
         ordered = sorted(
             partition_files,
             key=lambda value: (
-                value[1].first_instrument_id,
-                value[1].first_time_ms,
+                cast(int, value[1].first_instrument_id),
+                cast(int, value[1].first_time_ms),
                 value[0].dataset_id,
                 value[1].ordinal,
             ),
         )
         if all(
-            (left_file.last_instrument_id, left_file.last_time_ms)
-            < (right_file.first_instrument_id, right_file.first_time_ms)
+            (
+                cast(int, left_file.last_instrument_id),
+                cast(int, left_file.last_time_ms),
+            )
+            < (
+                cast(int, right_file.first_instrument_id),
+                cast(int, right_file.first_time_ms),
+            )
             for (_left_record, left_file), (_right_record, right_file) in pairwise(ordered)
         ):
             continue
@@ -1363,6 +1441,20 @@ def select_catalog_range(
         if record.partition_path not in required_partitions:
             continue
         for item in record.files:
+            if item.row_count == 0:
+                selected_files.append((record, item))
+                continue
+            if (
+                item.min_time_ms is None
+                or item.max_time_ms is None
+                or item.min_instrument_id is None
+                or item.max_instrument_id is None
+                or item.first_instrument_id is None
+                or item.first_time_ms is None
+                or item.last_instrument_id is None
+                or item.last_time_ms is None
+            ):
+                raise CatalogError("non-empty selected object has incomplete key bounds")
             if item.max_time_ms < request.start_time_ms or item.min_time_ms > request.end_time_ms:
                 continue
             if requested_ids is not None and not any(
@@ -1378,8 +1470,9 @@ def select_catalog_range(
         selected_files,
         key=lambda value: (
             value[0].partition_path,
-            value[1].first_instrument_id,
-            value[1].first_time_ms,
+            value[1].row_count != 0,
+            value[1].first_instrument_id or 0,
+            value[1].first_time_ms or 0,
             value[0].dataset_id,
             value[1].ordinal,
         ),

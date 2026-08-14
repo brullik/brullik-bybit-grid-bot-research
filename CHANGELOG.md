@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0079 and backward-compatible catalog admission for receipt-verified schema-only candle
+  partitions, including coherent null-bound evidence, deterministic empty-object selection, and
+  fail-closed zero-row physical encoding in existing DuckDB v1 catalogs.
 - ADR-0078 and a receipt-bound file-backed catalog registration request derived from a fully
   verified campaign publication, removing the Windows command-line limit for 978 full-history
   datasets while preserving the existing preflight and atomic catalog transaction.
