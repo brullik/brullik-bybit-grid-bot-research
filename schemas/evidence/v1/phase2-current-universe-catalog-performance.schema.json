@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-current-universe-catalog-performance.schema.json",
+  "title": "Sanitized current-universe catalog selection performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "configuration", "content_sha256", "correctness",
+    "environment", "evidence_schema", "generated_at_utc", "limitations", "measurement",
+    "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "catalog_and_dataset_state_preserved": true,
+        "network_request_performed": false,
+        "private_or_live_capability_used": false,
+        "production_bundle_selector_exercised": true,
+        "retained_market_store_accessed_read_only": true,
+        "selection_receipts_verified": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_evidence_artifact_sha256", "bundle_evidence_content_sha256",
+        "bundle_manifest_artifact_sha256", "catalog_content_sha256", "catalog_revision",
+        "implementation_identity", "selection_chain_sha256"
+      ],
+      "properties": {
+        "bundle_evidence_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_evidence_content_sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_manifest_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "catalog_content_sha256": {"$ref": "#/$defs/sha256"},
+        "catalog_revision": {"type": "integer", "minimum": 1},
+        "implementation_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+        "selection_chain_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_snapshot_verifications_per_pass", "selection_count", "selection_pass_count"
+      ],
+      "properties": {
+        "catalog_snapshot_verifications_per_pass": {"const": 1},
+        "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "selection_pass_count": {"const": 2}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "correctness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_verified_after_measurement", "dataset_count", "deterministic_repeat_equal",
+        "object_count", "row_count", "selection_fingerprint_sha256", "size_bytes",
+        "source_count", "state_fingerprint_equal_before_after"
+      ],
+      "properties": {
+        "catalog_verified_after_measurement": {"const": true},
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "deterministic_repeat_equal": {"const": true},
+        "object_count": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "row_count": {"type": "integer", "minimum": 1, "maximum": 20000000000},
+        "selection_fingerprint_sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 2000000000000},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "state_fingerprint_equal_before_after": {"const": true}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cache_state", "duckdb_version", "logical_cpu_count", "memory_total_bytes",
+        "platform_machine", "platform_system", "pyarrow_version", "python_version"
+      ],
+      "properties": {
+        "cache_state": {"const": "uncontrolled-first-then-immediate-repeat"},
+        "duckdb_version": {"type": "string", "minLength": 1},
+        "logical_cpu_count": {"type": "integer", "minimum": 1},
+        "memory_total_bytes": {"type": "integer", "minimum": 1},
+        "platform_machine": {"type": "string", "minLength": 1},
+        "platform_system": {"type": "string", "minLength": 1},
+        "pyarrow_version": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "evidence_schema": {"const": "grid.phase2-current-universe-catalog-performance/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first_pass_rows_per_second", "first_pass_wall_elapsed_ns",
+        "repeat_pass_rows_per_second", "repeat_pass_wall_elapsed_ns"
+      ],
+      "properties": {
+        "first_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "first_pass_wall_elapsed_ns": {"type": "integer", "minimum": 1},
+        "repeat_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "repeat_pass_wall_elapsed_ns": {"type": "integer", "minimum": 1}
+      }
+    },
+    "status": {"const": "measured-current-universe-catalog-selection"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_or_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_request_time_bounds": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_catalog_or_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

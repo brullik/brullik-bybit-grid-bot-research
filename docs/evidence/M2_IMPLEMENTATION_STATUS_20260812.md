@@ -1348,6 +1348,20 @@ retained July source is not downloaded again. Measured evidence remains pending 
 current-universe acquisition/publication/coverage watchers. Funding cadence policy, the
 owner-reviewed performance envelope, Gate 2, and Phase 3 remain unchanged.
 
+## Current-universe catalog performance implementation
+
+ADR-0091 adds a post-bundle read-only benchmark over the exact ADR-0085 private selection chain.
+It verifies the bundle plan, manifest, public evidence, and every selection receipt/schema/hash;
+then runs two production `select_catalog_ranges` passes with one verified catalog snapshot per
+pass. Runtime inventories must equal their receipt-bound fingerprints, the immediate repeat must
+be identical, and catalog plus selected-dataset metadata fingerprints must remain unchanged.
+
+The GitHub-safe output contains only hashes, aggregate counts, nanosecond timings, integer
+rows/second, non-identifying environment facts, and cache-state disclosure. Implementation tests
+cover successful redaction, receipt drift, and retained-state mutation. The measured post-merge
+artifact remains pending the active ADR-0085 watcher. This component does not qualify the
+owner-reviewed end-to-end envelope, change Gate 2, or authorize Phase 3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
