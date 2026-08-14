@@ -932,6 +932,15 @@ current blocked set. A post-merge receipt-verified pack remains required; implem
 does not change Gate 2 status. The implementation, ADR, schema, and fail-closed tests are tracked
 in [PR #81](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/81).
 
+The post-merge builder was executed against merge commit
+`b58e03933096cc35cf4aa3d774147457f13e5e77`. All eight fixed source receipts, schemas,
+artifact/content hashes, statuses, and cross-source bindings verified. The resulting
+[readiness pack](../../benchmarks/results/m2-gate2-readiness-pack-20260814.json) and
+[receipt](../../benchmarks/results/m2-gate2-readiness-pack-20260814.json.receipt.json) record two
+of six criteria as `evidence-ready`, four as blocked, and seven unique blockers. Gate 2 remains
+`closed-pending-data-quality-owner`; automatic Phase 3 authorization and automatic gate
+acceptance are false. This is a reproducible negative readiness result, not a Gate 2 decision.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

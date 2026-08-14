@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Post-merge Gate 2 readiness evidence bound to merge `b58e039`: all eight fixed source chains
+  verify, two of six criteria are evidence-ready, four remain blocked by seven explicit blockers,
+  Gate 2 remains closed, and automatic Phase 3 authorization remains false.
 - ADR-0063 and a non-promoting Gate 2 readiness-pack builder that verifies the unchanged six
   criteria and eight exact receipt/schema/content-hash evidence sources, retaining four blocked
   criteria, two evidence-ready criteria, seven blockers, and mandatory data-quality-owner review.

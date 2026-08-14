@@ -147,6 +147,83 @@ def test_stale_output_fault_injection_matches_schema_receipt_and_redaction() -> 
         assert forbidden not in rendered
 
 
+def test_gate2_readiness_pack_matches_schema_receipt_and_remains_blocked() -> None:
+    artifact = ROOT / "benchmarks/results/m2-gate2-readiness-pack-20260814.json"
+    schema = load_json(ROOT / "schemas/evidence/v1/gate2-readiness-pack.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "84bef609ab1e2028b2e2df0b08f56803166a4b2630426e5b576058bc6bf2e473"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "1deec7db53ebb52b25da8dc18fe96f68233294f1a02dfe01c24b12c49c1e2625"
+    )
+    assert payload["bindings"] == {
+        "implementation_identity": "git:b58e03933096cc35cf4aa3d774147457f13e5e77"
+    }
+    assert payload["readiness_counts"] == {
+        "blocked_criterion_count": 4,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 2,
+    }
+    assert payload["gate_2"] == {
+        "automatic_phase3_authorization": False,
+        "blocker_codes": [
+            "full-history-campaign-incomplete",
+            "full-history-canonical-publication-and-audit-missing",
+            "full-history-end-to-end-performance-missing",
+            "funding-cadence-policy-unresolved",
+            "genuine-candle-gap-repair-evidence-missing",
+            "historical-point-in-time-metadata-missing",
+            "measured-funding-repair-evidence-missing",
+        ],
+        "data_quality_owner_decision_required": True,
+        "readiness": "blocked-by-missing-evidence",
+        "status": "closed-pending-data-quality-owner",
+    }
+    assert payload["assurances"] == {
+        "all_source_content_hashes_verified": True,
+        "all_source_receipts_verified": True,
+        "all_source_schemas_verified": True,
+        "automatic_gate_acceptance_performed": False,
+        "criteria_source_hash_verified": True,
+        "cross_source_bindings_verified": True,
+        "network_request_performed": False,
+        "phase3_authorized": False,
+        "private_or_live_capability_used": False,
+    }
+    assert set(payload["sources"]) == {
+        "canonical-publication-100x31",
+        "coverage-audit-100x31",
+        "full-history-preflight-performance",
+        "full-history-resume-performance",
+        "instrument-timeline-current-policy",
+        "landing-long-run-100x31",
+        "stale-output-fault-injection",
+        "trade-compaction-50x90",
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        '"authorization":',
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"runtime_path"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-public-sample.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-public-sample.schema.json")
