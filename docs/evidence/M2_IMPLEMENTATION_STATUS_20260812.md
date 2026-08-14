@@ -1181,6 +1181,15 @@ This is a no-repeat diagnostic, not Gate 2 acceptance. It makes no Bybit request
 settlement or cadence, changes no parent, and does not replace the required measured funding
 repair workflow when a genuine eligible candidate exists.
 
+The receipt-verified 2026-08-14
+[candidate evidence](../../benchmarks/results/m2-funding-repair-candidate-audit-20260814.json) is
+bound to implementation merge `3bbb2674eca9a66c174b565e6a725e645917dc82`. It recomputed four
+blocked audits containing 11 interval changes and classified all four as
+`non-isolated-or-non-integer-chronology`: there are zero candidate settlements, tasks, and planned
+HTTP requests. The artifact SHA-256 is
+`c14bee09eb5da94cf06b55c80f48c242e4eef9762c295f414cca3dc621740584`; its embedded content
+SHA-256 is `b2cae4567637649cc0fd9ec9dcb84410b1a65423c5c85fb5165e0792febc95e5`.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
