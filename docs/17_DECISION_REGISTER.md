@@ -83,6 +83,7 @@
 | D-077 | Funding repair candidates are classified by replaying the unchanged ADR-0055 planner over explicit receipt-verified audits | accepted | Bounded exact inputs, no request or chronology acceptance, private actionable audit, sanitized aggregate projection, and ADR-0077 |
 | D-078 | Full-history catalog registration consumes one receipt-bound file request derived from a verified campaign publication | accepted | Windows-safe 10,000-dataset bound, exact inventory/identity, unchanged catalog preflight and atomic transaction, and ADR-0078 |
 | D-079 | A receipt-verified schema-only canonical candle dataset remains explicit in catalog registration and selection | accepted | Zero rows/instruments, null logical bounds, row-qualified DuckDB v1 sentinel encoding, no overlap keys, unchanged coverage policy, and ADR-0079 |
+| D-080 | Full-history catalog selection follows the campaign's changing bucket topology and publishes only a sanitized aggregate | accepted | Two contiguous segments per trade/mark kind, exact four-selection union, identifier-free counts/hashes, unchanged missing-partition and Gate 2 policy, and ADR-0080 |
 
 ## Decisions requiring benchmark or owner evidence
 

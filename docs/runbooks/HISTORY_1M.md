@@ -493,6 +493,26 @@ The selected files use `funding_time_ms` internally, but the request fields rema
 successful funding selection proves only receipt-bound pruning; bind the separate funding
 chronology/lifecycle evidence before research consumption.
 
+If the selected instrument/bucket topology changes during a long range, do not weaken the missing
+partition check or request future buckets before their first campaign month. Split trade and mark
+at the same contiguous topology boundaries, retain every detailed request/selection under ignored
+runtime storage, and publish only their reconciled aggregate:
+
+```powershell
+.venv\Scripts\grid-data.exe full-history-catalog-evidence `
+  --registration-request reports\private\catalog-registration-request-<date>.json `
+  --registration data\evidence\catalog-registration-<date>.json `
+  --selection data\evidence\trade-segment-1-selection-<date>.json `
+  --selection data\evidence\trade-segment-2-selection-<date>.json `
+  --selection data\evidence\mark-segment-1-selection-<date>.json `
+  --selection data\evidence\mark-segment-2-selection-<date>.json `
+  --software-identity git:<evidence-builder-merge-sha> `
+  --output benchmarks\results\m2-full-history-catalog-<date>.json
+```
+
+The builder receipt-verifies all five inputs, recomputes private request partitions, requires the
+four-selection union to equal registration, and emits no runtime identities or time bounds.
+
 ## 15. Acquire and publish canonical funding
 
 Funding is a separate request and Landing contract because every first requested event needs the

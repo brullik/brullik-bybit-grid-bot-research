@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0080 and `grid.phase2-full-history-catalog/v1`: four receipt-bound topology-scoped private
+  selections reconcile exactly to one 978-dataset catalog registration while GitHub receives only
+  hashes, aggregate counts, safety claims, and unchanged Gate 2 limitations.
 - ADR-0079 and backward-compatible catalog admission for receipt-verified schema-only candle
   partitions, including coherent null-bound evidence, deterministic empty-object selection, and
   fail-closed zero-row physical encoding in existing DuckDB v1 catalogs.

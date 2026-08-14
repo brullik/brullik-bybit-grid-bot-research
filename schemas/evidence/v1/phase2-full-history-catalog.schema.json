@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-full-history-catalog.schema.json",
+  "title": "Sanitized Phase 2 full-history catalog registration and selection evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings", "catalog", "content_sha256", "evidence_schema", "generated_at_utc",
+    "inventory", "limitations", "process", "status", "storage_policy", "topology"
+  ],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registration", "selections"],
+      "properties": {
+        "registration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_sha256", "content_sha256", "request_artifact_sha256", "request_sha256"],
+          "properties": {
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "content_sha256": {"$ref": "#/$defs/sha256"},
+            "request_artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "request_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifact_sha256", "content_sha256", "kind", "request_sha256", "segment"],
+            "properties": {
+              "artifact_sha256": {"$ref": "#/$defs/sha256"},
+              "content_sha256": {"$ref": "#/$defs/sha256"},
+              "kind": {"enum": ["trade", "mark"]},
+              "request_sha256": {"$ref": "#/$defs/sha256"},
+              "segment": {"type": "integer", "minimum": 1, "maximum": 2}
+            }
+          }
+        }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_sha256", "revision", "schema_version"],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "revision": {"type": "integer", "minimum": 1},
+        "schema_version": {"const": 1}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-full-history-catalog/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "by_kind", "dataset_count", "empty_dataset_count", "object_count",
+        "required_partition_count", "row_count", "size_bytes"
+      ],
+      "properties": {
+        "by_kind": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/kindInventory"}
+        },
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "empty_dataset_count": {"type": "integer", "minimum": 0},
+        "object_count": {"type": "integer", "minimum": 1},
+        "required_partition_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_registration_receipt_verified", "evidence_builder_software_identity",
+        "registration_request_receipt_verified", "selection_receipts_verified",
+        "selection_union_matches_registration"
+      ],
+      "properties": {
+        "catalog_registration_receipt_verified": {"const": true},
+        "evidence_builder_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "registration_request_receipt_verified": {"const": true},
+        "selection_receipts_verified": {"const": true},
+        "selection_union_matches_registration": {"const": true}
+      }
+    },
+    "status": {"const": "verified-full-history-catalog-selection"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_identities": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_catalog_or_market_artifacts_committed_to_git": false
+      }
+    },
+    "topology": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/topologySegment"}
+    }
+  },
+  "$defs": {
+    "kindInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_count", "empty_dataset_count", "kind", "object_count", "row_count", "size_bytes"
+      ],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "empty_dataset_count": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["trade", "mark"]},
+        "object_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "topologySegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket_count", "dataset_count", "empty_dataset_count", "instrument_count",
+        "month_count", "object_count", "row_count", "segment", "size_bytes"
+      ],
+      "properties": {
+        "bucket_count": {"type": "integer", "minimum": 1, "maximum": 8},
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "empty_dataset_count": {"type": "integer", "minimum": 0},
+        "instrument_count": {"type": "integer", "minimum": 1},
+        "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
+        "object_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "segment": {"type": "integer", "minimum": 1, "maximum": 2},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
