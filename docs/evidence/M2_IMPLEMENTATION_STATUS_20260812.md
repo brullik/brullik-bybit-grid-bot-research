@@ -1003,7 +1003,9 @@ facts, hashes, immutable implementation identity, software versions, non-identif
 facts, and explicit cache state. It excludes dataset/instrument identities, timestamps, paths,
 market values, host/device/account identity, credentials, private endpoints, and live capability.
 A post-merge measurement remains required. It will qualify this synthetic incremental boundary
-only; full-history end-to-end performance and Gate 2 remain blocked.
+only; full-history end-to-end performance and Gate 2 remain blocked. The implementation and
+regression proofs are tracked in
+[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86).
 
 ## Still required before Gate 2
 
