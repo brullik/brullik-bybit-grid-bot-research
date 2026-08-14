@@ -66,6 +66,7 @@
 | D-060 | A CloudFront country block is a terminal regional-access failure, not an inferred Bybit IP-frequency ban | accepted | Bounded ephemeral classification, one-attempt global abort, no body retention/bypass/cooldown invention, and ADR-0060 |
 | D-061 | Funding compaction candidates are admitted only by an all-pair receipt-verified audit using unchanged ADR-0054 union semantics | accepted | Bounded inventory, no dedup/subset fabrication, private actionable bindings, sanitized aggregate counts, and ADR-0061 |
 | D-062 | Gate 2 stale-output behavior is evidenced by offline post-merge fault injection against named production preflights | accepted | Five canonical/catalog cases, marker preservation, zero target mutation, temporary fixtures, sanitized proof, and ADR-0062 |
+| D-063 | Current Gate 2 readiness is aggregated without changing criteria, accepting the gate, or authorizing Phase 3 | accepted | Eight fixed receipt/schema/content-hash sources, exact roadmap hash, four blocked criteria, two evidence-ready criteria, and ADR-0063 |
 
 ## Decisions requiring benchmark or owner evidence
 

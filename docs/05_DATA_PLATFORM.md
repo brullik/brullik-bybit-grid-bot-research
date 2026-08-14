@@ -388,6 +388,11 @@ compaction, catalog building, and catalog lock boundaries; the production prefli
 each marker without deleting it or creating the target. Only sanitized case/count outcomes enter
 Git. This supports one unchanged Gate 2 criterion and does not automatically accept the gate.
 
+ADR-0063 adds a receipt-bound Gate 2 readiness projection over eight fixed public evidence
+artifacts. It rechecks their schemas, artifact/content hashes, receipts, scope, and cross-source
+lineage, then preserves two `evidence-ready` and four blocked criteria with explicit blocker codes.
+It performs no network or market-store mutation and cannot accept Gate 2 or authorize Phase 3.
+
 ADR-0055 adds the first funding-specific repair boundary as discovery-only planning. It
 recomputes a blocked ADR-0034 audit and admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches when no other blocker exists. Candidate timestamps are derived
