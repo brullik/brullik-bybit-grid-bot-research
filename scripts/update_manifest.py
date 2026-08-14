@@ -63,10 +63,16 @@ def source_files() -> tuple[Path, ...]:
     return tuple(sorted(files, key=lambda item: item.relative_to(ROOT).as_posix()))
 
 
+def canonical_source_bytes(path: Path) -> bytes:
+    """Match the repository's `text eol=lf` clean form on every checkout platform."""
+
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
 def rendered_manifest() -> str:
     rows = []
     for path in source_files():
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest = hashlib.sha256(canonical_source_bytes(path)).hexdigest()
         rows.append(f"{digest}  {path.relative_to(ROOT).as_posix()}")
     return "\n".join(rows) + "\n"
 

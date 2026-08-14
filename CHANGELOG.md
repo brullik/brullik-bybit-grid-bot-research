@@ -6,6 +6,11 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0083 and a bounded standard-library HTTPS/1.1 connection pool for high-volume public REST
+  acquisition, preserving the existing global RPS pacer, retry ceilings, receipts, and resume
+  behavior while reusing successful sessions across sequential campaign children.
+- Platform-independent source-manifest hashing over Git-canonical LF bytes, eliminating false
+  Windows CRLF drift without weakening file coverage or SHA-256 verification.
 - Receipt-verified post-merge full-history catalog performance evidence: four concurrent
   production selectors reconcile 978 datasets and 30,832,334 rows in 22.307 seconds on the first
   pass and preserve the retained store without repeating acquisition or registration.

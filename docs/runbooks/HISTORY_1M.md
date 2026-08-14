@@ -65,6 +65,11 @@ root. Failure means stop; do not bypass the evidence or storage check.
 Repeat the command with `--execute`. Execution re-probes memory, NVMe/SSD identity, and free space,
 then calls only Bybit public trade/mark 1m endpoints.
 
+ADR-0083 reuses a bounded set of successful HTTPS connections inside this one CLI operation and
+across sequential campaign children. The global adaptive pacer remains authoritative: pooling
+does not raise `target_rps`, add attempts, execute children concurrently, or weaken the HTTP 403
+cooldown/abort boundary.
+
 ```powershell
 .venv\Scripts\grid-data.exe history-1m `
   --request data\requests\btc-trade-2026-07.json `
