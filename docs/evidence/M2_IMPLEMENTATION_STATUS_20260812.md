@@ -3,6 +3,10 @@
 **Status:** Phase 2 is active; the bounded public 1m Landing-to-canonical path is implemented and
 verified. Gate 2 remains closed.
 
+ADR-0076 adds a receipt-reverified, identifier-free public outcome for genuine candle-gap repair.
+It makes a blocked source observation durable in GitHub without repeating the request, accepting
+the missing candle, mutating the parent, or publishing an empty replacement.
+
 ## GitHub source of truth
 
 The authoritative implementation and review history is:

@@ -241,6 +241,25 @@ sequentially but retain their standard bounded worker pool, page receipts, retri
 Exit code 0 writes `status=passed`; exit code 2 writes immutable `status=blocked` evidence when a
 minute is still absent. Never delete a blocked execution to disguise a repeated empty response.
 
+Project either outcome into a GitHub-safe artifact without another market request:
+
+```powershell
+.venv\Scripts\grid-data.exe history-repair-execution-evidence `
+  --repair-execution data\evidence\m2-gap-repair-execution-<date>.json `
+  --repair-plan data\evidence\m2-gap-repair-plan-<date>.json `
+  --coverage-audit benchmarks\results\m2-canonical-coverage-audit-<date>.json `
+  --job-root data\history\.landing\<completed-original-job> `
+  --instrument-registry data\evidence\instrument-registry-<date>.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-<date>.json `
+  --store-root data\market-store `
+  --repair-staging-root data\history-repair `
+  --output benchmarks\results\m2-candle-gap-repair-execution-<date>.json
+```
+
+The command verifies the full private chain, emits only counts/hashes/outcome, and is idempotent.
+When the private execution is `blocked`, the public classification is `source-gap-remains`; keep
+both receipts and do not retry the same plan merely to obtain a different result.
+
 ## 12. Publish the immutable repaired child
 
 Only a receipt-verified `passed` execution is eligible. Run without `--execute` first:
