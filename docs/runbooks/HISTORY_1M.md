@@ -448,6 +448,10 @@ Then run the same preflight/execute sequence with a short command:
 
 The request receipt must verify, its embedded Git identity cannot be overridden, and at most
 10,000 datasets may be named. Repeat only the second command with `--execute` after preflight.
+Schema-only ADR-0067 children are part of that exact inventory: registration records their zero
+rows/instruments and null logical bounds. Do not remove them from the request. Their matching
+Parquet objects remain visible in selection with zero rows so partition lineage is explicit; this
+does not accept the missing range or replace the coverage audit.
 
 Build a closed `grid.canonical-dataset-selection-request/v1` JSON from the printed final
 `catalog_revision` and `catalog_content_sha256`. Dataset IDs and include-mode instrument IDs must

@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import duckdb
 import pytest
 from grid_contracts.canonical import canonical_sha256
 from grid_contracts.market import Candle1m, DatasetType, FundingEvent
@@ -23,6 +24,7 @@ from grid_market_store import (
     HostSnapshot,
     build_canonical_candle_batch,
     build_canonical_funding_batch,
+    build_empty_canonical_candle_batch,
     preflight_candle_dataset,
     preflight_funding_dataset,
     publish_candle_dataset,
@@ -272,6 +274,47 @@ def publish_dataset(
         plan,
         snapshot(tmp_path, observed_at_ms=1_002 + minutes[0]),
         committed_at_ms=1_003 + minutes[0],
+    )
+
+
+def publish_empty_dataset(
+    tmp_path: Path,
+    store: Path,
+    dataset_id: str,
+    *,
+    instrument_id: int = 9,
+) -> None:
+    digest = f"{len(dataset_id):064x}"
+    batch = build_empty_canonical_candle_batch(
+        DatasetType.TRADE_KLINE_1M,
+        instrument_id=instrument_id,
+        open_time_ms=JANUARY_1_2026_MS,
+    )
+    plan = preflight_candle_dataset(
+        store,
+        CandleDatasetSpec(
+            dataset_id=dataset_id,
+            semantic_version="1.0.0",
+            parent_dataset_ids=(),
+            source_evidence_sha256=(digest,),
+            coverage_evidence_sha256=digest,
+            capacity_evidence_sha256="d" * 64,
+            build_config_sha256="e" * 64,
+            software_identity="fixture-publisher@1",
+        ),
+        batch,
+        CapacityBudget(
+            active_and_building_bytes=0,
+            rest_staging_bytes=0,
+            operating_reserve_bytes=MIN_OPERATING_RESERVE_BYTES,
+        ),
+        snapshot(tmp_path, observed_at_ms=1_000),
+        now_ms=1_001,
+    )
+    publish_candle_dataset(
+        plan,
+        snapshot(tmp_path, observed_at_ms=1_002),
+        committed_at_ms=1_003,
     )
 
 
@@ -527,6 +570,126 @@ def test_catalog_registration_and_selection_are_receipt_bound_and_idempotent(
         )
         == selection_evidence
     )
+
+
+def test_catalog_registers_and_selects_schema_only_partition_in_existing_v1_database(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "market-store"
+    populated_id = "trade-populated-v1"
+    empty_id = "trade-schema-only-v1"
+    publish_dataset(tmp_path, store, populated_id, minutes=(0,))
+    catalog = store / "catalog" / "canonical.duckdb"
+    first_plan = preflight_catalog_registration(
+        (populated_id,),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    first = register_catalog_datasets(first_plan, registered_at_ms=2_000)
+
+    publish_empty_dataset(tmp_path, store, empty_id)
+    empty_plan = preflight_catalog_registration(
+        (empty_id,),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    registered = register_catalog_datasets(empty_plan, registered_at_ms=3_000)
+    assert registered.revision == first.revision + 1
+    empty_record = next(item for item in registered.datasets if item.dataset_id == empty_id)
+    assert empty_record.row_count == 0
+    assert empty_record.instrument_count == 0
+    assert empty_record.min_time_ms is None
+    assert empty_record.max_time_ms is None
+    assert len(empty_record.files) == 1
+    assert empty_record.files[0].row_count == 0
+    assert empty_record.files[0].first_instrument_id is None
+    assert empty_record.files[0].last_time_ms is None
+
+    registration_evidence = build_catalog_registration_evidence(
+        empty_plan,
+        registered,
+        generated_at_utc="2026-08-14T12:00:00Z",
+    )
+    registration_schema = json.loads(
+        (
+            ROOT
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-dataset-catalog-registration.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(
+        registration_schema,
+        format_checker=FormatChecker(),
+    ).validate(registration_evidence)
+
+    request = CatalogSelectionRequest(
+        catalog_revision=registered.revision,
+        catalog_content_sha256=registered.content_sha256,
+        dataset_ids=(empty_id,),
+        dataset_type=DatasetType.TRADE_KLINE_1M,
+        start_time_ms=JANUARY_1_2026_MS,
+        end_time_ms=JANUARY_1_2026_MS,
+        instrument_ids=(9,),
+        consumer_software_identity=CONSUMER,
+    )
+    selection = select_catalog_range(request, store, catalog)
+    assert len(selection.objects) == 1
+    selected = selection.objects[0]
+    assert selected.row_count == 0
+    assert selected.min_time_ms is None
+    assert selected.max_time_ms is None
+    assert selected.min_instrument_id is None
+    assert selected.max_instrument_id is None
+
+    selection_evidence = build_catalog_selection_evidence(
+        selection,
+        generated_at_utc="2026-08-14T12:01:00Z",
+    )
+    selection_schema = json.loads(
+        (
+            ROOT / "schemas" / "evidence" / "v1" / "canonical-dataset-selection.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(
+        selection_schema,
+        format_checker=FormatChecker(),
+    ).validate(selection_evidence)
+    assert selection_evidence["selection"] == {
+        "object_count": 1,
+        "selected_row_inventory": 0,
+        "selected_size_bytes": selected.size_bytes,
+    }
+
+
+def test_catalog_rejects_nonzero_physical_bounds_for_schema_only_partition(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "market-store"
+    empty_id = "trade-schema-only-tamper"
+    publish_empty_dataset(tmp_path, store, empty_id)
+    catalog = store / "catalog" / "canonical.duckdb"
+    plan = preflight_catalog_registration(
+        (empty_id,),
+        store,
+        catalog,
+        software_identity=REGISTRAR,
+    )
+    register_catalog_datasets(plan, registered_at_ms=2_000)
+
+    connection = duckdb.connect(str(catalog))
+    try:
+        connection.execute(
+            "UPDATE dataset_files SET min_time_ms = 1 WHERE dataset_id = ?",
+            [empty_id],
+        )
+    finally:
+        connection.close()
+    with pytest.raises(CatalogError, match="zero physical key-bound sentinels"):
+        verify_catalog(store, catalog)
 
 
 def test_catalog_requires_complete_registered_parent_lineage(tmp_path: Path) -> None:

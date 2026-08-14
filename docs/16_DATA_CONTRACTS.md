@@ -441,6 +441,13 @@ and over-fragmented partitions fail closed. Selection
 proves deterministic range pruning and exact selected-object key disjointness only; separate
 coverage acceptance remains mandatory.
 
+ADR-0079 keeps `grid.canonical-dataset-catalog/v1` aligned with the existing ADR-0067 canonical
+representation. A schema-only dataset has zero rows/instruments and null dataset/file key bounds;
+registration and selection evidence preserve those nulls. A matching selection still inventories
+the verified store-relative Parquet object and may therefore have one or more objects with a zero
+selected-row inventory. Empty objects have no overlap keys and never imply gap or lifecycle
+acceptance. Populated records continue to require positive counts and complete bounds.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

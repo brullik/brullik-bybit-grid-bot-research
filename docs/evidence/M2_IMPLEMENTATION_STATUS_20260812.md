@@ -1200,6 +1200,18 @@ all receipt, key, lineage, lock, transaction, and atomic-replace checks. This im
 operational path; measured registration/selection evidence remains a separate Phase 2 result and
 does not change Gate 2.
 
+## Schema-only catalog admission
+
+ADR-0079 closes the compatibility gap between ADR-0067 publication and the ADR-0030 catalog. The
+full-history publication contains 268 verified zero-row children; catalog registration now retains
+their exact dataset/file/receipt bindings with zero counts and null logical bounds. Existing
+DuckDB v1 catalogs remain usable through a row-count-qualified physical sentinel, while malformed
+partial bounds fail closed.
+
+A matching selection returns each schema-only object and hash with zero rows and null bounds, but
+excludes it from exact-key overlap work because no keys exist. This is an implementation boundary,
+not measured full-history registration evidence, coverage acceptance, or a Gate 2 change.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

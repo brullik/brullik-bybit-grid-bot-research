@@ -74,10 +74,10 @@
         "file_count": {"type": "integer", "minimum": 1},
         "gap_count": {"type": "null"},
         "gap_status": {"const": "not-assessed-by-dataset-receipt"},
-        "instrument_count": {"type": "integer", "minimum": 1},
+        "instrument_count": {"type": "integer", "minimum": 0},
         "manifest_sha256": {"$ref": "#/$defs/sha256"},
-        "max_time_ms": {"type": "integer", "minimum": 0},
-        "min_time_ms": {"type": "integer", "minimum": 0},
+        "max_time_ms": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "min_time_ms": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
         "parent_dataset_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/datasetId"}},
         "partition": {
           "type": "object",
@@ -90,12 +90,32 @@
           }
         },
         "registered_revision": {"type": "integer", "minimum": 1},
-        "row_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
         "schema_version": {"const": "v1"},
         "semantic_version": {"type": "string", "minLength": 1},
         "status": {"const": "complete"},
         "total_size_bytes": {"type": "integer", "minimum": 1}
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"row_count": {"const": 0}}, "required": ["row_count"]},
+          "then": {
+            "properties": {
+              "dataset_type": {"enum": ["trade_kline_1m", "mark_kline_1m"]},
+              "instrument_count": {"const": 0},
+              "max_time_ms": {"type": "null"},
+              "min_time_ms": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "instrument_count": {"type": "integer", "minimum": 1},
+              "max_time_ms": {"type": "integer", "minimum": 0},
+              "min_time_ms": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      ]
     },
     "safety": {
       "type": "object",

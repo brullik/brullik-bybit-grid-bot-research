@@ -82,6 +82,7 @@
 | D-076 | Verified candle-repair executions receive an identifier-free GitHub projection | accepted | Aggregate limits and hashes, explicit repaired/source-gap-remains classification, immutable parent, idempotent reuse, and ADR-0076 |
 | D-077 | Funding repair candidates are classified by replaying the unchanged ADR-0055 planner over explicit receipt-verified audits | accepted | Bounded exact inputs, no request or chronology acceptance, private actionable audit, sanitized aggregate projection, and ADR-0077 |
 | D-078 | Full-history catalog registration consumes one receipt-bound file request derived from a verified campaign publication | accepted | Windows-safe 10,000-dataset bound, exact inventory/identity, unchanged catalog preflight and atomic transaction, and ADR-0078 |
+| D-079 | A receipt-verified schema-only canonical candle dataset remains explicit in catalog registration and selection | accepted | Zero rows/instruments, null logical bounds, row-qualified DuckDB v1 sentinel encoding, no overlap keys, unchanged coverage policy, and ADR-0079 |
 
 ## Decisions requiring benchmark or owner evidence
 

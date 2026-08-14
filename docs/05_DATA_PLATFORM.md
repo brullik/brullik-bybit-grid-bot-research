@@ -516,6 +516,13 @@ there is no implicit `latest`. Selection re-verifies manifests/files, requires t
 month/bucket set, rejects ancestor-plus-child and overlapping key ranges, and returns only
 store-relative object keys. Selection proves pruning, not gap-free coverage.
 
+ADR-0079 admits ADR-0067 schema-only candle datasets without weakening populated-record rules. A
+verified zero-row dataset has zero instruments and null logical bounds; its schema-only Parquet
+object remains in a matching selection but contributes no exact keys. Existing DuckDB v1 files
+encode absent bounds with a row-count-qualified zero sentinel that is normalized back to null and
+never exposed to consumers. Empty partition presence remains lineage evidence, not accepted
+historical coverage.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.
