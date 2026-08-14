@@ -37,10 +37,12 @@ ADR-0023 implements the first durable Phase 2 baseline with a global 10-RPS pace
 non-overlapping pages, explicit bounded retries, page receipts, and receipt-based resume. It does
 not raise its operating rate automatically. ADR-0043 extends the same global pacer with
 decrease-only response-header adaptation: low headroom caps the effective rate, 429/retCode 10006
-halve it and impose a cooldown, and HTTP 403 aborts the current run with the documented ten-minute
-resume boundary. Missing/invalid headers are counted and never interpreted as permission to
-increase. Receipt-bound long-run qualification remains required before full-universe scale or any
-operating-rate increase. ADR-0044 makes that qualification reproducible: new child manifests bind
+halve it and impose a cooldown. ADR-0060 distinguishes the documented `403, access too frequent`
+ten-minute IP-ban response from a CloudFront regional-access block: both abort globally, while the
+regional case is not retried and does not invent a cooldown or alternate-host path.
+Missing/invalid headers are counted and never interpreted as permission to increase. Receipt-bound
+long-run qualification remains required before full-universe scale or any operating-rate increase.
+ADR-0044 makes that qualification reproducible: new child manifests bind
 execution start/completion, and the strict campaign evidence projection checks sanitized adaptive
 response accounting without publishing response or market data. ADR-0045 defines the measured
 boundary: every completed page response must have an observation,

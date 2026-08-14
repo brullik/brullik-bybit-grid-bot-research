@@ -87,6 +87,32 @@ def test_rate_limit_error_halves_rate_and_403_enforces_official_cooldown() -> No
         pacer.wait()
 
 
+def test_regional_access_block_aborts_without_inventing_ip_ban_cooldown() -> None:
+    pacer = AdaptiveRatePacer(16)
+
+    pacer.observe(
+        RateLimitObservation(
+            http_status=403,
+            bybit_ret_code=None,
+            header_state="absent",
+            limit=None,
+            remaining=None,
+            reset_at_ms=None,
+            failure_class="regional-access-block",
+        )
+    )
+    summary = pacer.summary()
+
+    assert summary["response_observation_count"] == 1
+    assert summary["header_absent_observation_count"] == 1
+    assert summary["rate_limit_event_count"] == 0
+    assert summary["cooldown_event_count"] == 0
+    assert summary["maximum_cooldown_ms"] == 0
+    with pytest.raises(AdaptiveRateLimitAbort, match="officially supported") as captured:
+        pacer.wait()
+    assert captured.value.reason == "regional-access-block"
+
+
 def test_summary_verifier_rejects_tampering_and_automatic_increase() -> None:
     summary = AdaptiveRatePacer(10).summary()
     summary["automatic_increase_count"] = 1

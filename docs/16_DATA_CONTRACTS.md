@@ -97,6 +97,9 @@ evidence for canonical publication, not a canonical dataset completion marker. C
 Landing manifests may additionally carry the backward-compatible ADR-0043
 `adaptive_throttling` summary under `request_bound`. It binds classified response-header counts,
 the configured/final/minimum global rate, reductions, cooldowns, and zero automatic increases.
+ADR-0060 adds only an ephemeral transport failure class: regional CloudFront response bodies are
+bounded, classified, discarded, and never enter this manifest or any receipt. Genuine rate-limit
+403 accounting remains unchanged.
 Legacy v1 manifests without that optional object or ADR-0044 `started_at_ms` remain valid; new
 executions always write both.
 Canonical candle rows derive `ingestion_id` from the staged page artifact SHA-256, so provenance

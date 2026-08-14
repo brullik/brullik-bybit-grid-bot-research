@@ -814,5 +814,8 @@ blocked aggregate to passed by editing the output or weakening ADR-0026/ADR-0034
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header
 observations and every decrease. HTTP 429 or retCode 10006 slows the whole child job; HTTP 403
-aborts the run and must not be resumed for at least the reported ten-minute boundary. Verified
-page receipts remain reusable after that stop.
+aborts the run. The documented `access too frequent` rate-limit form must not be resumed for at
+least the reported ten-minute boundary. ADR-0060 classifies a CloudFront country block separately:
+it performs no retry, records no invented IP-ban cooldown, and may be resumed only from an
+officially supported network and region. Do not rotate hosts or attempt an access-control bypass.
+Verified page receipts remain reusable after either stop.

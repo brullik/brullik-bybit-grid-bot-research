@@ -852,6 +852,19 @@ audit remains byte-identical. Catalog transition, a public sanitized measured pr
 Gate 2 acceptance remain separate. The implementation, ADR, schema, and synthetic proof are
 tracked in [PR #73](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/73).
 
+## Regional public-API failure classification
+
+ADR-0060 corrects the operational interpretation of the measured CloudFront HTTP 403 returned at
+the first pending full-history page. The public transport inspects at most 64 KiB only to classify
+the combined CloudFront/block/country markers, discards the body, exposes no location or request
+identity, and stops all child workers after one application attempt. The result is not counted as
+a Bybit rate-limit event and does not invent ADR-0043's ten-minute IP-ban cooldown. Unrecognized
+403 responses retain the existing fail-closed rate-limit behavior. No probe, alternate hostname,
+private endpoint, retry, proxy, or bypass is added. The remaining 51 candle jobs therefore remain
+blocked until an officially supported network and region can reach the public endpoint. Tests
+cover the sanitized transport classification, unchanged genuine-403 cooldown, global pacer abort,
+and one-attempt candle/funding resume preservation.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

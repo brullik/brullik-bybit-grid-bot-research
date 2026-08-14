@@ -676,7 +676,17 @@ def _fetch_page(
                 attempts=attempt,
                 items=items,
             )
-        except (BybitPublicError, TransportError) as error:
+        except TransportError as error:
+            if error.failure_class == "regional-access-block":
+                raise AdaptiveRateLimitAbort(
+                    "Bybit public API is unavailable from the current region; resume only "
+                    "from an officially supported network and region",
+                    reason="regional-access-block",
+                ) from error
+            last_error = error
+            if attempt < plan.max_attempts:
+                time.sleep(min(4.0, 0.25 * (2 ** (attempt - 1))))
+        except BybitPublicError as error:
             last_error = error
             if attempt < plan.max_attempts:
                 time.sleep(min(4.0, 0.25 * (2 ** (attempt - 1))))

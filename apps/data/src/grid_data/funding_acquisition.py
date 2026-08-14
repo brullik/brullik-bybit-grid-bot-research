@@ -685,7 +685,17 @@ def _fetch_page(
             if len(canonical_json_bytes(payload)) > MAX_PAGE_ARTIFACT_BYTES:
                 raise FundingAcquisitionError("staged funding page exceeds preflighted bound")
             return payload
-        except (BybitPublicError, TransportError) as error:
+        except TransportError as error:
+            if error.failure_class == "regional-access-block":
+                raise AdaptiveRateLimitAbort(
+                    "Bybit public API is unavailable from the current region; resume only "
+                    "from an officially supported network and region",
+                    reason="regional-access-block",
+                ) from error
+            last_error = error
+            if attempt < max_attempts:
+                time.sleep(min(4.0, 0.25 * (2 ** (attempt - 1))))
+        except BybitPublicError as error:
             last_error = error
             if attempt < max_attempts:
                 time.sleep(min(4.0, 0.25 * (2 ** (attempt - 1))))
@@ -765,6 +775,12 @@ def execute_funding_job(
                 try:
                     future.result()
                 except AdaptiveRateLimitAbort as error:
+                    if error.reason == "regional-access-block":
+                        raise FundingAcquisitionError(
+                            "funding acquisition stopped because Bybit public API is unavailable "
+                            "from the current region; resume only from an officially supported "
+                            "network and region"
+                        ) from error
                     raise FundingAcquisitionError(
                         "funding acquisition stopped by the adaptive rate-limit policy"
                     ) from error

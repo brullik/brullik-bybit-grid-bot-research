@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import time
 from threading import Condition
-from typing import Final, cast
+from typing import Final, Literal, cast
 
 from grid_bybit_public import RateLimitObservation
 
@@ -39,7 +39,16 @@ class AdaptiveRateLimitError(ValueError):
 
 
 class AdaptiveRateLimitAbort(RuntimeError):
-    """The current run must stop rather than retry through an IP-ban response."""
+    """The current run must stop rather than retry a terminal public-response condition."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: Literal["ip-rate-limit", "regional-access-block"] = "ip-rate-limit",
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class AdaptiveRatePacer:
@@ -54,6 +63,7 @@ class AdaptiveRatePacer:
         self._next_ns = time.monotonic_ns()
         self._cooldown_until_ns = 0
         self._abort_until_epoch_ms: int | None = None
+        self._abort_reason: Literal["ip-rate-limit", "regional-access-block"] | None = None
         self._condition = Condition()
         self._response_observation_count = 0
         self._complete_header_observation_count = 0
@@ -73,7 +83,14 @@ class AdaptiveRatePacer:
                 if self._abort_until_epoch_ms is not None:
                     raise AdaptiveRateLimitAbort(
                         "Bybit HTTP 403 requires all public acquisition launches to stop; "
-                        f"do not resume before epoch_ms={self._abort_until_epoch_ms}"
+                        f"do not resume before epoch_ms={self._abort_until_epoch_ms}",
+                        reason="ip-rate-limit",
+                    )
+                if self._abort_reason == "regional-access-block":
+                    raise AdaptiveRateLimitAbort(
+                        "Bybit public API is unavailable from the current region; resume only "
+                        "from an officially supported network and region",
+                        reason="regional-access-block",
                     )
                 now_ns = time.monotonic_ns()
                 ready_ns = max(self._next_ns, self._cooldown_until_ns)
@@ -101,6 +118,11 @@ class AdaptiveRatePacer:
             else:
                 self._invalid_header_observation_count += 1
 
+            if observed.failure_class == "regional-access-block":
+                self._abort_reason = "regional-access-block"
+                self._condition.notify_all()
+                return
+
             reduced_rps = self._effective_rps
             if observed.header_state == "complete":
                 assert observed.limit is not None and observed.remaining is not None
@@ -122,6 +144,7 @@ class AdaptiveRatePacer:
                         cooldown_ms = max(cooldown_ms, reset_delta_ms)
                 if observed.http_status == 403:
                     self._abort_until_epoch_ms = time.time_ns() // 1_000_000 + IP_BAN_COOLDOWN_MS
+                    self._abort_reason = "ip-rate-limit"
 
             if reduced_rps < self._effective_rps:
                 self._effective_rps = reduced_rps
