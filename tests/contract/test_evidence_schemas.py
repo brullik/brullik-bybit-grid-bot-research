@@ -2638,6 +2638,111 @@ def test_announcement_archive_depth_is_bound_blocked_and_sanitized() -> None:
         assert forbidden not in rendered
 
 
+def test_full_history_catalog_result_is_receipt_bound_reconciled_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-full-history-catalog-20260814.json"
+    receipt_path = artifact.with_name(f"{artifact.name}.receipt.json")
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-full-history-catalog.schema.json"
+    )
+    payload = load_json(artifact)
+    receipt = load_json(receipt_path)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert embedded_hash == "5836c774e353f6deaae7e5642c8390a45dea7a66f396944ae45f46a2def858f8"
+    assert verify_evidence(artifact)
+    artifact_sha256 = "c36612505d1b07f50ae6092efe4a158129ced9f25832e2f9a757924a514366d0"
+    assert sha256_file(artifact) == artifact_sha256
+    assert receipt == {
+        "artifact": artifact.name,
+        "artifact_sha256": artifact_sha256,
+        "receipt_schema": "grid.evidence-receipt/v1",
+        "status": "complete",
+    }
+    assert payload["evidence_schema"] == "grid.phase2-full-history-catalog/v1"
+    assert payload["status"] == "verified-full-history-catalog-selection"
+    assert payload["catalog"] == {
+        "content_sha256": "91bc7695737585b6bb1f36af159d03d6a4aeb1e8debc506bffcf023e4ce0c20e",
+        "revision": 5,
+        "schema_version": 1,
+    }
+    assert payload["inventory"] == {
+        "by_kind": [
+            {
+                "dataset_count": 489,
+                "empty_dataset_count": 134,
+                "kind": "trade",
+                "object_count": 489,
+                "row_count": 15_413_811,
+                "size_bytes": 329_345_744,
+            },
+            {
+                "dataset_count": 489,
+                "empty_dataset_count": 134,
+                "kind": "mark",
+                "object_count": 489,
+                "row_count": 15_418_523,
+                "size_bytes": 200_449_015,
+            },
+        ],
+        "dataset_count": 978,
+        "empty_dataset_count": 268,
+        "object_count": 978,
+        "required_partition_count": 978,
+        "row_count": 30_832_334,
+        "size_bytes": 529_794_759,
+    }
+    assert payload["topology"] == [
+        {
+            "bucket_count": 4,
+            "dataset_count": 208,
+            "empty_dataset_count": 208,
+            "instrument_count": 4,
+            "month_count": 26,
+            "object_count": 208,
+            "row_count": 0,
+            "segment": 1,
+            "size_bytes": 794_872,
+        },
+        {
+            "bucket_count": 5,
+            "dataset_count": 770,
+            "empty_dataset_count": 60,
+            "instrument_count": 5,
+            "month_count": 77,
+            "object_count": 770,
+            "row_count": 30_832_334,
+            "segment": 2,
+            "size_bytes": 528_999_887,
+        },
+    ]
+    assert payload["process"] == {
+        "catalog_registration_receipt_verified": True,
+        "evidence_builder_software_identity": ("git:bd79038ff7f24013c3b300b662933b82f16db7a1"),
+        "registration_request_receipt_verified": True,
+        "selection_receipts_verified": True,
+        "selection_union_matches_registration": True,
+    }
+    assert len(payload["bindings"]["selections"]) == 4
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        '"api_key"',
+        '"api_secret"',
+        '"dataset_id"',
+        '"end_time_ms"',
+        '"instrument_id"',
+        '"market_value"',
+        '"object_key"',
+        '"start_time_ms"',
+        '"symbol"',
+    ):
+        assert forbidden not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 
