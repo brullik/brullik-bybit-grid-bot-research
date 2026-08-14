@@ -1279,6 +1279,23 @@ SHA-256 is `4e96f03cbe6831952c3a0d99c26286d1926fe3b894164deff4f00bc244854e87`.
 This single-host component result does not measure a complete acquisition/publication campaign,
 close Gate 2, authorize Phase 3, or enable live execution.
 
+## Multi-campaign catalog selection bundle
+
+ADR-0085 adds the missing deterministic handoff for a full candle scope assembled from retained
+and newly published campaign shards. One private, catalog-bound request names whole-month source
+clips; the preflight fully verifies each source/publication pair, derives stable instrument
+topology from its exact jobs, rejects repeated dataset IDs and cross-source instrument/month
+overlap, and exercises every unchanged v1 production selection against one catalog snapshot.
+
+Execution is receipt-resumable and writes only a private plan, per-segment selection artifacts,
+and a completion manifest. The separate public projection contains only chain hashes and aggregate
+counts. A retained 100-instrument July publication has passed the new no-mutation production
+preflight as 16 candle datasets, 100 unique instruments, and two selections after its previously
+missing 24-dataset candle/funding publication was atomically registered in local catalog revision
+6. Those runtime identities and detailed evidence remain outside Git. This proves implementation
+and a bounded retained-data diagnostic only; the complete current-universe bundle remains pending
+the active downloads/publications and does not change Gate 2.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

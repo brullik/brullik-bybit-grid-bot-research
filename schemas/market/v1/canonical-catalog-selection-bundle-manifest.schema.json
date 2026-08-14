@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/canonical-catalog-selection-bundle-manifest.schema.json",
+  "title": "Canonical catalog selection bundle manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_id", "catalog", "completed_at_utc", "contract", "dataset_count",
+    "empty_object_count", "instrument_count", "object_count", "plan_sha256", "row_count",
+    "selection_count", "selections", "size_bytes", "source_bindings", "status"
+  ],
+  "properties": {
+    "bundle_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "catalog": {"$ref": "canonical-catalog-selection-bundle-plan.schema.json#/$defs/catalog"},
+    "completed_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "contract": {"const": "grid.canonical-catalog-selection-bundle-manifest/v1"},
+    "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "empty_object_count": {"type": "integer", "minimum": 0},
+    "instrument_count": {"type": "integer", "minimum": 1, "maximum": 11200},
+    "object_count": {"type": "integer", "minimum": 1},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "row_count": {"type": "integer", "minimum": 0},
+    "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+    "selections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_sha256", "campaign_id", "content_sha256", "dataset_count", "kind",
+          "object_count", "request_sha256", "row_count", "segment", "sequence", "size_bytes"
+        ],
+        "properties": {
+          "artifact_sha256": {"$ref": "#/$defs/sha256"},
+          "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+          "content_sha256": {"$ref": "#/$defs/sha256"},
+          "dataset_count": {"type": "integer", "minimum": 1},
+          "kind": {"enum": ["trade", "mark"]},
+          "object_count": {"type": "integer", "minimum": 1},
+          "request_sha256": {"$ref": "#/$defs/sha256"},
+          "row_count": {"type": "integer", "minimum": 0},
+          "segment": {"type": "integer", "minimum": 1, "maximum": 120},
+          "sequence": {"type": "integer", "minimum": 0, "maximum": 511},
+          "size_bytes": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "size_bytes": {"type": "integer", "minimum": 1},
+    "source_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {"$ref": "canonical-catalog-selection-bundle-plan.schema.json#/$defs/sourceBinding"}
+    },
+    "status": {"const": "complete"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

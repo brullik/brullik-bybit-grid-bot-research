@@ -44,6 +44,11 @@ from grid_data.archive_inventory import (
     build_archive_inventory,
     load_verified_public_inventory,
 )
+from grid_data.catalog_selection_bundle import (
+    build_catalog_selection_bundle_evidence,
+    execute_catalog_selection_bundle,
+    preflight_catalog_selection_bundle,
+)
 from grid_data.dataset_catalog import (
     build_catalog_registration_evidence,
     build_catalog_selection_evidence,
@@ -964,6 +969,49 @@ def parser() -> argparse.ArgumentParser:
     full_history_catalog_evidence.add_argument("--software-identity", required=True)
     full_history_catalog_evidence.add_argument("--output", type=Path, required=True)
     full_history_catalog_evidence.set_defaults(handler=_full_history_catalog_evidence)
+
+    catalog_selection_bundle = commands.add_parser(
+        "catalog-selection-bundle",
+        help="preflight or publish resumable exact selections over verified candle campaigns",
+    )
+    catalog_selection_bundle.add_argument("--request", type=Path, required=True)
+    catalog_selection_bundle.add_argument(
+        "--campaign-root", type=Path, action="append", required=True
+    )
+    catalog_selection_bundle.add_argument(
+        "--publication-root", type=Path, action="append", required=True
+    )
+    catalog_selection_bundle.add_argument("--instrument-registry", type=Path, required=True)
+    catalog_selection_bundle.add_argument("--store-root", type=Path, required=True)
+    catalog_selection_bundle.add_argument("--catalog", type=Path, required=True)
+    catalog_selection_bundle.add_argument("--output-root", type=Path, required=True)
+    catalog_selection_bundle.add_argument(
+        "--execute",
+        action="store_true",
+        help="publish/resume the private selection bundle; omitted is no-mutation preflight",
+    )
+    catalog_selection_bundle.set_defaults(handler=_catalog_selection_bundle)
+
+    catalog_selection_bundle_evidence = commands.add_parser(
+        "catalog-selection-bundle-evidence",
+        help="publish an identifier-free projection of one completed selection bundle",
+    )
+    catalog_selection_bundle_evidence.add_argument("--request", type=Path, required=True)
+    catalog_selection_bundle_evidence.add_argument(
+        "--campaign-root", type=Path, action="append", required=True
+    )
+    catalog_selection_bundle_evidence.add_argument(
+        "--publication-root", type=Path, action="append", required=True
+    )
+    catalog_selection_bundle_evidence.add_argument(
+        "--instrument-registry", type=Path, required=True
+    )
+    catalog_selection_bundle_evidence.add_argument("--store-root", type=Path, required=True)
+    catalog_selection_bundle_evidence.add_argument("--catalog", type=Path, required=True)
+    catalog_selection_bundle_evidence.add_argument("--bundle-root", type=Path, required=True)
+    catalog_selection_bundle_evidence.add_argument("--software-identity", required=True)
+    catalog_selection_bundle_evidence.add_argument("--output", type=Path, required=True)
+    catalog_selection_bundle_evidence.set_defaults(handler=_catalog_selection_bundle_evidence)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -2865,6 +2913,77 @@ def _full_history_catalog_evidence(args: argparse.Namespace) -> int:
         args.registration,
         tuple(args.selection),
         generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _catalog_selection_bundle(args: argparse.Namespace) -> int:
+    prepared = preflight_catalog_selection_bundle(
+        args.request,
+        campaign_roots=tuple(args.campaign_root),
+        publication_roots=tuple(args.publication_root),
+        instrument_registry_path=args.instrument_registry,
+        store_root=args.store_root,
+        catalog_path=args.catalog,
+        output_root=args.output_root,
+    )
+    summary: dict[str, object] = {
+        "bundle_id": prepared.request.bundle_id,
+        "dataset_count": prepared.dataset_count,
+        "execute": bool(args.execute),
+        "instrument_count": prepared.instrument_count,
+        "selection_count": len(prepared.selections),
+        "source_count": len(prepared.source_bindings),
+        "status": "preflight-passed",
+    }
+    if args.execute:
+        completed = execute_catalog_selection_bundle(
+            prepared,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+        summary.update(
+            {
+                "manifest": str(completed.manifest_path),
+                "manifest_sha256": completed.manifest_sha256,
+                "object_count": completed.object_count,
+                "row_count": completed.row_count,
+                "size_bytes": completed.size_bytes,
+                "status": "complete",
+            }
+        )
+    print(json.dumps(summary))
+    return 0
+
+
+def _catalog_selection_bundle_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    prepared = preflight_catalog_selection_bundle(
+        args.request,
+        campaign_roots=tuple(args.campaign_root),
+        publication_roots=tuple(args.publication_root),
+        instrument_registry_path=args.instrument_registry,
+        store_root=args.store_root,
+        catalog_path=args.catalog,
+        output_root=args.bundle_root,
+    )
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    completed = execute_catalog_selection_bundle(prepared, generated_at_utc=now)
+    payload = build_catalog_selection_bundle_evidence(
+        prepared,
+        completed,
+        generated_at_utc=now,
         software_identity=args.software_identity,
     )
     artifact, receipt = publish_evidence(output, payload)

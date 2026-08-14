@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0085 and a receipt-resumable multi-campaign catalog selection bundle that derives exact
+  topology segments, rejects overlapping source key space, verifies one catalog snapshot, and
+  publishes only an identifier-free aggregate without repeating Bybit acquisition.
 - ADR-0084 sequential peak-child history-campaign admission: full-history bootstrap no longer
   reserves mutually exclusive child Landing maxima at once, while unchanged per-page bounds and
   fresh before/after-child free-space checks retain fail-closed, receipt-resumable execution.

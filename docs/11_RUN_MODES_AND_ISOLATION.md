@@ -171,6 +171,18 @@ grid-data catalog-register --request <private-request.json> \
 grid-data catalog-select --request <snapshot-bound-selection-request.json> \
   --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \
   --output <selection-evidence.json>
+grid-data catalog-selection-bundle --request <private-bundle-request.json> \
+  --campaign-root <completed-source-1> --publication-root <completed-publication-1> \
+  [--campaign-root <completed-source-N> --publication-root <completed-publication-N> ...] \
+  --instrument-registry <registry.json> --store-root <local-path> \
+  --catalog <local-path>/catalog/canonical.duckdb --output-root <private-bundle-root>
+# Repeat with --execute only after all source publications and v1 selections pass preflight.
+grid-data catalog-selection-bundle-evidence --request <private-bundle-request.json> \
+  --campaign-root <completed-source-1> --publication-root <completed-publication-1> \
+  [--campaign-root <completed-source-N> --publication-root <completed-publication-N> ...] \
+  --instrument-registry <registry.json> --store-root <local-path> \
+  --catalog <local-path>/catalog/canonical.duckdb --bundle-root <private-bundle-root> \
+  --software-identity git:<full-commit-sha> --output <sanitized-evidence.json>
 
 # Research/parameter selection only
 grid-research build-features --market-dataset <dataset-id>

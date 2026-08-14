@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/canonical-catalog-selection-bundle-plan.schema.json",
+  "title": "Canonical catalog selection bundle plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_id", "bundle_request", "bundle_request_sha256", "catalog", "contract",
+    "dataset_count", "instrument_count", "instrument_registry_sha256", "selection_count",
+    "selection_policy", "selections", "source_bindings"
+  ],
+  "properties": {
+    "bundle_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "bundle_request": {"$ref": "canonical-catalog-selection-bundle-request.schema.json"},
+    "bundle_request_sha256": {"$ref": "#/$defs/sha256"},
+    "catalog": {"$ref": "#/$defs/catalog"},
+    "contract": {"const": "grid.canonical-catalog-selection-bundle-plan/v1"},
+    "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "instrument_count": {"type": "integer", "minimum": 1, "maximum": 11200},
+    "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+    "selection_policy": {
+      "const": {
+        "catalog_verified_once": true,
+        "cross_source_key_space": "disjoint-instrument-minute-by-month-v1",
+        "month_topology": "contiguous-equal-instrument-inventory-v1",
+        "selector": "grid.canonical-dataset-selection-request/v1"
+      }
+    },
+    "selections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["campaign_id", "kind", "request", "request_sha256", "segment", "sequence"],
+        "properties": {
+          "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+          "kind": {"enum": ["trade", "mark"]},
+          "request": {"$ref": "canonical-dataset-selection-request.schema.json"},
+          "request_sha256": {"$ref": "#/$defs/sha256"},
+          "segment": {"type": "integer", "minimum": 1, "maximum": 120},
+          "sequence": {"type": "integer", "minimum": 0, "maximum": 511}
+        }
+      }
+    },
+    "source_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/sourceBinding"}
+    }
+  },
+  "$defs": {
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_sha256", "revision"],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id", "campaign_manifest_sha256", "campaign_plan_sha256", "end_time_ms",
+        "instrument_count", "publication_manifest_sha256", "publication_plan_sha256",
+        "selection_count", "start_time_ms"
+      ],
+      "properties": {
+        "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+        "campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "end_time_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+        "instrument_count": {"type": "integer", "minimum": 1},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "selection_count": {"type": "integer", "minimum": 2, "maximum": 240},
+        "start_time_ms": {"type": "integer", "minimum": 0, "multipleOf": 60000}
+      }
+    }
+  }
+}

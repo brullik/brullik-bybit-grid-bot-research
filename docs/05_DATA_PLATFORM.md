@@ -539,6 +539,14 @@ one receipt-bound public aggregate proves their dataset/manifest/object/partitio
 registration. Only hashes and counts enter GitHub; identities, time bounds, object keys, values,
 paths, and the runtime catalog remain local.
 
+ADR-0085 generalizes deterministic selection across several retained campaign publications
+without changing the ADR-0030 selector. A private whole-month source request is expanded from
+verified campaign jobs into contiguous equal-instrument topology segments. Trade/mark topology
+must match, source pairs may not share an instrument in the same month, and all unchanged v1
+selections run against one verified catalog snapshot before output. Execution publishes a
+receipt-resumable private plan/selection/manifest bundle; GitHub receives only its sanitized
+hash-and-count projection. This reuses retained history without accepting coverage or Gate 2.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.
