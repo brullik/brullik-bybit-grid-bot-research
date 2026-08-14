@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Final, cast
+from typing import Final, Literal, cast
 
 import pyarrow as pa  # type: ignore[import-untyped]
 from grid_contracts.canonical import canonical_sha256
@@ -40,6 +40,10 @@ FUNDING_COMPACTION_EVIDENCE_CONTRACT: Final = "grid.canonical-funding-compaction
 FUNDING_COMPACTION_BUILD_CONTRACT: Final = "grid.canonical-funding-compaction-publication/v1"
 DATASET_ID_RE: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 MINUTE_MS: Final = 60_000
+FundingUnionProblem = Literal[
+    "duplicate-or-conflicting-keys",
+    "unresolved-settlement-interval",
+]
 
 
 class FundingCompactionError(RuntimeError):
@@ -89,7 +93,9 @@ def _parent_bindings(parents: tuple[PublishedDataset, ...]) -> list[dict[str, st
     ]
 
 
-def _validate_union(table: pa.Table) -> None:
+def funding_union_problem(table: pa.Table) -> FundingUnionProblem | None:
+    """Return the first ADR-0054 union blocker without exposing funding values."""
+
     identifiers = cast(list[int], table.column("instrument_id").to_pylist())
     timestamps = cast(list[int], table.column("funding_time_ms").to_pylist())
     intervals = cast(list[int], table.column("funding_interval_minutes").to_pylist())
@@ -97,15 +103,24 @@ def _validate_union(table: pa.Table) -> None:
         previous_key = (identifiers[index - 1], timestamps[index - 1])
         current_key = (identifiers[index], timestamps[index])
         if current_key <= previous_key:
-            raise FundingCompactionError(
-                "funding compaction parents contain duplicate or conflicting keys"
-            )
+            return "duplicate-or-conflicting-keys"
         if identifiers[index] == identifiers[index - 1] and (
             timestamps[index] - timestamps[index - 1] != intervals[index] * MINUTE_MS
         ):
-            raise FundingCompactionError(
-                "funding compaction parent union has an unresolved settlement interval"
-            )
+            return "unresolved-settlement-interval"
+    return None
+
+
+def _validate_union(table: pa.Table) -> None:
+    problem = funding_union_problem(table)
+    if problem == "duplicate-or-conflicting-keys":
+        raise FundingCompactionError(
+            "funding compaction parents contain duplicate or conflicting keys"
+        )
+    if problem == "unresolved-settlement-interval":
+        raise FundingCompactionError(
+            "funding compaction parent union has an unresolved settlement interval"
+        )
 
 
 def _load_parent_union(
