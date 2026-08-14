@@ -18,7 +18,11 @@ from grid_bybit_public.historical_catalog import (
     HistoricalCatalogError,
     HistoricalDataProduct,
 )
-from grid_bybit_public.transport import RateLimitObservation, UrllibJsonTransport
+from grid_bybit_public.transport import (
+    PooledHttpsJsonTransport,
+    RateLimitObservation,
+    UrllibJsonTransport,
+)
 
 __all__ = [
     "ANNOUNCEMENT_TYPES",
@@ -31,6 +35,7 @@ __all__ = [
     "BybitPublicError",
     "HistoricalCatalogError",
     "HistoricalDataProduct",
+    "PooledHttpsJsonTransport",
     "ProductIndexSummary",
     "RateLimitObservation",
     "TradeArchiveCoverage",

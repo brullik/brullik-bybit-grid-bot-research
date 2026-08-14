@@ -31,6 +31,9 @@ retain exact source-row decoding. This changes no request, retry, pacing, or com
 Both candle and funding child executors apply the ADR-0043 shared decrease-only response-header
 pacer and receipt its sanitized observations; HTTP 403 aborts the resumable child rather than
 retrying through the documented IP-ban interval.
+ADR-0083 keeps one bounded public-only HTTPS connection pool across the sequential children of a
+CLI campaign. The pool cannot exceed the existing worker bound and does not change target RPS,
+application attempts, page ownership, endpoint scope, receipts, or resume semantics.
 Canonical campaign publication is a second `grid-data` coordinator: it consumes only a completed
 campaign, runs the existing receipt-last writers sequentially, and has no Bybit network client.
 

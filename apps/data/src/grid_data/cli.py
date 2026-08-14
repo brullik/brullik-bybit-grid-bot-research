@@ -15,6 +15,7 @@ from grid_bybit_public import (
     BybitArchiveIndex,
     BybitHistoricalDataCatalog,
     BybitPublicClient,
+    PooledHttpsJsonTransport,
     UrllibJsonTransport,
 )
 from grid_contracts.canonical import sha256_file
@@ -1126,13 +1127,16 @@ def _history_1m(args: argparse.Namespace) -> int:
     if not args.execute:
         print(json.dumps(summary))
         return 0
-    completed = execute_history_job(
-        plan,
-        lambda: BybitPublicClient(
-            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-        ),
-        lambda: probe_host_snapshot(args.staging_root),
-    )
+    with PooledHttpsJsonTransport(
+        base_url="https://api.bybit.com",
+        max_attempts=1,
+        max_connections=plan.spec.workers,
+    ) as transport:
+        completed = execute_history_job(
+            plan,
+            lambda: BybitPublicClient(transport),
+            lambda: probe_host_snapshot(args.staging_root),
+        )
     summary.update(
         {
             "manifest": str(completed.manifest_path),
@@ -1193,30 +1197,36 @@ def _history_campaign(args: argparse.Namespace) -> int:
     if not args.execute:
         print(json.dumps(summary))
         return 0
-    completed = execute_history_campaign(
-        plan,
-        kline_client_factory=lambda: BybitPublicClient(
-            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-        ),
-        funding_client_factory=lambda: BybitPublicClient(
-            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-        ),
-        snapshot_provider=lambda: probe_host_snapshot(args.staging_root),
-        progress=lambda job, completed_job: print(
-            json.dumps(
-                {
-                    "event": "campaign-job-complete",
-                    "job_count": len(plan.jobs),
-                    "job_id": job.job_id,
-                    "kind": job.kind,
-                    "page_count": completed_job.page_count,
-                    "row_count": completed_job.row_count,
-                    "sequence": job.sequence,
-                }
+    maximum_workers = max(job.plan.spec.workers for job in plan.jobs)
+    with PooledHttpsJsonTransport(
+        base_url="https://api.bybit.com",
+        max_attempts=1,
+        max_connections=maximum_workers,
+    ) as transport:
+
+        def client_factory() -> BybitPublicClient:
+            return BybitPublicClient(transport)
+
+        completed = execute_history_campaign(
+            plan,
+            kline_client_factory=client_factory,
+            funding_client_factory=client_factory,
+            snapshot_provider=lambda: probe_host_snapshot(args.staging_root),
+            progress=lambda job, completed_job: print(
+                json.dumps(
+                    {
+                        "event": "campaign-job-complete",
+                        "job_count": len(plan.jobs),
+                        "job_id": job.job_id,
+                        "kind": job.kind,
+                        "page_count": completed_job.page_count,
+                        "row_count": completed_job.row_count,
+                        "sequence": job.sequence,
+                    }
+                ),
+                flush=True,
             ),
-            flush=True,
-        ),
-    )
+        )
     summary.update(
         {
             "http_request_count": completed.http_request_count,
@@ -1274,13 +1284,16 @@ def _funding_source_boundary(args: argparse.Namespace) -> int:
     if not args.execute:
         print(json.dumps(summary))
         return 0
-    completed = execute_funding_source_boundary(
-        plan,
-        client_factory=lambda: BybitPublicClient(
-            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-        ),
-        snapshot_provider=lambda: probe_host_snapshot(args.output_root),
-    )
+    with PooledHttpsJsonTransport(
+        base_url="https://api.bybit.com",
+        max_attempts=1,
+        max_connections=plan.workers,
+    ) as transport:
+        completed = execute_funding_source_boundary(
+            plan,
+            client_factory=lambda: BybitPublicClient(transport),
+            snapshot_provider=lambda: probe_host_snapshot(args.output_root),
+        )
     verified = verify_completed_funding_source_boundary(completed.job_root)
     summary.update(
         {
@@ -1587,13 +1600,16 @@ def _funding_history(args: argparse.Namespace) -> int:
     if not args.execute:
         print(json.dumps(summary))
         return 0
-    completed = execute_funding_job(
-        plan,
-        lambda: BybitPublicClient(
-            UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-        ),
-        lambda: probe_host_snapshot(args.staging_root),
-    )
+    with PooledHttpsJsonTransport(
+        base_url="https://api.bybit.com",
+        max_attempts=1,
+        max_connections=plan.spec.workers,
+    ) as transport:
+        completed = execute_funding_job(
+            plan,
+            lambda: BybitPublicClient(transport),
+            lambda: probe_host_snapshot(args.staging_root),
+        )
     summary.update(
         {
             "boundary_evidence_sha256": completed.boundary_evidence_sha256,
@@ -1836,16 +1852,19 @@ def _execute_funding_repair(args: argparse.Namespace) -> int:
         artifact = verified_execution.path
     else:
         preflight_evidence(output)
-        result = execute_funding_repair(
-            preflight,
-            lambda: BybitPublicClient(
-                UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-            ),
-            lambda: probe_host_snapshot(args.repair_staging_root),
-            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            executor_software_identity=args.executor_software_identity,
-            now_ms=lambda: time.time_ns() // 1_000_000,
-        )
+        with PooledHttpsJsonTransport(
+            base_url="https://api.bybit.com",
+            max_attempts=1,
+            max_connections=min(32, max(1, len(preflight.task_plans))),
+        ) as transport:
+            result = execute_funding_repair(
+                preflight,
+                lambda: BybitPublicClient(transport),
+                lambda: probe_host_snapshot(args.repair_staging_root),
+                generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                executor_software_identity=args.executor_software_identity,
+                now_ms=lambda: time.time_ns() // 1_000_000,
+            )
         artifact, receipt = publish_evidence(output, result.payload)
         payload = result.payload
     summary.update(
@@ -2234,16 +2253,19 @@ def _execute_history_repair(args: argparse.Namespace) -> int:
         artifact = verified_execution.path
     else:
         preflight_evidence(output)
-        result = execute_gap_repair(
-            preflight,
-            lambda: BybitPublicClient(
-                UrllibJsonTransport(base_url="https://api.bybit.com", max_attempts=1)
-            ),
-            lambda: probe_host_snapshot(args.repair_staging_root),
-            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            executor_software_identity=args.executor_software_identity,
-            now_ms=lambda: time.time_ns() // 1_000_000,
-        )
+        with PooledHttpsJsonTransport(
+            base_url="https://api.bybit.com",
+            max_attempts=1,
+            max_connections=min(32, max(1, len(preflight.task_plans))),
+        ) as transport:
+            result = execute_gap_repair(
+                preflight,
+                lambda: BybitPublicClient(transport),
+                lambda: probe_host_snapshot(args.repair_staging_root),
+                generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                executor_software_identity=args.executor_software_identity,
+                now_ms=lambda: time.time_ns() // 1_000_000,
+            )
         artifact, receipt = publish_evidence(output, result.payload)
         payload = result.payload
     limits = payload["limits"]
@@ -2984,16 +3006,21 @@ def _rest_history_boundary(args: argparse.Namespace) -> int:
     output, _receipt = preflight_evidence(args.output, force=args.force)
     inventory_path = args.instrument_inventory.resolve()
     inventory = load_verified_public_inventory(inventory_path)
-    payload = build_rest_history_boundary(
-        lambda: BybitPublicClient(UrllibJsonTransport(base_url=args.base_url, max_attempts=1)),
-        inventory,
-        command=shlex.join(sys.argv),
-        inventory_artifact=inventory_path.name,
-        inventory_artifact_sha256=sha256_file(inventory_path),
-        sample_size=args.sample_size,
-        workers=args.workers,
-        max_requests=args.max_requests,
-    )
+    with PooledHttpsJsonTransport(
+        base_url=args.base_url,
+        max_attempts=1,
+        max_connections=args.workers,
+    ) as transport:
+        payload = build_rest_history_boundary(
+            lambda: BybitPublicClient(transport),
+            inventory,
+            command=shlex.join(sys.argv),
+            inventory_artifact=inventory_path.name,
+            inventory_artifact_sha256=sha256_file(inventory_path),
+            sample_size=args.sample_size,
+            workers=args.workers,
+            max_requests=args.max_requests,
+        )
     artifact, receipt = publish_evidence(output, payload, force=args.force)
     print(
         json.dumps(
@@ -3035,25 +3062,31 @@ def _rest_throughput(args: argparse.Namespace) -> int:
         captured_at, str
     ):
         raise ValueError("unsupported workstation snapshot evidence")
-    payload = build_rest_throughput_evidence(
-        lambda: BybitPublicClient(UrllibJsonTransport(base_url=args.base_url, max_attempts=1)),
-        inventory,
-        source_assessment,
-        command=shlex.join(sys.argv),
+    maximum_workers = max(profile.workers for profile in args.profiles)
+    with PooledHttpsJsonTransport(
         base_url=args.base_url,
-        inventory_artifact=inventory_path.name,
-        inventory_artifact_sha256=sha256_file(inventory_path),
-        source_assessment_artifact=source_path.name,
-        source_assessment_artifact_sha256=sha256_file(source_path),
-        workstation_artifact=workstation_path.name,
-        workstation_artifact_sha256=sha256_file(workstation_path),
-        workstation_captured_at_utc=captured_at,
-        profiles=args.profiles,
-        stage_seconds=args.stage_seconds,
-        cooldown_seconds=args.cooldown_seconds,
-        sample_size=args.sample_size,
-        max_requests=args.max_requests,
-    )
+        max_attempts=1,
+        max_connections=maximum_workers,
+    ) as transport:
+        payload = build_rest_throughput_evidence(
+            lambda: BybitPublicClient(transport),
+            inventory,
+            source_assessment,
+            command=shlex.join(sys.argv),
+            base_url=args.base_url,
+            inventory_artifact=inventory_path.name,
+            inventory_artifact_sha256=sha256_file(inventory_path),
+            source_assessment_artifact=source_path.name,
+            source_assessment_artifact_sha256=sha256_file(source_path),
+            workstation_artifact=workstation_path.name,
+            workstation_artifact_sha256=sha256_file(workstation_path),
+            workstation_captured_at_utc=captured_at,
+            profiles=args.profiles,
+            stage_seconds=args.stage_seconds,
+            cooldown_seconds=args.cooldown_seconds,
+            sample_size=args.sample_size,
+            max_requests=args.max_requests,
+        )
     artifact, receipt = publish_evidence(output, payload, force=args.force)
     print(
         json.dumps(

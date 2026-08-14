@@ -1254,6 +1254,19 @@ SHA-256 is `4622399e6b902d84e318c66d5e60c35584238bfdd278a5bfb3d2b33238c71040`.
 
 This component cannot qualify the end-to-end envelope, close Gate 2, or authorize Phase 3.
 
+## Bounded public REST connection pooling
+
+ADR-0083 replaces per-worker `urllib` connections in high-volume public acquisition commands with
+one operation-scoped, public-only HTTPS/1.1 pool. Successful fully consumed connections can be
+reused across workers and sequential monthly campaign children. The pool is capped by the existing
+32-worker ceiling, public JSON bodies are capped at 8 MiB, broken/non-2xx connections are evicted,
+and sanitized response-limit observations remain thread-local.
+
+This changes no target RPS, application retry ceiling, immutable page ownership, response
+validation, receipt, resume, endpoint, credential, or Gate 2 contract. Unit/fault tests are
+implementation evidence only; a bounded post-merge real public throughput result remains required
+before a measured speedup is claimed.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

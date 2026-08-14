@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -40,3 +41,16 @@ def test_manifest_difference_is_bounded_and_deterministic() -> None:
         ("cccc  current.py",),
         ("bbbb  stale.py",),
     )
+
+
+def test_rendered_manifest_hashes_git_canonical_lf_bytes_on_windows_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(update_manifest, "ROOT", tmp_path)
+    monkeypatch.setattr(update_manifest, "MANIFEST", tmp_path / "MANIFEST.sha256")
+    source = tmp_path / "source.py"
+    source.write_bytes(b"first\r\nsecond\r\n")
+
+    expected = hashlib.sha256(b"first\nsecond\n").hexdigest()
+
+    assert update_manifest.rendered_manifest() == f"{expected}  source.py\n"
