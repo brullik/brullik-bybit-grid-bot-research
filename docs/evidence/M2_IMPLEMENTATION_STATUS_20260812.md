@@ -877,6 +877,8 @@ the public contract exposes only audit/store hashes, implementation identities, 
 and aggregate classifications. The audit never deduplicates, subsets, splits, compacts, or mutates
 a parent. A post-merge measured audit/projection remains required to record whether the current
 store contains a genuine candidate; implementation alone is not ADR-0054 performance evidence.
+The implementation, ADR, schema, and synthetic proofs are tracked in
+[PR #77](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/77).
 
 ## Still required before Gate 2
 
