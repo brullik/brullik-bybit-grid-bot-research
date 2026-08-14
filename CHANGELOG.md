@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0060 regional public-API block classification: bounded ephemeral CloudFront-body
+  classification, one-attempt global abort, no invented IP-ban cooldown, no stored response body,
+  no alternate-host retry, and unchanged handling for genuine Bybit rate-limit 403 responses.
 - ADR-0059 sanitized campaign-resume performance evidence: exact scope/input/implementation
   bindings, aggregate integrity/reuse timing, local one-call fail-closed stub, and no network,
   instrument identity, market value, path, device, account, credential, or Gate 2 implication.

@@ -14,13 +14,29 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+TransportFailureClass = Literal[
+    "none",
+    "http-client-error",
+    "rate-limit",
+    "regional-access-block",
+]
+
 
 class JsonTransport(Protocol):
     def get(self, path: str, params: Mapping[str, str | int]) -> Mapping[str, Any]: ...
 
 
 class TransportError(RuntimeError):
-    pass
+    """Sanitized public-transport failure with a machine-readable safe classification."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_class: TransportFailureClass = "none",
+    ) -> None:
+        super().__init__(message)
+        self.failure_class = failure_class
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,10 +49,17 @@ class RateLimitObservation:
     limit: int | None
     remaining: int | None
     reset_at_ms: int | None
+    failure_class: TransportFailureClass = "none"
 
     @property
     def rate_limited(self) -> bool:
-        return self.http_status in (403, 429) or self.bybit_ret_code == 10006
+        if self.failure_class == "regional-access-block":
+            return False
+        return (
+            self.failure_class == "rate-limit"
+            or self.http_status in (403, 429)
+            or self.bybit_ret_code == 10006
+        )
 
 
 def _optional_integer(value: object) -> int | None:
@@ -54,6 +77,7 @@ def _rate_limit_observation(
     *,
     http_status: int,
     bybit_ret_code: object,
+    failure_class: TransportFailureClass | None = None,
 ) -> RateLimitObservation:
     get_header = getattr(headers, "get", None)
     raw_values = (
@@ -82,6 +106,8 @@ def _rate_limit_observation(
         if isinstance(bybit_ret_code, int) and not isinstance(bybit_ret_code, bool)
         else None
     )
+    if failure_class is None:
+        failure_class = "rate-limit" if http_status in (403, 429) or ret_code == 10006 else "none"
     return RateLimitObservation(
         http_status=http_status,
         bybit_ret_code=ret_code,
@@ -89,7 +115,31 @@ def _rate_limit_observation(
         limit=limit,
         remaining=remaining,
         reset_at_ms=reset_at_ms,
+        failure_class=failure_class,
     )
+
+
+def _http_failure_class(status: int, body: bytes) -> TransportFailureClass:
+    """Classify only stable control text; never retain or expose an HTTP error body."""
+
+    normalized = body.lower()
+    if (
+        status == 403
+        and b"cloudfront" in normalized
+        and b"block" in normalized
+        and b"country" in normalized
+    ):
+        return "regional-access-block"
+    if status in (403, 429):
+        return "rate-limit"
+    return "http-client-error"
+
+
+def _bounded_error_body(error: urllib.error.HTTPError) -> bytes:
+    try:
+        return error.read(64 * 1024)
+    except (AttributeError, OSError, ValueError, http.client.HTTPException):
+        return b""
 
 
 @dataclass(slots=True)
@@ -134,14 +184,21 @@ class UrllibJsonTransport:
                 )
                 return payload
             except urllib.error.HTTPError as error:
+                failure_class = _http_failure_class(error.code, _bounded_error_body(error))
                 self._last_rate_limit_observation = _rate_limit_observation(
                     error.headers,
                     http_status=error.code,
                     bybit_ret_code=None,
+                    failure_class=failure_class,
                 )
                 last_error = error
                 if error.code < 500 and error.code != 429:
-                    raise TransportError(f"Bybit HTTP error {error.code}") from error
+                    message = (
+                        "Bybit public API is unavailable from the current region"
+                        if failure_class == "regional-access-block"
+                        else f"Bybit HTTP error {error.code}"
+                    )
+                    raise TransportError(message, failure_class=failure_class) from error
             except (
                 urllib.error.URLError,
                 http.client.HTTPException,

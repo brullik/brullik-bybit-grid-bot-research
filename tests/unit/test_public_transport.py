@@ -104,6 +104,68 @@ def test_non_retryable_http_error_remains_immediate(monkeypatch: pytest.MonkeyPa
     assert calls == 1
 
 
+def test_cloudfront_country_block_is_sanitized_and_not_mislabeled_as_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    body = (
+        b"ERROR: The request could not be satisfied. The Amazon CloudFront distribution "
+        b"is configured to block access from your country."
+    )
+
+    def urlopen(*args: object, **kwargs: object) -> Response:
+        nonlocal calls
+        del args, kwargs
+        calls += 1
+        raise urllib.error.HTTPError(
+            "https://api.bybit.com/v5/market/time",
+            403,
+            "Forbidden",
+            cast(Any, {}),
+            BytesIO(body),
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    transport = UrllibJsonTransport(max_attempts=3)
+
+    with pytest.raises(TransportError, match="unavailable from the current region") as captured:
+        transport.get("/v5/market/time", {})
+    observed = transport.take_rate_limit_observation()
+
+    assert calls == 1
+    assert captured.value.failure_class == "regional-access-block"
+    assert str(captured.value) == "Bybit public API is unavailable from the current region"
+    assert observed is not None
+    assert observed.failure_class == "regional-access-block"
+    assert observed.rate_limited is False
+
+
+def test_non_regional_403_retains_official_ip_rate_limit_classification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def urlopen(*args: object, **kwargs: object) -> Response:
+        del args, kwargs
+        raise urllib.error.HTTPError(
+            "https://api.bybit.com/v5/market/time",
+            403,
+            "Forbidden",
+            cast(Any, {}),
+            BytesIO(b"access too frequent"),
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    transport = UrllibJsonTransport(max_attempts=1)
+
+    with pytest.raises(TransportError, match="HTTP error 403") as captured:
+        transport.get("/v5/market/time", {})
+    observed = transport.take_rate_limit_observation()
+
+    assert captured.value.failure_class == "rate-limit"
+    assert observed is not None
+    assert observed.failure_class == "rate-limit"
+    assert observed.rate_limited is True
+
+
 def test_transport_exposes_sanitized_complete_rate_limit_observation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -6,7 +6,8 @@ from typing import Any
 
 import grid_data.funding_acquisition as funding_acquisition
 import pytest
-from grid_bybit_public import BybitPublicError
+from grid_bybit_public import BybitPublicError, RateLimitObservation
+from grid_bybit_public.transport import TransportError
 from grid_data.funding_acquisition import (
     MAX_PAGE_ARTIFACT_BYTES,
     STAGING_METADATA_BYTES,
@@ -87,6 +88,33 @@ class AlwaysFailFundingClient(FakeFundingClient):
     def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
         self.calls.append((kwargs["symbol"], kwargs["start_ms"], kwargs["end_ms"], kwargs["limit"]))
         raise BybitPublicError("injected persistent failure")
+
+
+class RegionBlockedFundingClient(FakeFundingClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self._observation: RateLimitObservation | None = None
+
+    def funding_page(self, **kwargs: Any) -> tuple[dict[str, str], ...]:
+        self.calls.append((kwargs["symbol"], kwargs["start_ms"], kwargs["end_ms"], kwargs["limit"]))
+        self._observation = RateLimitObservation(
+            http_status=403,
+            bybit_ret_code=None,
+            header_state="absent",
+            limit=None,
+            remaining=None,
+            reset_at_ms=None,
+            failure_class="regional-access-block",
+        )
+        raise TransportError(
+            "Bybit public API is unavailable from the current region",
+            failure_class="regional-access-block",
+        )
+
+    def take_rate_limit_observation(self) -> RateLimitObservation | None:
+        observed = self._observation
+        self._observation = None
+        return observed
 
 
 def series(
@@ -242,6 +270,36 @@ def test_failed_run_resumes_only_missing_pages_and_complete_is_idempotent(
     same = execute(complete_plan, never_called)
     assert same.manifest_sha256 == completed.manifest_sha256
     assert never_called.calls == []
+
+
+def test_regional_403_aborts_funding_once_without_retrying(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS),),
+        workers=1,
+        max_attempts=3,
+        max_http_requests=6,
+    )
+    plan = preflight_funding_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=2),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+    )
+    client = RegionBlockedFundingClient()
+    monkeypatch.setattr("grid_data.funding_acquisition.time.sleep", lambda _seconds: None)
+
+    with pytest.raises(FundingAcquisitionError, match="officially supported network and region"):
+        execute(plan, client)
+
+    assert len(client.calls) == 1
+    assert plan.paths.plan_path.is_file()
+    assert not plan.paths.receipt_path.exists()
+    assert not plan.paths.run_lock.exists()
 
 
 @pytest.mark.parametrize(

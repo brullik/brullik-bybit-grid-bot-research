@@ -161,6 +161,32 @@ class IpBannedKlineClient(FakeKlineClient):
         return observed
 
 
+class RegionBlockedKlineClient(IpBannedKlineClient):
+    def kline_page(self, **kwargs: Any) -> tuple[tuple[str, ...], ...]:
+        self.calls.append(
+            (
+                kwargs["symbol"],
+                kwargs["start_ms"],
+                kwargs["end_ms"],
+                kwargs["kind"],
+                kwargs["limit"],
+            )
+        )
+        self._observation = RateLimitObservation(
+            http_status=403,
+            bybit_ret_code=None,
+            header_state="absent",
+            limit=None,
+            remaining=None,
+            reset_at_ms=None,
+            failure_class="regional-access-block",
+        )
+        raise TransportError(
+            "Bybit public API is unavailable from the current region",
+            failure_class="regional-access-block",
+        )
+
+
 def series(
     *,
     instrument_id: int = 1,
@@ -443,6 +469,37 @@ def test_http_403_aborts_application_retries_and_preserves_resumable_job(
     monkeypatch.setattr("grid_data.history_acquisition.time.sleep", lambda _seconds: None)
 
     with pytest.raises(HistoryAcquisitionError, match="adaptive rate-limit policy"):
+        execute(plan, client)
+
+    assert len(client.calls) == 1
+    assert plan.paths.plan_path.is_file()
+    assert not plan.paths.receipt_path.exists()
+    assert not plan.paths.run_lock.exists()
+
+
+def test_regional_403_aborts_once_without_claiming_rate_limit_cooldown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    one_page_spec = spec(
+        series=(series(end_ms=JANUARY_1_2026_MS),),
+        workers=1,
+        target_rps=15,
+        max_attempts=3,
+        max_http_requests=3,
+    )
+    plan = preflight_history_job(
+        tmp_path / "history",
+        one_page_spec,
+        budget(page_count=1),
+        snapshot(tmp_path),
+        now_ms=1_001,
+        closed_before_ms=JANUARY_1_2026_MS + 60_000,
+    )
+    client = RegionBlockedKlineClient()
+    monkeypatch.setattr("grid_data.history_acquisition.time.sleep", lambda _seconds: None)
+
+    with pytest.raises(HistoryAcquisitionError, match="officially supported network and region"):
         execute(plan, client)
 
     assert len(client.calls) == 1
