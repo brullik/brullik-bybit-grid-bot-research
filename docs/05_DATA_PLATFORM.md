@@ -424,6 +424,12 @@ execution. It records aggregate limits, immutable bindings, and whether exact re
 the source gap remained. Existing private execution output is reused without another public
 request; a blocked outcome cannot publish a replacement or accept the missing candle.
 
+ADR-0082 adds a read-only retained full-history catalog performance command over the exact four
+topology-scoped selections from ADR-0080. It verifies their public/private receipt and hash chain,
+runs the production selector concurrently and then immediately repeats it, and rejects any result
+or retained-state change. The sanitized measurement defines no performance threshold, does not
+repeat download/registration, and cannot change Gate 2 or Phase 3 status.
+
 ADR-0064 adds post-merge orphan/partial-write detection evidence. Temporary cloned candle and
 funding commits receive an orphan file, missing Parquet, or missing completion receipt; the real
 production verifiers must reject all six cases while preserving the complete injected filesystem

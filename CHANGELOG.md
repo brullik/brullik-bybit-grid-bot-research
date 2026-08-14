@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0082 and `grid.phase2-full-history-catalog-performance/v1`: a read-only two-pass production
+  selector measurement over the existing four receipt-bound full-history topology requests,
+  without repeating download, publication, repair, or catalog registration and without changing
+  Gate 2.
 - Receipt-verified full-history catalog evidence bound to merge `bd79038`: one revision-5
   registration and four topology-scoped selections reconcile 978 datasets/objects, 268
   schema-only datasets, 30,832,334 rows, and 529,794,759 bytes without publishing identities.

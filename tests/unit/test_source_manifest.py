@@ -30,3 +30,13 @@ def test_source_manifest_keeps_data_app_but_excludes_local_state(
     included = {path.relative_to(tmp_path).as_posix() for path in update_manifest.source_files()}
 
     assert included == {".env.example", "apps/data/source.py"}
+
+
+def test_manifest_difference_is_bounded_and_deterministic() -> None:
+    actual = "bbbb  stale.py\naaaa  same.py\n"
+    expected = "cccc  current.py\naaaa  same.py\n"
+
+    assert update_manifest.manifest_difference(actual, expected) == (
+        ("cccc  current.py",),
+        ("bbbb  stale.py",),
+    )

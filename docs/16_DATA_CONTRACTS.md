@@ -357,6 +357,14 @@ codes. It performs no Bybit request, retained-store read, or repeated benchmark.
 cannot accept Gate 2, authorize Phase 3, expose runtime identities/market values, or reinterpret
 the immutable v1 result; see ADR-0075.
 
+`grid.phase2-full-history-catalog-performance/v1` is a sanitized measurement over the four exact
+ADR-0080 topology-scoped catalog selections. It receipt/hash/schema verifies the prior public and
+private chain, measures a concurrent first pass and immediate repeat through the production
+selector, requires deterministic equality and retained-state preservation, and performs no
+network or write operation. Only aggregate scope, timing, throughput, hashes, non-identifying host
+facts, and limitations are public; it defines no Gate 2 threshold or Phase 3 authority. See
+ADR-0082.
+
 `grid.phase2-canonical-integrity-fault-injection/v1` binds a merged implementation identity to
 six offline candle/funding verifier cases: orphan file, missing manifest-bound Parquet, and missing
 completion receipt for each dataset type. Every case must be detected and retain an identical

@@ -6,6 +6,8 @@ import argparse
 import hashlib
 from pathlib import Path
 
+MAX_DIAGNOSTIC_ROWS = 20
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "MANIFEST.sha256"
 EXCLUDED_PARTS = {
@@ -69,6 +71,16 @@ def rendered_manifest() -> str:
     return "\n".join(rows) + "\n"
 
 
+def manifest_difference(actual: str, expected: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return bounded deterministic rows missing from or unexpected in the manifest."""
+
+    actual_rows = set(actual.splitlines())
+    expected_rows = set(expected.splitlines())
+    missing_or_changed = tuple(sorted(expected_rows - actual_rows)[:MAX_DIAGNOSTIC_ROWS])
+    unexpected_or_stale = tuple(sorted(actual_rows - expected_rows)[:MAX_DIAGNOSTIC_ROWS])
+    return missing_or_changed, unexpected_or_stale
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--write", action="store_true")
@@ -80,6 +92,11 @@ def main() -> int:
     actual = MANIFEST.read_text(encoding="utf-8") if MANIFEST.exists() else ""
     if actual != expected:
         print("MANIFEST.sha256 is stale; run: python scripts/update_manifest.py --write")
+        missing_or_changed, unexpected_or_stale = manifest_difference(actual, expected)
+        for row in missing_or_changed:
+            print(f"missing-or-changed: {row}")
+        for row in unexpected_or_stale:
+            print(f"unexpected-or-stale: {row}")
         return 1
     print(f"verified {len(source_files())} source files")
     return 0
