@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified candle repair outcome: one bounded public request returned zero rows for the
+  genuine one-minute gap; the source gap remains, the parent is unchanged, no replacement was
+  published, and the sanitized artifact prevents wasteful retries.
 - ADR-0076 and `grid.bybit-1m-gap-repair-execution-public/v1`: a receipt-reverified,
   identifier-free GitHub projection records exact repair completion or a persistent source gap,
   while preserving the private execution as the no-repeat marker and keeping Gate 2 closed.
