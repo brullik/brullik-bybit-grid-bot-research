@@ -1245,8 +1245,17 @@ market-store scan is repeated.
 The two obsolete evidence-missing descriptions are replaced by the observed blockers
 `candle-repair-source-gap-remains` and `eligible-funding-repair-candidate-unavailable`. Gate 2
 remains closed with seven blockers, data-quality-owner review remains mandatory, and Phase 3
-authorization remains false. The post-merge receipt-bound v3 artifact remains required before
-this implementation becomes the current GitHub readiness result.
+authorization remains false.
+
+The receipt-verified post-merge
+[v3 readiness artifact](../../benchmarks/results/m2-gate2-readiness-pack-v3-20260814.json) is bound
+to implementation merge `97cf4714caa7bc64767bfb62b0f7cf844b781506`. One offline pass verifies
+all fifteen exact source artifacts, receipts, schemas, content hashes, and cross-source bindings.
+The result remains three evidence-ready and three blocked criteria with the seven current blocker
+codes above; `gate_2.status=closed-pending-data-quality-owner` and `phase3_authorized=false`. The
+artifact SHA-256 is `4607ced71078bd4c0e11e8fef7863018532e26e81fbedb719839fe9de11d1278`;
+its embedded content SHA-256 is
+`0929aaf2cd66c62248b346a43c40a7c0d34709f7af3bdc2525dd9b1b33523283`.
 
 ## Full-history catalog performance implementation
 

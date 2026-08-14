@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified post-merge Gate 2 readiness v3 evidence bound to `97cf471`: all fifteen source
+  chains verify offline, the unchanged result remains three evidence-ready and three blocked
+  criteria with seven current blockers, Gate 2 stays closed, and Phase 3 authorization is false.
 - ADR-0088 receipt-bound canonical campaign publication timing: a plan-bound immutable execution
   start survives resume, current manifests and sanitized evidence expose exact wall time, and
   legacy completed publication roots remain valid without migration.
