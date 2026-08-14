@@ -1234,6 +1234,20 @@ The artifact SHA-256 is
 `c36612505d1b07f50ae6092efe4a158129ced9f25832e2f9a757924a514366d0`; its embedded content
 SHA-256 is `5836c774e353f6deaae7e5642c8390a45dea7a66f396944ae45f46a2def858f8`.
 
+## Current readiness v3 implementation
+
+ADR-0081 adds the append-only `grid.gate2-readiness-pack/v3` builder without changing the six
+criteria or the three-ready/three-blocked classification. It re-verifies the complete v2 source
+set, then adds the measured blocked candle repair, the funding no-candidate audit, and the
+full-history catalog result. No download, repair request, publication, catalog write, or retained
+market-store scan is repeated.
+
+The two obsolete evidence-missing descriptions are replaced by the observed blockers
+`candle-repair-source-gap-remains` and `eligible-funding-repair-candidate-unavailable`. Gate 2
+remains closed with seven blockers, data-quality-owner review remains mandatory, and Phase 3
+authorization remains false. The post-merge receipt-bound v3 artifact remains required before
+this implementation becomes the current GitHub readiness result.
+
 ## Full-history catalog performance implementation
 
 ADR-0082 adds a bounded read-only benchmark that reuses the public catalog result and the four
