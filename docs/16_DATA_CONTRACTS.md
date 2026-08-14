@@ -163,6 +163,13 @@ aggregate verifier recomputes source-derived dataset/build identities and verifi
 file, audit, manifest, and receipt. This is publication lineage, not coverage/lifecycle acceptance
 or catalog registration. See ADR-0039.
 
+`grid.history-campaign-publication-start/v1` is an optional-for-legacy, required-for-new execution
+checkpoint committed as `execution-start.json` plus an existing v1 publication receipt. It binds
+one non-negative wall-clock start to the exact prepared-plan hash before child traversal. A current
+manifest must repeat that timestamp and complete no earlier; resume reuses it unchanged. The
+verifier accepts only a complete legacy root without the checkpoint or a complete current root
+with both checkpoint files and rejects mixed/orphaned states. See ADR-0088.
+
 ADR-0067 keeps that one-to-one lineage when a verified candle child has zero admitted rows. The
 child publishes one schema-only Parquet file with the unchanged canonical schema, zero rows and
 instruments, null key bounds, and normal audit/manifest/receipt bindings. Campaign v1 child row
@@ -183,8 +190,10 @@ publisher and evidence-builder Git identities. Its exact schema excludes dataset
 identities, runtime paths, market values, account data, and credentials. It proves immutable
 canonical publication lineage only; coverage audits, catalog registration, and Gate 2 remain
 separate. New artifacts may optionally record the ADR-0046 source-reverification mode and the
-monotonic elapsed milliseconds of completed-publication verification; old v1 artifacts remain
-valid. See ADR-0040 and ADR-0046.
+monotonic elapsed milliseconds of completed-publication verification. ADR-0088 additionally lets
+new artifacts project receipt-bound publication `started_at_ms`, `completed_at_ms`, and their
+wall-clock `elapsed_ms`; legacy v1 artifacts remain valid and omit that timing. See ADR-0040,
+ADR-0046, and ADR-0088.
 
 `grid.history-campaign-coverage-audit/v1` binds one verified aggregate publication and the
 canonical content hash/status of every ADR-0026/ADR-0034 child audit in campaign sequence. It sums

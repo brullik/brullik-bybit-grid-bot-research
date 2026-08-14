@@ -119,6 +119,16 @@
       }
     },
     "status": {"const": "verified-canonical-history-campaign-publication"},
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed_at_ms", "elapsed_ms", "started_at_ms"],
+      "properties": {
+        "completed_at_ms": {"type": "integer", "minimum": 0},
+        "elapsed_ms": {"type": "integer", "minimum": 0},
+        "started_at_ms": {"type": "integer", "minimum": 0}
+      }
+    },
     "storage_policy": {
       "const": {
         "evidence_contains_account_data": false,

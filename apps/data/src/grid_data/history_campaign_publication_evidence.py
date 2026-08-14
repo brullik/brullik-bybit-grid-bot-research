@@ -295,6 +295,12 @@ def build_history_campaign_publication_evidence(
             "source_reverification_mode": "receipt-integrity-without-row-decode-v1",
         },
     }
+    if completed.started_at_ms is not None:
+        payload["timing"] = {
+            "completed_at_ms": completed.completed_at_ms,
+            "elapsed_ms": completed.completed_at_ms - completed.started_at_ms,
+            "started_at_ms": completed.started_at_ms,
+        }
     if sum(item["dataset_count"] for item in by_kind.values()) != completed.dataset_count:
         raise HistoryCampaignPublicationError("publication evidence dataset total differs")
     if sum(item["row_count"] for item in by_kind.values()) != completed.row_count:
