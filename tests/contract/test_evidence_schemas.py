@@ -84,6 +84,69 @@ def test_funding_compaction_candidate_audit_matches_schema_receipt_and_redaction
         assert forbidden not in rendered
 
 
+def test_stale_output_fault_injection_matches_schema_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-stale-output-fault-injection-20260814.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-stale-output-fault-injection.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "8931046401916b97f342e0404a5ce98faf859e63b9a9eb6b21307e322f1685d3"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "8cec6fac0cbd1e14eb2bbcc53b4fe9af5d8a07cd6b434f7a31a38b4428688c10"
+    )
+    assert payload["bindings"] == {
+        "implementation_identity": "git:5ba281181e9c92da1aa30cd85dd520e888e11498"
+    }
+    assert payload["measurement"] == {
+        "case_count": 5,
+        "detected_count": 5,
+        "marker_preserved_count": 5,
+        "target_mutation_count": 0,
+    }
+    cases = payload["cases"]
+    assert {case["case_id"] for case in cases} == {
+        "canonical-candle-compaction-building",
+        "canonical-candle-publication-building",
+        "canonical-funding-publication-building",
+        "catalog-registration-building",
+        "catalog-registration-lock",
+    }
+    assert all(case["detected"] is True for case in cases)
+    assert all(case["marker_preserved"] is True for case in cases)
+    assert all(case["target_mutated"] is False for case in cases)
+    assert payload["assurances"] == {
+        "injected_markers_preserved": True,
+        "network_request_performed": False,
+        "private_or_live_capability_used": False,
+        "production_preflight_functions_exercised": True,
+        "target_mutation_observed": False,
+        "temporary_fixture_removed": True,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"runtime_path"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-public-sample.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-public-sample.schema.json")

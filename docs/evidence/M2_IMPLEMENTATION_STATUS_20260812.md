@@ -906,6 +906,16 @@ required; implementation alone does not accept the Gate 2 criterion. The impleme
 ADR, and offline contract tests are tracked in
 [PR #79](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/79).
 
+The post-merge runner was then executed against merge commit
+`5ba281181e9c92da1aa30cd85dd520e888e11498`. The receipt-verified public result records five of
+five stale markers detected, five of five markers preserved byte-for-byte, and zero target
+mutations across the named production preflights. It also records that no network request or
+private/live capability was used and that the temporary fixture was removed. The measured
+[artifact](../../benchmarks/results/m2-stale-output-fault-injection-20260814.json) and
+[receipt](../../benchmarks/results/m2-stale-output-fault-injection-20260814.json.receipt.json)
+provide runtime evidence only for the unchanged stale-building-output criterion. They do not
+accept the remainder of Gate 2.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
