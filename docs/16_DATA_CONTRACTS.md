@@ -210,7 +210,10 @@ per-instrument record matching and cannot close Gate 2. ADR-0072 aligns ordering
 source's descending `dateTimestamp`, records separate date/publish bounds, and uses only the
 source-order date bound for archive-depth comparison. ADR-0073 requires that date field while
 allowing unbackfilled legacy `publishTime` to remain absent; per-page presence counts and nullable
-publish bounds expose the omission without synthesizing data. See ADR-0071 through ADR-0073.
+publish bounds expose the omission without synthesizing data. ADR-0074 preserves and reports
+source-order inversions for every type, requires consistent date order only from `new_crypto` and
+`delistings`, and names aggregate coordinates as declared-last-page observations rather than
+global archive minima. See ADR-0071 through ADR-0074.
 
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and

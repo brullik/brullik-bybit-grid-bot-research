@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Final, Protocol, cast
 
@@ -18,6 +19,7 @@ SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 PAGE_LIMIT: Final = 20
 LOCALE: Final = "en-US"
 UINT32_MAX: Final = (1 << 32) - 1
+LIFECYCLE_DEPTH_TYPES: Final = frozenset(("new_crypto", "delistings"))
 
 
 class AnnouncementArchiveDepthError(ValueError):
@@ -77,6 +79,10 @@ def _optional_integer_times(page: AnnouncementPage, field: str) -> tuple[int, ..
             f"validated announcement page has invalid optional {field} times"
         )
     return tuple(cast(int, value) for value in values if value is not None)
+
+
+def _adjacent_inversion_count(values: Sequence[int]) -> int:
+    return sum(current > previous for previous, current in pairwise(values))
 
 
 def build_announcement_archive_depth_evidence(
@@ -172,18 +178,37 @@ def build_announcement_archive_depth_evidence(
             raise AnnouncementArchiveDepthError(
                 f"announcement type {announcement_type} has inverted source bounds"
             )
+        first_date_inversion_count = _adjacent_inversion_count(first_date_times)
+        last_date_inversion_count = _adjacent_inversion_count(last_date_times)
+        cross_page_date_order_consistent = last_page_number == 1 or min(first_date_times) >= max(
+            last_date_times
+        )
+        declared_page_date_order_consistent = (
+            first_date_inversion_count == 0
+            and last_date_inversion_count == 0
+            and cross_page_date_order_consistent
+        )
+        lifecycle_depth_type = announcement_type in LIFECYCLE_DEPTH_TYPES
+        if lifecycle_depth_type and not declared_page_date_order_consistent:
+            raise AnnouncementArchiveDepthError(
+                f"lifecycle announcement type {announcement_type} has unordered bounds"
+            )
         type_probes.append(
             {
                 "announcement_type": announcement_type,
+                "declared_page_date_order_consistent": declared_page_date_order_consistent,
+                "first_page_adjacent_date_inversion_count": first_date_inversion_count,
                 "first_page_item_count": len(first.items),
                 "first_page_publish_time_present_count": len(first_publish_times),
                 "first_page_result_sha256": _page_result_sha256(first),
+                "last_page_adjacent_date_inversion_count": last_date_inversion_count,
                 "last_page_item_count": len(last.items),
                 "last_page_number": last_page_number,
                 "last_page_publish_time_present_count": len(last_publish_times),
                 "last_page_result_sha256": _page_result_sha256(last),
                 "latest_date_timestamp_ms": latest_date_timestamp_ms,
                 "latest_publish_time_ms": latest_publish_time_ms,
+                "lifecycle_depth_type": lifecycle_depth_type,
                 "oldest_date_timestamp_ms": oldest_date_timestamp_ms,
                 "oldest_publish_time_ms": oldest_publish_time_ms,
                 "total_announcements": first.total,
@@ -199,7 +224,7 @@ def build_announcement_archive_depth_evidence(
     archive_covers_all = launch_before_listing_archive_count == 0
     blockers = ["archive-depth-does-not-prove-instrument-lifecycle"]
     if not archive_covers_all:
-        blockers.append("official-new-listing-archive-starts-after-selected-launch")
+        blockers.append("official-new-listing-declared-last-page-starts-after-selected-launch")
     blockers.sort()
 
     registry_content_sha256 = registry.payload.get("content_sha256")
@@ -208,9 +233,9 @@ def build_announcement_archive_depth_evidence(
     payload: dict[str, object] = {
         "archive_depth": {
             "all_selected_registry_launches_within_new_listing_archive": archive_covers_all,
-            "delistings_oldest_date_timestamp_ms": delistings_start,
-            "global_oldest_date_timestamp_ms": global_start,
-            "new_crypto_oldest_date_timestamp_ms": new_crypto_start,
+            "delistings_declared_last_page_min_date_timestamp_ms": delistings_start,
+            "documented_types_declared_last_page_min_date_timestamp_ms": global_start,
+            "new_crypto_declared_last_page_min_date_timestamp_ms": new_crypto_start,
             "selected_launch_before_new_listing_archive_count": (
                 launch_before_listing_archive_count
             ),
@@ -235,6 +260,7 @@ def build_announcement_archive_depth_evidence(
         "process": {
             "documented_announcement_type_count": len(ANNOUNCEMENT_TYPES),
             "first_and_last_page_only": True,
+            "lifecycle_depth_type_count": len(LIFECYCLE_DEPTH_TYPES),
             "maximum_response_count": 2 * len(ANNOUNCEMENT_TYPES),
             "response_count": response_count,
             "reused_single_page_count": reused_page_count,
@@ -248,10 +274,11 @@ def build_announcement_archive_depth_evidence(
             "base_url": "https://api.bybit.com",
             "endpoint": "/v5/announcements/index",
             "locale": LOCALE,
+            "legacy_publish_time_may_be_absent": True,
+            "lifecycle_depth_types": sorted(LIFECYCLE_DEPTH_TYPES),
             "page_limit": PAGE_LIMIT,
             "private_endpoints_called": False,
             "query_policy": "first-and-declared-last-page-per-documented-type-v1",
-            "legacy_publish_time_may_be_absent": True,
             "raw_announcement_bodies_persisted": False,
             "transport_max_attempts": 1,
         },

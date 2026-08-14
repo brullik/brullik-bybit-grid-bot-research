@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-08-14
 - Amends: ADR-0071/ADR-0072 legacy announcement-field semantics
+- Order-validation scope amended by: [ADR-0074](ADR-0074-lifecycle-scoped-announcement-order-evidence.md)
 
 ## Context
 

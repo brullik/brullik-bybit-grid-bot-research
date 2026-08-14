@@ -131,15 +131,18 @@ def test_bounded_archive_depth_is_schema_valid_hashed_and_redacted(tmp_path: Pat
     assert payload["status"] == "blocked-insufficient-official-announcement-history"
     assert payload["archive_depth"] == {
         "all_selected_registry_launches_within_new_listing_archive": False,
-        "delistings_oldest_date_timestamp_ms": 1_650_002_000_000,
-        "global_oldest_date_timestamp_ms": 1_650_000_000_000,
-        "new_crypto_oldest_date_timestamp_ms": 1_650_000_000_000,
+        "delistings_declared_last_page_min_date_timestamp_ms": 1_650_002_000_000,
+        "documented_types_declared_last_page_min_date_timestamp_ms": 1_650_000_000_000,
+        "new_crypto_declared_last_page_min_date_timestamp_ms": 1_650_000_000_000,
         "selected_launch_before_new_listing_archive_count": 2,
         "selected_registry_launch_max_ms": 1_610_000_000_000,
         "selected_registry_launch_min_ms": 1_600_000_000_000,
     }
     first_probe = payload["type_probes"][0]
+    assert first_probe["declared_page_date_order_consistent"] is True
+    assert first_probe["first_page_adjacent_date_inversion_count"] == 0
     assert first_probe["first_page_publish_time_present_count"] == 20
+    assert first_probe["lifecycle_depth_type"] is True
     assert first_probe["last_page_publish_time_present_count"] == 0
     assert first_probe["oldest_publish_time_ms"] is None
     rendered = json.dumps(payload).lower()
@@ -154,6 +157,54 @@ def test_bounded_archive_depth_is_schema_valid_hashed_and_redacted(tmp_path: Pat
         "api_secret",
     ):
         assert forbidden not in rendered
+
+
+def _client_with_first_page_inversion(announcement_type: str) -> FakeAnnouncementClient:
+    class InvertedClient(FakeAnnouncementClient):
+        def announcement_page(self, **kwargs: Any) -> AnnouncementPage:
+            page = super().announcement_page(**kwargs)
+            if page.announcement_type == announcement_type and page.page == 1:
+                items = list(page.items)
+                items[8], items[9] = items[9], items[8]
+                return AnnouncementPage(
+                    announcement_type=page.announcement_type,
+                    page=page.page,
+                    limit=page.limit,
+                    total=page.total,
+                    items=tuple(items),
+                )
+            return page
+
+    return InvertedClient()
+
+
+def test_non_lifecycle_page_inversion_is_recorded_without_becoming_depth_proof(
+    tmp_path: Path,
+) -> None:
+    payload = build_announcement_archive_depth_evidence(
+        _client_with_first_page_inversion("latest_activities"),
+        instrument_registry_path=_registry(tmp_path),
+        instrument_ids=(1, 2),
+        generated_at_utc="2026-08-14T12:00:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    probe = next(
+        item for item in payload["type_probes"] if item["announcement_type"] == "latest_activities"
+    )
+    assert probe["lifecycle_depth_type"] is False
+    assert probe["declared_page_date_order_consistent"] is False
+    assert probe["first_page_adjacent_date_inversion_count"] == 1
+
+
+def test_lifecycle_page_inversion_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(AnnouncementArchiveDepthError, match="unordered bounds"):
+        build_announcement_archive_depth_evidence(
+            _client_with_first_page_inversion("new_crypto"),
+            instrument_registry_path=_registry(tmp_path),
+            instrument_ids=(1, 2),
+            generated_at_utc="2026-08-14T12:00:00Z",
+            software_identity=SOFTWARE_IDENTITY,
+        )
 
 
 def test_archive_depth_fails_if_total_changes_between_bound_pages(tmp_path: Path) -> None:

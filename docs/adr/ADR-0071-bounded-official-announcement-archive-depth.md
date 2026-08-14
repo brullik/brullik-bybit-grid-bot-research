@@ -5,6 +5,7 @@
 - Implements: non-promoting lifecycle-source discovery for Gate 2
 - Ordering semantics amended by: [ADR-0072](ADR-0072-announcement-date-ordering-and-depth-bound.md)
 - Legacy field semantics amended by: [ADR-0073](ADR-0073-optional-legacy-announcement-publish-time.md)
+- Order-validation scope amended by: [ADR-0074](ADR-0074-lifecycle-scoped-announcement-order-evidence.md)
 
 ## Context
 

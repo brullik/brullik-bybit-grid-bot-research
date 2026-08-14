@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0074 lifecycle-scoped order evidence: source order is preserved for all announcement types,
+  inversions are counted, and strict first/last date ordering is required only for the
+  `new_crypto`/`delistings` partitions used by the depth diagnostic.
 - ADR-0073 legacy announcement compatibility: `dateTimestamp` remains required, absent historical
   `publishTime` stays absent, and public evidence exposes presence counts plus nullable bounds.
 - ADR-0072 source-order correction: official announcement pages are validated by descending
