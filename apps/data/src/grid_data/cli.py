@@ -190,6 +190,10 @@ from grid_data.instrument_timeline import (
     load_verified_instrument_timeline,
 )
 from grid_data.inventory import build_public_inventory
+from grid_data.legacy_listing_event_evidence import (
+    UrllibOfficialListingClient,
+    build_legacy_listing_event_evidence,
+)
 from grid_data.public_sample import build_public_sample
 from grid_data.rest_history_boundary import build_rest_history_boundary
 from grid_data.rest_throughput import (
@@ -289,6 +293,24 @@ def parser() -> argparse.ArgumentParser:
     funding_cadence_policy.add_argument("--software-identity", required=True)
     funding_cadence_policy.add_argument("--output", type=Path, required=True)
     funding_cadence_policy.set_defaults(handler=_funding_cadence_policy_evidence)
+
+    legacy_listing_event = commands.add_parser(
+        "legacy-listing-event-evidence",
+        help="verify exact official legacy listing posts against a completed publication",
+    )
+    legacy_listing_event.add_argument("--instrument-registry", type=Path, required=True)
+    legacy_listing_event.add_argument(
+        "--instrument-id",
+        action="append",
+        type=int,
+        required=True,
+        help="selected public registry identity; repeat exactly five times",
+    )
+    legacy_listing_event.add_argument("--publication-root", type=Path, required=True)
+    legacy_listing_event.add_argument("--source-campaign-root", type=Path, required=True)
+    legacy_listing_event.add_argument("--software-identity", required=True)
+    legacy_listing_event.add_argument("--output", type=Path, required=True)
+    legacy_listing_event.set_defaults(handler=_legacy_listing_event_evidence)
 
     archive = commands.add_parser(
         "archive-inventory", help="inventory official public.bybit.com daily trade archives"
@@ -1237,6 +1259,36 @@ def _funding_cadence_policy_evidence(args: argparse.Namespace) -> int:
         )
     )
     return 0 if payload["status"] == "verified-official-funding-cadence-policy-consistency" else 2
+
+
+def _legacy_listing_event_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_legacy_listing_event_evidence(
+        UrllibOfficialListingClient(),
+        instrument_registry_path=args.instrument_registry,
+        instrument_ids=tuple(args.instrument_id),
+        publication_root=args.publication_root,
+        source_campaign_root=args.source_campaign_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    quality = payload["quality"]
+    assert isinstance(quality, dict)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "official_document_count": quality["official_document_count"],
+                "receipt": str(receipt),
+                "selected_instrument_count": quality["selected_instrument_count"],
+                "status": payload["status"],
+            }
+        )
+    )
+    return (
+        0 if payload["status"] == "verified-four-exact-and-one-bounded-legacy-listing-event" else 2
+    )
 
 
 def _history_1m(args: argparse.Namespace) -> int:

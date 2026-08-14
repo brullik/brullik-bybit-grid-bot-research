@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-legacy-listing-event-evidence.schema.json",
+  "title": "Receipt-bound official legacy listing-event evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "content_sha256",
+    "contract",
+    "generated_at_utc",
+    "limitations",
+    "official_documents",
+    "quality",
+    "source_policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "canonical_market_data_mutated": false,
+        "canonical_publication_fully_verified": true,
+        "history_campaign_receipts_verified": true,
+        "instrument_registry_receipt_verified": true,
+        "market_data_network_request_performed": false,
+        "official_announcement_response_count": 3,
+        "private_endpoint_called": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instrument_registry_artifact_sha256",
+        "instrument_registry_content_sha256",
+        "official_document_contract_sha256",
+        "publication_manifest_sha256",
+        "selected_instrument_set_sha256",
+        "software_identity",
+        "source_campaign_manifest_sha256",
+        "source_campaign_plan_sha256"
+      ],
+      "properties": {
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_content_sha256": {"$ref": "#/$defs/sha256"},
+        "official_document_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_instrument_set_sha256": {"$ref": "#/$defs/sha256"},
+        "software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.phase2-legacy-listing-event-evidence/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "official_documents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fetch_url",
+          "matched_selected_instrument_count",
+          "official_message_at_ms",
+          "official_message_text_sha256",
+          "response_sha256",
+          "source_url"
+        ],
+        "properties": {
+          "fetch_url": {
+            "enum": [
+              "https://t.me/s/Bybit_Announcements?before=73",
+              "https://t.me/s/Bybit_Announcements?before=313",
+              "https://t.me/s/Bybit_Announcements?before=348"
+            ]
+          },
+          "matched_selected_instrument_count": {"type": "integer", "minimum": 1, "maximum": 3},
+          "official_message_at_ms": {"type": "integer", "minimum": 0},
+          "official_message_text_sha256": {"$ref": "#/$defs/sha256"},
+          "response_sha256": {"$ref": "#/$defs/sha256"},
+          "source_url": {
+            "enum": [
+              "https://t.me/Bybit_Announcements/72",
+              "https://t.me/Bybit_Announcements/312",
+              "https://t.me/Bybit_Announcements/347"
+            ]
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mark_first_candle",
+        "official_document_count",
+        "official_document_selected_match_count",
+        "registry_launch_before_official_message_count",
+        "selected_instrument_count",
+        "trade_first_candle"
+      ],
+      "properties": {
+        "mark_first_candle": {"$ref": "#/$defs/kindQuality"},
+        "official_document_count": {"const": 3},
+        "official_document_selected_match_count": {"const": 5},
+        "registry_launch_before_official_message_count": {"$ref": "#/$defs/selectedCount"},
+        "selected_instrument_count": {"const": 5},
+        "trade_first_candle": {"$ref": "#/$defs/kindQuality"}
+      }
+    },
+    "source_policy": {
+      "const": {
+        "authentication": "none",
+        "exact_url_only": true,
+        "maximum_response_bytes": 1048576,
+        "official_channel": "Bybit_Announcements",
+        "private_endpoints_called": false,
+        "source_type": "official-public-telegram-post",
+        "transport_max_attempts_per_document": 1
+      }
+    },
+    "status": {
+      "enum": [
+        "blocked-legacy-listing-event-date-mismatch",
+        "verified-four-exact-and-one-bounded-legacy-listing-event"
+      ]
+    },
+    "storage_policy": {
+      "const": {
+        "account_data_included": false,
+        "credentials_included": false,
+        "instrument_identifiers_included": false,
+        "market_timestamps_included": false,
+        "market_values_included": false,
+        "official_announcement_text_included": false,
+        "official_announcement_timestamps_included": true,
+        "official_announcement_urls_included": true,
+        "runtime_paths_included": false
+      }
+    }
+  },
+  "$defs": {
+    "kindQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_day_match_count",
+        "event_month_match_count",
+        "first_candle_after_event_day_count",
+        "first_candle_before_event_day_count",
+        "maximum_post_event_lag_days",
+        "maximum_pre_event_lead_days"
+      ],
+      "properties": {
+        "event_day_match_count": {"$ref": "#/$defs/selectedCount"},
+        "event_month_match_count": {"$ref": "#/$defs/selectedCount"},
+        "first_candle_after_event_day_count": {"$ref": "#/$defs/selectedCount"},
+        "first_candle_before_event_day_count": {"$ref": "#/$defs/selectedCount"},
+        "maximum_post_event_lag_days": {"type": "integer", "minimum": 0, "maximum": 3650},
+        "maximum_pre_event_lead_days": {"type": "integer", "minimum": 0, "maximum": 3650}
+      }
+    },
+    "selectedCount": {"type": "integer", "minimum": 0, "maximum": 5},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

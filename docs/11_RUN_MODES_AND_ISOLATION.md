@@ -57,6 +57,14 @@ grid-data announcement-archive-depth --instrument-registry <registry.json> \
   --instrument-id <id> [--instrument-id <id> ...] \
   --software-identity git:<full-commit-sha> --output <sanitized-depth-evidence.json>
 # This makes at most 16 public responses, persists no announcement body, and never closes Gate 2.
+grid-data legacy-listing-event-evidence --instrument-registry <registry.json> \
+  --instrument-id <id-1> --instrument-id <id-2> --instrument-id <id-3> \
+  --instrument-id <id-4> --instrument-id <id-5> \
+  --source-campaign-root <completed-oldest-5-campaign> \
+  --publication-root <completed-oldest-5-publication> \
+  --software-identity git:<full-commit-sha> --output <sanitized-legacy-evidence.json>
+# This verifies three exact official posts and the complete canonical receipt chain read-only.
+# It retains one two-UTC-date ambiguity and cannot remove blockers or close Gate 2.
 grid-data history-1m --request <request.json> --instrument-registry <registry.json> \
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.

@@ -3,6 +3,12 @@
 **Status:** Phase 2 is active; the bounded public 1m Landing-to-canonical path is implemented and
 verified. Gate 2 remains closed.
 
+ADR-0095 adds a receipt-bound legacy official listing-event reconciliation for the completed
+oldest-five candle publication. Three exact official posts cover the selected set once, four
+first-trade UTC dates match their post dates, and one begins two UTC dates earlier. The public
+contract retains only source/lineage hashes and aggregate comparisons; the discrepancy remains
+explicit, both metadata/announcement blockers remain owner-governed, and Gate 2 remains closed.
+
 ADR-0076 adds a receipt-reverified, identifier-free public outcome for genuine candle-gap repair.
 It makes a blocked source observation durable in GitHub without repeating the request, accepting
 the missing candle, mutating the parent, or publishing an empty replacement.
