@@ -1190,6 +1190,16 @@ HTTP requests. The artifact SHA-256 is
 `c14bee09eb5da94cf06b55c80f48c242e4eef9762c295f414cca3dc621740584`; its embedded content
 SHA-256 is `b2cae4567637649cc0fd9ec9dcb84410b1a65423c5c85fb5165e0792febc95e5`.
 
+## Full-history catalog admission command
+
+ADR-0078 removes the operating-system command-line bottleneck from full-history registration.
+One offline command verifies the completed campaign publication and source campaign, then writes a
+receipt-bound request containing the exact dataset inventory and registrar identity. The
+unchanged catalog preflight/executor consumes that request through one short command and retains
+all receipt, key, lineage, lock, transaction, and atomic-replace checks. This implements an
+operational path; measured registration/selection evidence remains a separate Phase 2 result and
+does not change Gate 2.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

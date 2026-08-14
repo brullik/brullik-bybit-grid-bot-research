@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grid.canonical-dataset-catalog-registration-request/v1",
+  "title": "Canonical dataset catalog registration request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_ids", "request_schema", "software_identity"],
+  "properties": {
+    "dataset_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+      }
+    },
+    "request_schema": {
+      "const": "grid.canonical-dataset-catalog-registration-request/v1"
+    },
+    "software_identity": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    }
+  }
+}

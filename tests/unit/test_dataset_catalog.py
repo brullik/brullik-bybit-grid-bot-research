@@ -5,7 +5,9 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from grid_contracts.canonical import canonical_sha256
 from grid_contracts.market import Candle1m, DatasetType, FundingEvent
+from grid_data.cli import parser as command_parser
 from grid_data.dataset_catalog import (
     build_catalog_registration_evidence,
     build_catalog_selection_evidence,
@@ -27,9 +29,14 @@ from grid_market_store import (
     publish_funding_dataset,
 )
 from grid_market_store.catalog import (
+    CATALOG_REGISTRATION_REQUEST_CONTRACT,
     CATALOG_SELECTION_REQUEST_CONTRACT,
+    MAX_CATALOG_DATASETS_PER_REQUEST,
     CatalogError,
+    CatalogRegistrationRequest,
     CatalogSelectionRequest,
+    catalog_registration_request_payload,
+    load_catalog_registration_request,
     load_catalog_selection_request,
     preflight_catalog_registration,
     register_catalog_datasets,
@@ -43,6 +50,153 @@ ROOT = Path(__file__).parents[2]
 JANUARY_1_2026_MS = 1_767_225_600_000
 REGISTRAR = f"git:{'a' * 40}"
 CONSUMER = f"git:{'b' * 40}"
+
+
+def test_file_backed_catalog_registration_request_is_closed_bounded_and_schema_valid(
+    tmp_path: Path,
+) -> None:
+    dataset_ids = tuple(f"trade-full-history-{index:04d}" for index in range(978))
+    request = CatalogRegistrationRequest(
+        dataset_ids=dataset_ids,
+        software_identity=REGISTRAR,
+    )
+    payload = catalog_registration_request_payload(request)
+    schema = json.loads(
+        (
+            ROOT
+            / "schemas"
+            / "market"
+            / "v1"
+            / "canonical-dataset-catalog-registration-request.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    request_path = tmp_path / "registration-request.json"
+    request_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = load_catalog_registration_request(request_path)
+
+    assert loaded == request
+    assert loaded.request_sha256 == canonical_sha256(payload)
+    assert payload["request_schema"] == CATALOG_REGISTRATION_REQUEST_CONTRACT
+
+
+@pytest.mark.parametrize(
+    "payload, message",
+    [
+        (
+            {
+                "dataset_ids": ["trade-b", "trade-a"],
+                "request_schema": CATALOG_REGISTRATION_REQUEST_CONTRACT,
+                "software_identity": REGISTRAR,
+            },
+            "must be sorted",
+        ),
+        (
+            {
+                "dataset_ids": ["trade-a", "trade-a"],
+                "request_schema": CATALOG_REGISTRATION_REQUEST_CONTRACT,
+                "software_identity": REGISTRAR,
+            },
+            "must be unique",
+        ),
+        (
+            {
+                "dataset_ids": ["trade-a"],
+                "request_schema": CATALOG_REGISTRATION_REQUEST_CONTRACT,
+                "software_identity": "worktree:dirty",
+            },
+            "immutable git SHA",
+        ),
+        (
+            {
+                "dataset_ids": ["trade-a"],
+                "request_schema": CATALOG_REGISTRATION_REQUEST_CONTRACT,
+                "software_identity": REGISTRAR,
+                "unexpected": True,
+            },
+            "closed v1",
+        ),
+    ],
+)
+def test_file_backed_catalog_registration_request_rejects_unsafe_input(
+    tmp_path: Path,
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    request_path = tmp_path / "registration-request.json"
+    request_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(CatalogError, match=message):
+        load_catalog_registration_request(request_path)
+
+
+def test_catalog_request_dataset_count_has_hard_bound() -> None:
+    dataset_ids = tuple(
+        f"trade-over-bound-{index:05d}" for index in range(MAX_CATALOG_DATASETS_PER_REQUEST + 1)
+    )
+    with pytest.raises(CatalogError, match="dataset count exceeds"):
+        CatalogRegistrationRequest(dataset_ids, REGISTRAR)
+
+
+def test_catalog_register_cli_accepts_exactly_one_input_form() -> None:
+    common = [
+        "--store-root",
+        "market-store",
+        "--catalog",
+        "market-store/catalog/canonical.duckdb",
+        "--output",
+        "registration.json",
+    ]
+    request_args = command_parser().parse_args(
+        ["catalog-register", "--request", "request.json", *common]
+    )
+    assert request_args.request == Path("request.json")
+    assert request_args.dataset is None
+    assert request_args.software_identity is None
+
+    legacy_args = command_parser().parse_args(
+        [
+            "catalog-register",
+            "--dataset",
+            "trade-a",
+            "--software-identity",
+            REGISTRAR,
+            *common,
+        ]
+    )
+    assert legacy_args.dataset == ["trade-a"]
+    assert legacy_args.request is None
+
+    with pytest.raises(SystemExit):
+        command_parser().parse_args(
+            [
+                "catalog-register",
+                "--dataset",
+                "trade-a",
+                "--request",
+                "request.json",
+                *common,
+            ]
+        )
+
+
+def test_catalog_registration_request_cli_is_separate_from_catalog_mutation() -> None:
+    args = command_parser().parse_args(
+        [
+            "catalog-registration-request",
+            "--publication-root",
+            "market-store/.publication-campaigns/full-history",
+            "--campaign-root",
+            "history/.campaigns/full-history",
+            "--software-identity",
+            REGISTRAR,
+            "--output",
+            "registration-request.json",
+        ]
+    )
+    assert args.publication_root == Path("market-store/.publication-campaigns/full-history")
+    assert args.campaign_root == Path("history/.campaigns/full-history")
+    assert args.output == Path("registration-request.json")
 
 
 def snapshot(root: Path, *, observed_at_ms: int) -> HostSnapshot:

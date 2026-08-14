@@ -11,7 +11,7 @@ import grid_data.history_campaign_publication as campaign_publication
 import pytest
 from grid_contracts.canonical import canonical_sha256, sha256_file
 from grid_data.cli import parser as command_parser
-from grid_data.evidence import publish_evidence
+from grid_data.evidence import publish_evidence, verify_evidence
 from grid_data.funding_coverage_audit import FundingCoverageAudit
 from grid_data.history_campaign import HistoryCampaignError
 from grid_data.history_campaign_boundary_diagnostic import (
@@ -29,6 +29,7 @@ from grid_data.history_campaign_publication import (
 from grid_data.history_campaign_publication_evidence import (
     build_history_campaign_publication_evidence,
 )
+from grid_market_store.catalog import load_catalog_registration_request
 from jsonschema import Draft202012Validator
 
 from tests.unit.test_history_campaign import (
@@ -230,6 +231,41 @@ def test_publication_campaign_cli_exposes_exclusive_prepare_and_fast_resume_mode
         ]
     )
     assert diagnostic.coverage_audit == Path("coverage.json")
+
+
+def test_catalog_registration_request_is_derived_from_verified_campaign_publication(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    completed = execute_publication(preflight_publication(tmp_path, source.campaign_root))
+    output = tmp_path / "catalog-registration-request.json"
+    args = command_parser().parse_args(
+        [
+            "catalog-registration-request",
+            "--publication-root",
+            str(completed.publication_root),
+            "--campaign-root",
+            str(source.campaign_root),
+            "--software-identity",
+            SOFTWARE_IDENTITY,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert args.handler(args) == 0
+    summary = json.loads(capsys.readouterr().out)
+    request = load_catalog_registration_request(output)
+    assert verify_evidence(output)
+    assert summary["dataset_count"] == completed.dataset_count
+    assert summary["request_sha256"] == request.request_sha256
+    assert request.dataset_ids == tuple(
+        sorted(item.manifest.dataset_id for item in completed.published_datasets)
+    )
+
+    assert args.handler(args) == 0
+    assert json.loads(capsys.readouterr().out)["request_sha256"] == request.request_sha256
 
 
 def test_publication_preflight_uses_one_verified_page_read_per_child(

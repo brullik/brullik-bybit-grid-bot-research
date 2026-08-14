@@ -81,6 +81,7 @@
 | D-075 | Current Gate 2 readiness is rebuilt from existing evidence without repeating source work | accepted | Twelve exact receipt-bound sources, three evidence-ready and three blocked criteria, seven current blockers, unchanged owner authority, and ADR-0075 |
 | D-076 | Verified candle-repair executions receive an identifier-free GitHub projection | accepted | Aggregate limits and hashes, explicit repaired/source-gap-remains classification, immutable parent, idempotent reuse, and ADR-0076 |
 | D-077 | Funding repair candidates are classified by replaying the unchanged ADR-0055 planner over explicit receipt-verified audits | accepted | Bounded exact inputs, no request or chronology acceptance, private actionable audit, sanitized aggregate projection, and ADR-0077 |
+| D-078 | Full-history catalog registration consumes one receipt-bound file request derived from a verified campaign publication | accepted | Windows-safe 10,000-dataset bound, exact inventory/identity, unchanged catalog preflight and atomic transaction, and ADR-0078 |
 
 ## Decisions requiring benchmark or owner evidence
 
