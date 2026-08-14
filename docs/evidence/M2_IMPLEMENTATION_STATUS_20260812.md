@@ -888,7 +888,9 @@ bindings outside Git. The public
 binds that audit and exact store state without dataset/instrument/time/rate/path identities. No
 network request or parent mutation occurred. This proves there is no genuine ADR-0054 input in the
 bound current store; it does not qualify compaction and measured execution remains required when
-an eligible incremental or repair fragment appears.
+an eligible incremental or repair fragment appears. The aggregate artifact, receipt, and strict
+redaction/contract assertions are tracked in
+[PR #78](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/78).
 
 ## Still required before Gate 2
 
