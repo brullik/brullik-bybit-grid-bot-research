@@ -72,6 +72,13 @@
 | D-066 | Incremental exact-key selection performance is measured only in bounded temporary production-path fixtures | accepted | Two deterministic selection passes, unchanged store fingerprint, sanitized aggregate evidence, no PM threshold, and ADR-0066 |
 | D-067 | A verified zero-admission candle child publishes as one schema-only immutable canonical dataset | accepted | Exact request-derived partition, zero-row Parquet and null bounds, unchanged source lineage, fail-closed coverage, and ADR-0067 |
 | D-068 | Exact trade volumes outside Decimal128(38, 4) remain immutable in Landing and are hash-bound exclusions from canonical publication | accepted | No rounding or Landing rewrite; aggregate admission lineage, unaccepted `canonical_representation_overflow`, ordinary-repair rejection, unchanged P-001/Gate 2, and ADR-0068 |
+| D-069 | Full-history canonical execution reuses a receipt-bound semantic plan checkpoint | accepted | One aggregate decode, immutable plan bindings, per-child mutation preflight, and ADR-0069 |
+| D-070 | Candle-gap topology is diagnosed by one receipt-bound key-only scan | accepted | Exact coverage reconciliation, no source download or gap acceptance, and ADR-0070 |
+| D-071 | Official announcement depth is measured with bounded first/declared-last-page requests | accepted | At most 16 public responses, no body persistence, no lifecycle inference, and ADR-0071 |
+| D-072 | Announcement archive order uses source `dateTimestamp` without local reordering | accepted | Separate date/publish bounds, lifecycle cross-page checks, and ADR-0072 |
+| D-073 | Missing legacy announcement `publishTime` remains absent | accepted | Required `dateTimestamp`, nullable publish bounds, explicit presence counts, and ADR-0073 |
+| D-074 | Strict announcement order validation is limited to lifecycle partitions | accepted | Source-order preservation, explicit inversion counts, `new_crypto`/`delistings` checks, and ADR-0074 |
+| D-075 | Current Gate 2 readiness is rebuilt from existing evidence without repeating source work | accepted | Twelve exact receipt-bound sources, three evidence-ready and three blocked criteria, seven current blockers, unchanged owner authority, and ADR-0075 |
 
 ## Decisions requiring benchmark or owner evidence
 

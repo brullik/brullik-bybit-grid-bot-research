@@ -411,6 +411,14 @@ artifacts. It rechecks their schemas, artifact/content hashes, receipts, scope, 
 lineage, then preserves two `evidence-ready` and four blocked criteria with explicit blocker codes.
 It performs no network or market-store mutation and cannot accept Gate 2 or authorize Phase 3.
 
+ADR-0075 adds the append-only `grid.gate2-readiness-pack/v2` successor after the representative
+full-history candle campaign, canonical publication, coverage audit, boundary diagnostic, and
+official announcement-depth result entered GitHub. The builder verifies twelve exact existing
+artifacts in one offline pass; it does not repeat acquisition, publication, retained-store scans,
+or performance runs. Three criteria are evidence-ready and three remain blocked by seven current
+repair, lifecycle, cadence, absence-policy, and performance-envelope codes. Gate 2 remains closed
+pending the unchanged data-quality-owner decision.
+
 ADR-0064 adds post-merge orphan/partial-write detection evidence. Temporary cloned candle and
 funding commits receive an orphan file, missing Parquet, or missing completion receipt; the real
 production verifiers must reject all six cases while preserving the complete injected filesystem

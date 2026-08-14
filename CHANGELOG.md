@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0075 and `grid.gate2-readiness-pack/v2`: one offline pass verifies twelve existing
+  receipt-bound artifacts, retires only the now-false incomplete-campaign/publication blockers,
+  preserves seven current repair/lifecycle/cadence/absence/performance blockers, and keeps Gate 2
+  closed without repeating Bybit downloads or retained-store scans.
 - Receipt-verified official announcement-depth evidence: 15 one-attempt public responses prove
   all five selected registry launch bounds precede the `new_crypto` declared-last-page minimum in
   June 2022; exact instrument lifecycle remains unproven and Gate 2 stays closed.

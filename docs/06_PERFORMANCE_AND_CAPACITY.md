@@ -215,6 +215,13 @@ rows/second). Both passes selected the same 16 objects, exercised 15 ambiguous a
 and left the complete store fingerprint unchanged. Cache state was uncontrolled-first followed by
 an immediate repeat, so this synthetic result remains descriptive rather than a Gate 2 threshold.
 
+The completed five-instrument candle campaign adds a 34,778,220 ms acquisition measurement, a
+90,912 ms receipt-integrity publication re-verification, and a 203,043 ms boundary scan. ADR-0075
+binds these measurements into the current readiness pack without rerunning them. They remain
+descriptive component timings: no owner-reviewed full-history end-to-end envelope currently binds
+acquisition, publication, coverage, catalog selection, and repair at the required scale, so the
+Gate 2 performance criterion remains blocked.
+
 ## Gate 1 benchmark matrix — completed
 
 The original 8/16/32-bucket and 128/256/512-MB matrix could not attain its per-file targets at
