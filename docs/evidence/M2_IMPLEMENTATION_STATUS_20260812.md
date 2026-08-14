@@ -902,7 +902,9 @@ the target dataset/catalog absent; any mismatch prevents evidence publication. T
 are removed, while the public contract retains only named boundaries, aggregate outcomes, and the
 merged implementation identity. No retained market store, network request, private/live endpoint,
 credential, account, order, bot, or transfer is involved. A post-merge measured artifact remains
-required; implementation alone does not accept the Gate 2 criterion.
+required; implementation alone does not accept the Gate 2 criterion. The implementation, schema,
+ADR, and offline contract tests are tracked in
+[PR #79](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/79).
 
 ## Still required before Gate 2
 
