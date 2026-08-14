@@ -208,6 +208,13 @@ exact-key selector over bounded temporary synthetic fragments, then records both
 duration while proving the store fingerprint is unchanged. This measurement defines no Gate 2
 threshold and is not a substitute for the blocked full-history end-to-end performance run.
 
+The 2026-08-14 post-merge run bound to `9b68150b740d9bd8988ed791c98dbd9bf4a90a72`
+selected 368,640 rows across 16 same-partition fragments and 32 instruments. The first pass took
+816,325,700 ns (451,584 rows/second); the immediate repeat took 804,938,400 ns (457,972
+rows/second). Both passes selected the same 16 objects, exercised 15 ambiguous adjacent bounds,
+and left the complete store fingerprint unchanged. Cache state was uncontrolled-first followed by
+an immediate repeat, so this synthetic result remains descriptive rather than a Gate 2 threshold.
+
 ## Gate 1 benchmark matrix — completed
 
 The original 8/16/32-bucket and 128/256/512-MB matrix could not attain its per-file targets at

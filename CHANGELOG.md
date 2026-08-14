@@ -9,6 +9,9 @@ All notable project-governance and architecture changes are recorded here.
 - ADR-0066 and an offline incremental catalog-selection benchmark that measures two production
   exact-key passes over bounded temporary fragments, proves deterministic output and unchanged
   store fingerprints, and emits only sanitized aggregate evidence without a Gate 2 threshold.
+- Receipt-bound ADR-0066 post-merge evidence over 368,640 exact keys: 451,584 rows/second on the
+  first selection and 457,972 rows/second on the immediate repeat, with deterministic selection,
+  unchanged store fingerprints, and automatic fixture removal.
 - ADR-0065 bounded exact-key catalog admission: disjoint multi-instrument incremental candle and
   funding fragments now use a 4,096-row streaming merge only when file bounds are ambiguous,
   reject exact duplicates/conflicts, and fail closed above 128 simultaneous fragment streams.

@@ -2317,6 +2317,97 @@ def test_measured_funding_coverage_audit_is_bound_passed_and_sanitized() -> None
     assert "/home/" not in rendered
 
 
+def test_incremental_catalog_selection_performance_is_bound_measured_and_sanitized() -> None:
+    artifact = (
+        ROOT
+        / "benchmarks"
+        / "results"
+        / "m2-incremental-catalog-selection-performance-20260814.json"
+    )
+    receipt_path = artifact.with_name(f"{artifact.name}.receipt.json")
+    schema = load_json(
+        ROOT
+        / "schemas"
+        / "evidence"
+        / "v1"
+        / "phase2-incremental-catalog-selection-performance.schema.json"
+    )
+    payload = load_json(artifact)
+    receipt = load_json(receipt_path)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert embedded_hash == "2a39c2ee7507f63ab8e634d3fb9c54d997e430910dd61f122cea21e7f7973834"
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "5987c967f049342e54c5f81c3546bc9232e94c500c370a3376b764c3fadfa7a7"
+    )
+    assert receipt == {
+        "artifact": artifact.name,
+        "artifact_sha256": "5987c967f049342e54c5f81c3546bc9232e94c500c370a3376b764c3fadfa7a7",
+        "receipt_schema": "grid.evidence-receipt/v1",
+        "status": "complete",
+    }
+    assert payload["evidence_schema"] == (
+        "grid.phase2-incremental-catalog-selection-performance/v1"
+    )
+    assert payload["status"] == "measured-incremental-catalog-selection"
+    assert payload["bindings"] == {
+        "implementation_identity": "git:9b68150b740d9bd8988ed791c98dbd9bf4a90a72"
+    }
+    assert payload["configuration"] == {
+        "exact_key_batch_rows": 4_096,
+        "fragment_count": 16,
+        "instrument_count": 32,
+        "max_exact_key_streams": 128,
+        "minutes_per_fragment": 720,
+        "total_row_count": 368_640,
+    }
+    assert payload["correctness"] == {
+        "ambiguous_adjacent_bound_count": 15,
+        "catalog_revision": 1,
+        "deterministic_repeat_equal": True,
+        "selected_object_count": 16,
+        "selected_row_count": 368_640,
+        "selection_fingerprint_sha256": (
+            "67e445d4dfc79a33d55e5be4f707f951b7dc014487bd511b0d3ddaabba034dbc"
+        ),
+        "store_fingerprint_equal_before_after": True,
+    }
+    assert payload["measurement"] == {
+        "first_selection_elapsed_ns": 816_325_700,
+        "first_selection_rows_per_second": 451_584,
+        "repeat_selection_elapsed_ns": 804_938_400,
+        "repeat_selection_rows_per_second": 457_972,
+    }
+    assert payload["assurances"] == {
+        "catalog_and_dataset_state_preserved": True,
+        "network_request_performed": False,
+        "private_or_live_capability_used": False,
+        "production_catalog_selector_exercised": True,
+        "retained_market_store_accessed": False,
+        "temporary_fixture_removed": True,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        '"api_key"',
+        '"api_secret"',
+        '"dataset_id"',
+        '"funding_rate"',
+        '"instrument_id"',
+        '"open_time_ms"',
+        '"runtime_path"',
+        '"source_id"',
+        '"storage_device_id"',
+        '"symbol"',
+    ):
+        assert forbidden not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 
