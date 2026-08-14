@@ -448,6 +448,15 @@ the verified store-relative Parquet object and may therefore have one or more ob
 selected-row inventory. Empty objects have no overlap keys and never imply gap or lifecycle
 acceptance. Populated records continue to require positive counts and complete bounds.
 
+`grid.phase2-full-history-catalog/v1` is ADR-0080's receipt-last GitHub projection of one
+receipt-verified full-history registration and four topology-scoped selections. It verifies that
+two contiguous trade segments and the matching two mark segments use one catalog snapshot, that
+their private dataset/manifest/object/partition union equals the registration, and that all
+row/byte/schema-only totals reconcile. Public fields contain only source hashes, catalog identity,
+per-kind counts, topology counts, safety flags, and limitations; dataset/instrument identities,
+symbols, object keys, time bounds, paths, values, accounts, and credentials remain local. It proves
+catalog admission and deterministic selection, not historical coverage or Gate 2 acceptance.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

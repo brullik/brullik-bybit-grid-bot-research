@@ -46,6 +46,7 @@ from grid_data.archive_inventory import (
 from grid_data.dataset_catalog import (
     build_catalog_registration_evidence,
     build_catalog_selection_evidence,
+    build_full_history_catalog_evidence,
     verify_catalog_registration_evidence,
     verify_catalog_selection_evidence,
 )
@@ -949,6 +950,19 @@ def parser() -> argparse.ArgumentParser:
     catalog_select.add_argument("--catalog", type=Path, required=True)
     catalog_select.add_argument("--output", type=Path, required=True)
     catalog_select.set_defaults(handler=_catalog_select)
+
+    full_history_catalog_evidence = commands.add_parser(
+        "full-history-catalog-evidence",
+        help="publish an identifier-free aggregate of one registration and four selections",
+    )
+    full_history_catalog_evidence.add_argument("--registration-request", type=Path, required=True)
+    full_history_catalog_evidence.add_argument("--registration", type=Path, required=True)
+    full_history_catalog_evidence.add_argument(
+        "--selection", type=Path, action="append", required=True
+    )
+    full_history_catalog_evidence.add_argument("--software-identity", required=True)
+    full_history_catalog_evidence.add_argument("--output", type=Path, required=True)
+    full_history_catalog_evidence.set_defaults(handler=_full_history_catalog_evidence)
 
     verify = commands.add_parser("verify-evidence", help="verify a feasibility receipt")
     verify.add_argument("artifact", type=Path)
@@ -2816,6 +2830,29 @@ def _catalog_select(args: argparse.Namespace) -> int:
                 "receipt": str(output.with_suffix(output.suffix + ".receipt.json")),
                 "request_sha256": request.request_sha256,
                 "status": evidence["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _full_history_catalog_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_full_history_catalog_evidence(
+        args.registration_request,
+        args.registration,
+        tuple(args.selection),
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
             }
         )
     )

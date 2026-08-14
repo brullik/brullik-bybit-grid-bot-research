@@ -523,6 +523,12 @@ encode absent bounds with a row-count-qualified zero sentinel that is normalized
 never exposed to consumers. Empty partition presence remains lineage evidence, not accepted
 historical coverage.
 
+ADR-0080 keeps missing-partition admission strict when a full-history campaign's bucket topology
+changes. Private trade/mark requests are split at identical contiguous topology boundaries, while
+one receipt-bound public aggregate proves their dataset/manifest/object/partition union equals the
+registration. Only hashes and counts enter GitHub; identities, time bounds, object keys, values,
+paths, and the runtime catalog remain local.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

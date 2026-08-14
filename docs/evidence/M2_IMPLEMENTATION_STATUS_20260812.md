@@ -1212,6 +1212,19 @@ A matching selection returns each schema-only object and hash with zero rows and
 excludes it from exact-key overlap work because no keys exist. This is an implementation boundary,
 not measured full-history registration evidence, coverage acceptance, or a Gate 2 change.
 
+## Topology-scoped full-history catalog evidence
+
+ADR-0080 preserves the selector's missing-partition guarantee when the campaign bucket topology
+changes. The full-history candle scope is represented by two contiguous ranges for trade and the
+same two for mark. A GitHub-safe builder verifies that the four receipt-bound selections are
+disjoint, use one catalog snapshot, recompute their private required partitions, and exactly equal
+the 978-dataset registration.
+
+The resulting public v1 contract contains only hashes and aggregate catalog, kind, topology,
+row/byte, and schema-only counts. It excludes dataset/instrument identities, symbols, object keys,
+time bounds, runtime paths, market values, account data, and credentials. Post-merge measured
+evidence remains a separate commit and does not change the blocked Gate 2 result.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

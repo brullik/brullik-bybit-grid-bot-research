@@ -10,8 +10,11 @@ from grid_contracts.canonical import canonical_sha256
 from grid_contracts.market import Candle1m, DatasetType, FundingEvent
 from grid_data.cli import parser as command_parser
 from grid_data.dataset_catalog import (
+    FULL_HISTORY_CATALOG_EVIDENCE_CONTRACT,
+    DatasetCatalogEvidenceError,
     build_catalog_registration_evidence,
     build_catalog_selection_evidence,
+    build_full_history_catalog_evidence,
     verify_catalog_registration_evidence,
     verify_catalog_selection_evidence,
 )
@@ -199,6 +202,230 @@ def test_catalog_registration_request_cli_is_separate_from_catalog_mutation() ->
     assert args.publication_root == Path("market-store/.publication-campaigns/full-history")
     assert args.campaign_root == Path("history/.campaigns/full-history")
     assert args.output == Path("registration-request.json")
+
+
+def _with_content_hash(payload: dict[str, object]) -> dict[str, object]:
+    result = dict(payload)
+    result["content_sha256"] = canonical_sha256(payload)
+    return result
+
+
+def _publish_full_history_catalog_fixture(
+    tmp_path: Path,
+) -> tuple[Path, Path, tuple[Path, ...], tuple[str, ...]]:
+    catalog_sha = "c" * 64
+    datasets = (
+        ("mark-early-b00", "mark_kline_1m", 2026, 1, 0, 0, 101),
+        ("mark-late-b00", "mark_kline_1m", 2026, 2, 0, 10, 201),
+        ("mark-late-b01", "mark_kline_1m", 2026, 2, 1, 10, 202),
+        ("trade-early-b00", "trade_kline_1m", 2026, 1, 0, 0, 111),
+        ("trade-late-b00", "trade_kline_1m", 2026, 2, 0, 10, 211),
+        ("trade-late-b01", "trade_kline_1m", 2026, 2, 1, 10, 212),
+    )
+    dataset_ids = tuple(item[0] for item in datasets)
+    request = CatalogRegistrationRequest(dataset_ids, REGISTRAR)
+    registration_request_path, _ = publish_evidence(
+        tmp_path / "registration-request.json",
+        catalog_registration_request_payload(request),
+    )
+    registration_payload = _with_content_hash(
+        {
+            "catalog": {
+                "content_sha256": catalog_sha,
+                "revision": 5,
+                "schema_version": 1,
+            },
+            "datasets": [
+                {
+                    "dataset_id": dataset_id,
+                    "dataset_type": dataset_type,
+                    "file_count": 1,
+                    "manifest_sha256": f"{index + 1:064x}",
+                    "partition": {"bucket": bucket, "month": month, "year": year},
+                    "row_count": rows,
+                    "total_size_bytes": size_bytes,
+                }
+                for index, (
+                    dataset_id,
+                    dataset_type,
+                    year,
+                    month,
+                    bucket,
+                    rows,
+                    size_bytes,
+                ) in enumerate(datasets)
+            ],
+            "evidence_schema": "grid.canonical-dataset-catalog-registration/v1",
+            "registration": {
+                "requested_dataset_ids": list(dataset_ids),
+                "software_identity": REGISTRAR,
+            },
+        }
+    )
+    registration_path, _ = publish_evidence(
+        tmp_path / "registration.json",
+        registration_payload,
+    )
+    january_end_ms = 1_769_903_940_000
+    february_start_ms = january_end_ms + 60_000
+    selection_specs = (
+        ("mark", "early", ("mark-early-b00",), (8,), JANUARY_1_2026_MS, january_end_ms),
+        (
+            "mark",
+            "late",
+            ("mark-late-b00", "mark-late-b01"),
+            (8, 9),
+            february_start_ms,
+            february_start_ms,
+        ),
+        (
+            "trade",
+            "early",
+            ("trade-early-b00",),
+            (8,),
+            JANUARY_1_2026_MS,
+            january_end_ms,
+        ),
+        (
+            "trade",
+            "late",
+            ("trade-late-b00", "trade-late-b01"),
+            (8, 9),
+            february_start_ms,
+            february_start_ms,
+        ),
+    )
+    manifest_by_id = {item[0]: f"{index + 1:064x}" for index, item in enumerate(datasets)}
+    facts_by_id = {item[0]: item for item in datasets}
+    selection_paths = []
+    for kind, segment, selected_ids, instrument_ids, start_ms, end_ms in selection_specs:
+        dataset_type = f"{kind}_kline_1m"
+        request_payload: dict[str, object] = {
+            "catalog_content_sha256": catalog_sha,
+            "catalog_revision": 5,
+            "consumer_software_identity": CONSUMER,
+            "dataset_ids": list(selected_ids),
+            "dataset_type": dataset_type,
+            "end_time_ms": end_ms,
+            "instrument_filter": {
+                "instrument_ids": list(instrument_ids),
+                "mode": "include",
+            },
+            "request_schema": "grid.canonical-dataset-selection-request/v1",
+            "start_time_ms": start_ms,
+        }
+        objects = [
+            {
+                "dataset_id": dataset_id,
+                "file_sha256": f"{100 + index:064x}",
+                "manifest_sha256": manifest_by_id[dataset_id],
+                "object_key": f"datasets/{dataset_id}/part-{index}.parquet",
+                "row_count": facts_by_id[dataset_id][5],
+                "size_bytes": facts_by_id[dataset_id][6],
+            }
+            for index, dataset_id in enumerate(selected_ids)
+        ]
+        required_partitions = [
+            f"dataset={dataset_type}/schema=v1/year={facts_by_id[dataset_id][2]:04d}/"
+            f"month={facts_by_id[dataset_id][3]:02d}/bucket={facts_by_id[dataset_id][4]:02d}"
+            for dataset_id in selected_ids
+        ]
+        selection_payload = _with_content_hash(
+            {
+                "catalog": {
+                    "content_sha256": catalog_sha,
+                    "revision": 5,
+                    "schema_version": 1,
+                },
+                "evidence_schema": "grid.canonical-dataset-selection/v1",
+                "objects": objects,
+                "request": request_payload,
+                "request_sha256": canonical_sha256(request_payload),
+                "required_partitions": required_partitions,
+                "selected_dataset_manifests": [
+                    {
+                        "dataset_id": dataset_id,
+                        "manifest_sha256": manifest_by_id[dataset_id],
+                    }
+                    for dataset_id in selected_ids
+                ],
+                "selection": {
+                    "object_count": len(objects),
+                    "selected_row_inventory": sum(item["row_count"] for item in objects),
+                    "selected_size_bytes": sum(item["size_bytes"] for item in objects),
+                },
+            }
+        )
+        path, _ = publish_evidence(
+            tmp_path / f"{kind}-{segment}.json",
+            selection_payload,
+        )
+        selection_paths.append(path)
+    return registration_request_path, registration_path, tuple(selection_paths), dataset_ids
+
+
+def test_full_history_catalog_evidence_reconciles_topology_without_private_identities(
+    tmp_path: Path,
+) -> None:
+    request_path, registration_path, selection_paths, dataset_ids = (
+        _publish_full_history_catalog_fixture(tmp_path)
+    )
+
+    payload = build_full_history_catalog_evidence(
+        request_path,
+        registration_path,
+        selection_paths,
+        generated_at_utc="2026-08-14T12:00:00Z",
+        software_identity=CONSUMER,
+    )
+
+    schema = json.loads(
+        (
+            ROOT / "schemas" / "evidence" / "v1" / "phase2-full-history-catalog.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    assert payload["evidence_schema"] == FULL_HISTORY_CATALOG_EVIDENCE_CONTRACT
+    assert payload["inventory"] == {
+        "by_kind": [
+            {
+                "dataset_count": 3,
+                "empty_dataset_count": 1,
+                "kind": "trade",
+                "object_count": 3,
+                "row_count": 20,
+                "size_bytes": 534,
+            },
+            {
+                "dataset_count": 3,
+                "empty_dataset_count": 1,
+                "kind": "mark",
+                "object_count": 3,
+                "row_count": 20,
+                "size_bytes": 504,
+            },
+        ],
+        "dataset_count": 6,
+        "empty_dataset_count": 2,
+        "object_count": 6,
+        "required_partition_count": 6,
+        "row_count": 40,
+        "size_bytes": 1_038,
+    }
+    rendered = json.dumps(payload)
+    assert all(dataset_id not in rendered for dataset_id in dataset_ids)
+    assert "instrument_ids" not in rendered
+    assert "object_key" not in rendered
+
+    selection_paths[0].write_text("{}", encoding="utf-8")
+    with pytest.raises(DatasetCatalogEvidenceError, match="receipt does not verify"):
+        build_full_history_catalog_evidence(
+            request_path,
+            registration_path,
+            selection_paths,
+            generated_at_utc="2026-08-14T12:00:00Z",
+            software_identity=CONSUMER,
+        )
 
 
 def snapshot(root: Path, *, observed_at_ms: int) -> HostSnapshot:
