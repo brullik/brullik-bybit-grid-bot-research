@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0085 - Receipt-resumable multi-campaign catalog selection bundle](ADR-0085-receipt-resumable-multi-campaign-catalog-selection-bundle.md)
 - [ADR-0084 - Sequential peak-child history-campaign admission](ADR-0084-sequential-peak-child-history-campaign-admission.md)
 - [ADR-0083 - Bounded pooled public REST transport](ADR-0083-bounded-pooled-public-rest-transport.md)
 - [ADR-0082 - Read-only full-history catalog performance evidence](ADR-0082-read-only-full-history-catalog-performance-evidence.md)

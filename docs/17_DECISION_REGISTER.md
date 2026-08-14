@@ -85,6 +85,7 @@
 | D-079 | A receipt-verified schema-only canonical candle dataset remains explicit in catalog registration and selection | accepted | Zero rows/instruments, null logical bounds, row-qualified DuckDB v1 sentinel encoding, no overlap keys, unchanged coverage policy, and ADR-0079 |
 | D-080 | Full-history catalog selection follows the campaign's changing bucket topology and publishes only a sanitized aggregate | accepted | Two contiguous segments per trade/mark kind, exact four-selection union, identifier-free counts/hashes, unchanged missing-partition and Gate 2 policy, and ADR-0080 |
 | D-084 | Sequential history campaigns reserve the largest incomplete child rather than summing mutually exclusive Landing peaks | accepted | Unchanged 512 KiB page bounds, fresh before/after-child free-space checks, receipt-safe stop/resume, no request or Gate 2 change, and ADR-0084 |
+| D-085 | Reused and disjoint candle campaigns are selected through one receipt-resumable topology-derived bundle | accepted | Whole-month source clips, one catalog verification, unchanged v1 selectors, cross-source instrument/minute disjointness, sanitized aggregate, and ADR-0085 |
 
 ## Decisions requiring benchmark or owner evidence
 

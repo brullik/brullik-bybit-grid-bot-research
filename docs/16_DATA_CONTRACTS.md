@@ -476,6 +476,20 @@ per-kind counts, topology counts, safety flags, and limitations; dataset/instrum
 symbols, object keys, time bounds, paths, values, accounts, and credentials remain local. It proves
 catalog admission and deterministic selection, not historical coverage or Gate 2 acceptance.
 
+`grid.canonical-catalog-selection-bundle-request/v1` binds ADR-0085's exact catalog snapshot,
+consumer identity, and up to 16 sorted source campaign IDs with whole-month clips. The derived
+private `grid.canonical-catalog-selection-bundle-plan/v1` contains only explicit v1 selector
+requests grouped across consecutive months with identical instrument inventory. Trade/mark
+topology must match; repeated datasets and cross-source instrument/month overlap fail closed.
+`grid.canonical-catalog-selection-bundle-manifest/v1` is the receipt-last marker after all bounded
+selections verify or resume. The catalog/store are read-only during this transition.
+
+`grid.phase2-catalog-selection-bundle/v1` is the GitHub-safe projection. It exposes source and
+selection chain hashes plus aggregate counts, but no campaign/dataset/instrument identities,
+request time bounds, object keys, paths, values, account data, or credentials. It proves an exact
+deterministic candle selection union, not lifecycle coverage, funding chronology, Gate 2, Phase 3,
+research promotion, or live readiness.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

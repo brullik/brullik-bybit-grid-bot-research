@@ -518,6 +518,29 @@ runtime storage, and publish only their reconciled aggregate:
 The builder receipt-verifies all five inputs, recomputes private request partitions, requires the
 four-selection union to equal registration, and emits no runtime identities or time bounds.
 
+When one final candle scope reuses several completed campaign publications, create a private
+`grid.canonical-catalog-selection-bundle-request/v1` bound to the current catalog. Each source
+names a campaign ID and a full-UTC-month clip; sort source IDs and pair each `--campaign-root` with
+its `--publication-root`:
+
+```powershell
+.venv\Scripts\grid-data.exe catalog-selection-bundle `
+  --request reports\private\catalog-selection-bundle-request.json `
+  --campaign-root data\history\.campaigns\<source-1> `
+  --publication-root data\market-store\.publication-campaigns\<publication-1> `
+  --instrument-registry data\evidence\<registry>.json `
+  --store-root data\market-store `
+  --catalog data\market-store\catalog\canonical.duckdb `
+  --output-root reports\private\catalog-selection-bundle
+```
+
+The default performs every source/publication/catalog/selection check without writing the bundle.
+Repeat with `--execute` to publish or resume the private plan and selection receipts. The planner
+derives topology from verified source jobs, rejects repeated datasets and any source pair sharing
+an instrument in the same month, and never requests Bybit. After completion, publish only the
+sanitized aggregate with `catalog-selection-bundle-evidence`; never commit the private request,
+bundle, catalog, dataset identities, or object list.
+
 ## 15. Acquire and publish canonical funding
 
 Funding is a separate request and Landing contract because every first requested event needs the

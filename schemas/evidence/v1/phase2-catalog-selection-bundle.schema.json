@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-catalog-selection-bundle.schema.json",
+  "title": "Sanitized Phase 2 multi-campaign catalog selection evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "catalog", "content_sha256", "evidence_schema",
+    "generated_at_utc", "inventory", "limitations", "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "catalog_snapshot_bound": true,
+        "cross_source_key_space_disjoint": true,
+        "network_request_performed": false,
+        "private_or_live_capability_used": false,
+        "selection_receipts_verified": true,
+        "source_campaigns_and_publications_verified": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_manifest_artifact_sha256", "bundle_plan_sha256", "bundle_request_sha256",
+        "evidence_builder_software_identity", "selection_chain_sha256", "source_chain_sha256"
+      ],
+      "properties": {
+        "bundle_manifest_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_request_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_builder_software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+        "selection_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "source_chain_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_sha256", "revision"],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-catalog-selection-bundle/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "by_kind", "dataset_count", "empty_object_count", "instrument_count", "object_count",
+        "row_count", "selection_count", "size_bytes", "source_count"
+      ],
+      "properties": {
+        "by_kind": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/kindInventory"}
+        },
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "empty_object_count": {"type": "integer", "minimum": 0},
+        "instrument_count": {"type": "integer", "minimum": 1, "maximum": 11200},
+        "object_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "status": {"const": "verified-catalog-selection-bundle"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_identities": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_request_time_bounds": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_catalog_or_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "kindInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_count", "kind", "object_count", "row_count", "selection_count", "size_bytes"
+      ],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["trade", "mark"]},
+        "object_count": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "selection_count": {"type": "integer", "minimum": 1},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

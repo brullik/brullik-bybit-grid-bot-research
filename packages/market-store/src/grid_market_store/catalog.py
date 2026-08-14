@@ -1400,14 +1400,13 @@ def _assert_selected_keys_disjoint(
             previous = key
 
 
-def select_catalog_range(
+def _select_catalog_range_from_snapshot(
     request: CatalogSelectionRequest,
     store_root: Path,
-    catalog_path: Path,
+    snapshot: CatalogSnapshot,
 ) -> CatalogSelection:
-    """Resolve an explicit catalog snapshot to hash-bound store-relative objects."""
+    """Resolve one request after a caller has verified the shared catalog snapshot."""
 
-    snapshot = verify_catalog(store_root, catalog_path)
     if (
         snapshot.revision != request.catalog_revision
         or snapshot.content_sha256 != request.catalog_content_sha256
@@ -1502,4 +1501,30 @@ def select_catalog_range(
         selected_dataset_manifest_sha256=tuple(
             (item.dataset_id, item.manifest_sha256) for item in selected_records
         ),
+    )
+
+
+def select_catalog_range(
+    request: CatalogSelectionRequest,
+    store_root: Path,
+    catalog_path: Path,
+) -> CatalogSelection:
+    """Resolve an explicit catalog snapshot to hash-bound store-relative objects."""
+
+    snapshot = verify_catalog(store_root, catalog_path)
+    return _select_catalog_range_from_snapshot(request, store_root, snapshot)
+
+
+def select_catalog_ranges(
+    requests: tuple[CatalogSelectionRequest, ...],
+    store_root: Path,
+    catalog_path: Path,
+) -> tuple[CatalogSelection, ...]:
+    """Resolve a bounded request bundle against one verified catalog snapshot."""
+
+    if not requests:
+        raise CatalogError("catalog selection bundle must contain at least one request")
+    snapshot = verify_catalog(store_root, catalog_path)
+    return tuple(
+        _select_catalog_range_from_snapshot(request, store_root, snapshot) for request in requests
     )
