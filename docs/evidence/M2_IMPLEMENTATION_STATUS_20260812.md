@@ -875,10 +875,22 @@ same-partition parent pair with the unchanged schema, duplicate-key, and cross-p
 interval rules. Detailed dataset and partition identities remain in a receipt-last private audit;
 the public contract exposes only audit/store hashes, implementation identities, inventory counts,
 and aggregate classifications. The audit never deduplicates, subsets, splits, compacts, or mutates
-a parent. A post-merge measured audit/projection remains required to record whether the current
-store contains a genuine candidate; implementation alone is not ADR-0054 performance evidence.
-The implementation, ADR, schema, and synthetic proofs are tracked in
+a parent. The implementation, ADR, schema, and synthetic proofs are tracked in
 [PR #77](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/77).
+
+The post-merge audit under implementation identity
+`git:b57e6b6c328ee7fa5db3812a2fe2b1b7753e07f6` reverified 37 canonical funding
+datasets across 35 partitions. Exactly one partition had multiple parents, producing three
+unordered pairs; all three were `duplicate-or-conflicting-keys`, while eligible, schema-mismatch,
+and unresolved-interval counts were zero. The private receipt-last audit retains actionable
+bindings outside Git. The public
+[candidate evidence](../../benchmarks/results/m2-funding-compaction-candidate-audit-20260814.json)
+binds that audit and exact store state without dataset/instrument/time/rate/path identities. No
+network request or parent mutation occurred. This proves there is no genuine ADR-0054 input in the
+bound current store; it does not qualify compaction and measured execution remains required when
+an eligible incremental or repair fragment appears. The aggregate artifact, receipt, and strict
+redaction/contract assertions are tracked in
+[PR #78](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/78).
 
 ## Still required before Gate 2
 
@@ -891,5 +903,6 @@ The implementation, ADR, schema, and synthetic proofs are tracked in
 - further controlled scale-up and dated evidence/policy for the seven blocked July funding
   cadence transitions; and
 - measured funding repair publication/execution evidence when a genuine candidate exists,
-  measured ADR-0054 funding-compaction evidence, and the remaining PM-owned Gate 2 acceptance
-  checklist; implementation alone is not measured acceptance.
+  measured ADR-0054 funding-compaction execution when a genuine eligible pair appears (the current
+  receipt-bound store has none), and the remaining PM-owned Gate 2 acceptance checklist;
+  implementation alone is not measured acceptance.

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified current-store funding compaction candidate evidence: 37 canonical datasets,
+  35 partitions, three duplicate/conflicting pairs, zero eligible pairs, and no published runtime
+  identities, funding values, paths, private calls, mutation, or fabricated compaction input.
 - ADR-0061 funding compaction candidate audit: bounded all-pair receipt verification, unchanged
   duplicate/interval rejection, private actionable identities, sanitized aggregate evidence, and
   no fabricated compaction input or Gate 2 implication.
