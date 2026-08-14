@@ -929,7 +929,8 @@ lifecycle, and end-to-end performance blockers. `evidence-ready` is not acceptan
 keeps Gate 2 closed, requires a data-quality-owner decision, disables automatic Phase 3
 authorization, performs no network or market-store mutation, and returns exit code 2 for the
 current blocked set. A post-merge receipt-verified pack remains required; implementation alone
-does not change Gate 2 status.
+does not change Gate 2 status. The implementation, ADR, schema, and fail-closed tests are tracked
+in [PR #81](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/81).
 
 ## Still required before Gate 2
 
