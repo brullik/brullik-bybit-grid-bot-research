@@ -24,6 +24,9 @@ from grid_market_store import (
     verify_compacted_candle_dataset,
 )
 from grid_market_store.catalog import (
+    CatalogRegistrationRequest,
+    catalog_registration_request_payload,
+    load_catalog_registration_request,
     load_catalog_selection_request,
     preflight_catalog_registration,
     register_catalog_datasets,
@@ -898,19 +901,37 @@ def parser() -> argparse.ArgumentParser:
     funding_repair_candidate_evidence.add_argument("--output", type=Path, required=True)
     funding_repair_candidate_evidence.set_defaults(handler=_funding_repair_candidate_evidence)
 
+    catalog_registration_request = commands.add_parser(
+        "catalog-registration-request",
+        help="build a receipt-bound registration request from one verified campaign publication",
+    )
+    catalog_registration_request.add_argument("--publication-root", type=Path, required=True)
+    catalog_registration_request.add_argument("--campaign-root", type=Path, required=True)
+    catalog_registration_request.add_argument("--software-identity", required=True)
+    catalog_registration_request.add_argument("--output", type=Path, required=True)
+    catalog_registration_request.set_defaults(handler=_catalog_registration_request)
+
     catalog_register = commands.add_parser(
         "catalog-register",
         help="preflight or atomically register receipt-verified canonical datasets",
     )
-    catalog_register.add_argument(
+    catalog_registration_source = catalog_register.add_mutually_exclusive_group(required=True)
+    catalog_registration_source.add_argument(
         "--dataset",
         action="append",
-        required=True,
         help="dataset ID; repeat and include any unregistered lineage parents",
+    )
+    catalog_registration_source.add_argument(
+        "--request",
+        type=Path,
+        help="closed JSON request for registrations too large for the command line",
     )
     catalog_register.add_argument("--store-root", type=Path, required=True)
     catalog_register.add_argument("--catalog", type=Path, required=True)
-    catalog_register.add_argument("--software-identity", required=True)
+    catalog_register.add_argument(
+        "--software-identity",
+        help="required with --dataset; file-backed requests contain their immutable identity",
+    )
     catalog_register.add_argument("--output", type=Path, required=True)
     catalog_register.add_argument(
         "--execute",
@@ -2646,12 +2667,71 @@ def _funding_repair_candidate_evidence(args: argparse.Namespace) -> int:
     return 0
 
 
+def _catalog_registration_request(args: argparse.Namespace) -> int:
+    completed = verify_completed_history_campaign_publication(
+        args.publication_root,
+        args.campaign_root,
+    )
+    request = CatalogRegistrationRequest(
+        dataset_ids=tuple(
+            sorted(item.manifest.dataset_id for item in completed.published_datasets)
+        ),
+        software_identity=args.software_identity,
+    )
+    if len(request.dataset_ids) != completed.dataset_count:
+        raise ValueError("publication dataset inventory is not unique")
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        if not verify_evidence(output):
+            raise ValueError("existing catalog registration request receipt does not verify")
+        stored = load_catalog_registration_request(output)
+        if stored != request:
+            raise ValueError("existing catalog registration request no longer matches publication")
+        artifact = output
+    else:
+        preflight_evidence(output)
+        artifact, receipt = publish_evidence(
+            output,
+            catalog_registration_request_payload(request),
+        )
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "dataset_count": len(request.dataset_ids),
+                "publication_manifest_sha256": completed.manifest_sha256,
+                "receipt": str(receipt),
+                "request_sha256": request.request_sha256,
+                "status": "registration-request-ready",
+            }
+        )
+    )
+    return 0
+
+
 def _catalog_register(args: argparse.Namespace) -> int:
+    if args.request is not None:
+        if args.software_identity is not None:
+            raise ValueError("--software-identity must not override a file-backed request")
+        if not verify_evidence(args.request):
+            raise ValueError("catalog registration request receipt does not verify")
+        request = load_catalog_registration_request(args.request)
+        dataset_ids = request.dataset_ids
+        software_identity = request.software_identity
+        request_sha256: str | None = request.request_sha256
+    else:
+        if args.software_identity is None:
+            raise ValueError("--software-identity is required with --dataset")
+        dataset_ids = tuple(args.dataset)
+        software_identity = args.software_identity
+        request_sha256 = None
     plan = preflight_catalog_registration(
-        tuple(args.dataset),
+        dataset_ids,
         args.store_root,
         args.catalog,
-        software_identity=args.software_identity,
+        software_identity=software_identity,
     )
     output = args.output.resolve()
     receipt = output.with_suffix(output.suffix + ".receipt.json")
@@ -2670,6 +2750,7 @@ def _catalog_register(args: argparse.Namespace) -> int:
         "existing_registration": plan.existing_registration,
         "new_dataset_ids": list(plan.new_dataset_ids),
         "requested_dataset_ids": list(plan.requested_dataset_ids),
+        "request_sha256": request_sha256,
         "status": "preflight-passed",
     }
     if not args.execute:

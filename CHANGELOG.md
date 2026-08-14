@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0078 and a receipt-bound file-backed catalog registration request derived from a fully
+  verified campaign publication, removing the Windows command-line limit for 978 full-history
+  datasets while preserving the existing preflight and atomic catalog transaction.
 - Receipt-verified funding repair candidate evidence: all four retained blocked audits and 11
   cadence transitions were recomputed offline, none admits ADR-0055 discovery, and the resulting
   zero-request aggregate prevents repeated Bybit attempts without accepting chronology.

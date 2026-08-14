@@ -157,9 +157,12 @@ grid-data compact-funding --dataset <funding-id> [--dataset <funding-id> ...] \
   --capacity-evidence <capacity.json> --store-root <local-path> \
   --software-identity git:<full-commit-sha> --output <funding-compaction-evidence.json>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
-grid-data catalog-register --dataset <dataset-id> [--dataset <lineage-parent-id> ...] \
+grid-data catalog-registration-request --publication-root <completed-publication-root> \
+  --campaign-root <completed-source-campaign-root> \
+  --software-identity git:<full-commit-sha> --output <private-request.json>
+grid-data catalog-register --request <private-request.json> \
   --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \
-  --software-identity git:<full-commit-sha> --output <registration-evidence.json>
+  --output <registration-evidence.json>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
 grid-data catalog-select --request <snapshot-bound-selection-request.json> \
   --store-root <local-path> --catalog <local-path>/catalog/canonical.duckdb \

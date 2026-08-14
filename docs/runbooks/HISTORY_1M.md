@@ -425,6 +425,30 @@ Registration uses a same-directory building database and exclusive lock; do not 
 lock/building file until an operator has confirmed no writer is running and inspected the catalog.
 An identical rerun verifies the existing registration and evidence without changing the revision.
 
+For a completed campaign publication, do not place hundreds of IDs on the command line. Build one
+receipt-bound request directly from the verified publication and its source campaign:
+
+```powershell
+.venv\Scripts\grid-data.exe catalog-registration-request `
+  --publication-root data\market-store\.publication-campaigns\<publication-root> `
+  --campaign-root data\history\.campaigns\<source-campaign-root> `
+  --software-identity git:<catalog-implementation-sha> `
+  --output reports\private\catalog-registration-request-<date>.json
+```
+
+Then run the same preflight/execute sequence with a short command:
+
+```powershell
+.venv\Scripts\grid-data.exe catalog-register `
+  --request reports\private\catalog-registration-request-<date>.json `
+  --store-root data\market-store `
+  --catalog data\market-store\catalog\canonical.duckdb `
+  --output data\evidence\m2-full-history-catalog-registration-<date>.json
+```
+
+The request receipt must verify, its embedded Git identity cannot be overridden, and at most
+10,000 datasets may be named. Repeat only the second command with `--execute` after preflight.
+
 Build a closed `grid.canonical-dataset-selection-request/v1` JSON from the printed final
 `catalog_revision` and `catalog_content_sha256`. Dataset IDs and include-mode instrument IDs must
 be sorted and unique; never substitute a `latest` alias:

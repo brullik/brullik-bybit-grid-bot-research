@@ -31,11 +31,15 @@ from grid_market_store.publication import (
 
 CATALOG_CONTRACT: Final = "grid.canonical-dataset-catalog/v1"
 CATALOG_REGISTRATION_CONTRACT: Final = "grid.canonical-dataset-catalog-registration/v1"
+CATALOG_REGISTRATION_REQUEST_CONTRACT: Final = (
+    "grid.canonical-dataset-catalog-registration-request/v1"
+)
 CATALOG_SELECTION_REQUEST_CONTRACT: Final = "grid.canonical-dataset-selection-request/v1"
 CATALOG_SELECTION_CONTRACT: Final = "grid.canonical-dataset-selection/v1"
 CATALOG_SCHEMA_VERSION: Final = 1
 EXACT_KEY_BATCH_ROWS: Final = 4_096
 MAX_EXACT_KEY_STREAMS: Final = 128
+MAX_CATALOG_DATASETS_PER_REQUEST: Final = 10_000
 GIT_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 PARTITION_RE: Final = re.compile(
     r"^dataset=(trade_kline_1m|mark_kline_1m|funding_event)/schema=(v1)/"
@@ -137,6 +141,21 @@ class CatalogRegistrationPlan:
     @property
     def existing_registration(self) -> bool:
         return not self.new_dataset_ids
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogRegistrationRequest:
+    dataset_ids: tuple[str, ...]
+    software_identity: str
+
+    def __post_init__(self) -> None:
+        _validate_dataset_ids(self.dataset_ids)
+        if not GIT_IDENTITY_RE.fullmatch(self.software_identity):
+            raise CatalogError("registration software identity must be an immutable git SHA")
+
+    @property
+    def request_sha256(self) -> str:
+        return canonical_sha256(catalog_registration_request_payload(self))
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,12 +326,59 @@ def _validate_catalog_record(record: CatalogDatasetRecord) -> None:
 def _validate_dataset_ids(dataset_ids: tuple[str, ...]) -> None:
     if not dataset_ids:
         raise CatalogError("at least one dataset ID is required")
+    if len(dataset_ids) > MAX_CATALOG_DATASETS_PER_REQUEST:
+        raise CatalogError(
+            f"catalog request dataset count exceeds {MAX_CATALOG_DATASETS_PER_REQUEST}"
+        )
     if tuple(sorted(dataset_ids)) != dataset_ids:
         raise CatalogError("dataset IDs must be sorted")
     if len(dataset_ids) != len(set(dataset_ids)):
         raise CatalogError("dataset IDs must be unique")
     if any(not DATASET_ID_RE.fullmatch(value) for value in dataset_ids):
         raise CatalogError("dataset IDs must be safe lowercase storage identities")
+
+
+def catalog_registration_request_payload(
+    request: CatalogRegistrationRequest,
+) -> dict[str, object]:
+    """Render the closed, file-backed registration request contract."""
+
+    return {
+        "dataset_ids": list(request.dataset_ids),
+        "request_schema": CATALOG_REGISTRATION_REQUEST_CONTRACT,
+        "software_identity": request.software_identity,
+    }
+
+
+def load_catalog_registration_request(path: Path) -> CatalogRegistrationRequest:
+    """Parse a bounded registration request without coercion or implicit defaults."""
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError("catalog registration request is not valid JSON") from error
+    if not isinstance(raw, dict) or set(raw) != {
+        "dataset_ids",
+        "request_schema",
+        "software_identity",
+    }:
+        raise CatalogError(
+            "catalog registration request fields do not match the closed v1 contract"
+        )
+    if raw["request_schema"] != CATALOG_REGISTRATION_REQUEST_CONTRACT:
+        raise CatalogError("unsupported catalog registration request contract")
+    dataset_ids = raw["dataset_ids"]
+    software_identity = raw["software_identity"]
+    if not isinstance(dataset_ids, list) or not all(
+        isinstance(value, str) for value in dataset_ids
+    ):
+        raise CatalogError("registration dataset_ids must be an array of strings")
+    if not isinstance(software_identity, str):
+        raise CatalogError("registration software_identity must be a string")
+    return CatalogRegistrationRequest(
+        dataset_ids=tuple(cast(list[str], dataset_ids)),
+        software_identity=software_identity,
+    )
 
 
 def _safe_catalog_paths(store_root: Path, catalog_path: Path) -> tuple[Path, Path, Path, Path]:

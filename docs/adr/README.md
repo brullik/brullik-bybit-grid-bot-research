@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0078 - File-backed full-history catalog registration request](ADR-0078-file-backed-full-history-catalog-registration.md)
 - [ADR-0077 - Receipt-verified funding repair candidate audit](ADR-0077-receipt-verified-funding-repair-candidate-audit.md)
 - [ADR-0076 - Sanitized candle-repair execution outcome](ADR-0076-sanitized-candle-repair-execution-outcome.md)
 - [ADR-0075 - Current-evidence Gate 2 readiness successor](ADR-0075-current-evidence-gate2-readiness-successor.md)
