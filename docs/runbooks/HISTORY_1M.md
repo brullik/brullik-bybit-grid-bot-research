@@ -312,6 +312,32 @@ mixed partitions, and settlement-interval mismatches across parent boundaries. I
 receipt-last funding child and a sanitized proof; it never changes or deletes a parent and does
 not accept a previously blocked funding chronology reason.
 
+Do not guess parents from matching partition names. First audit every available pair without
+mutation:
+
+```powershell
+.venv\Scripts\grid-data.exe audit-funding-compaction-candidates `
+  --store-root data\market-store `
+  --software-identity git:<auditor-commit-sha> `
+  --output reports\private\m2-funding-compaction-candidates-<date>.json
+```
+
+Review aggregate counts, then repeat with `--execute` to publish the detailed private audit and
+receipt. `eligible=0` means there is no genuine pair in that exact store state; do not split a
+dataset or deduplicate overlapping campaigns to manufacture evidence. When GitHub-safe status is
+needed, publish only the verified aggregate projection:
+
+```powershell
+.venv\Scripts\grid-data.exe funding-compaction-candidate-evidence `
+  --audit reports\private\m2-funding-compaction-candidates-<date>.json `
+  --store-root data\market-store `
+  --software-identity git:<publisher-commit-sha> `
+  --output benchmarks\results\m2-funding-compaction-candidate-audit-<date>.json
+```
+
+The public projection contains counts and binding hashes only. It does not qualify compaction;
+run `compact-funding` when the private audit identifies a real eligible pair.
+
 ## 14. Register datasets and select a reproducible range
 
 Catalog registration is a separate transition after canonical publication, repair, or compaction.

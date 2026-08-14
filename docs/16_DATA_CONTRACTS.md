@@ -268,6 +268,13 @@ receipt-last child. `grid.canonical-funding-compaction/v1` is the value-free Git
 logical equality, file reduction, target classification, unchanged parents, and complete lineage.
 It does not accept chronology, repair missing events, register the child, or close Gate 2.
 
+`grid.funding-compaction-candidate-audit/v1` is a detailed private, receipt-last classification of
+every bounded same-partition funding parent pair in one exact store state. The public
+`grid.phase2-funding-compaction-candidate-audit/v1` projection binds the audit/store hashes,
+implementation identities, inventory counts, and aggregate outcomes only. It contains no dataset,
+partition, instrument, timestamp, rate, path, host, account, or credential identity. Neither
+contract performs compaction or replaces measured ADR-0054 evidence.
+
 `grid.bybit-funding-repair-plan/v1` is a receipt-last, no-network private discovery plan. It
 recomputes the exact blocked `grid.canonical-funding-coverage-audit/v1` and is valid only when
 `unexplained_interval_change` is the sole blocker and every changed edge belongs to an isolated

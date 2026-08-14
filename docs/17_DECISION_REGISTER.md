@@ -64,6 +64,7 @@
 | D-058 | A committed funding repair child requires a separate private post-publication source-parity and chronology audit | accepted | Complete lineage reverification, shared fail-closed chronology rules, no mutable-host write gates, and ADR-0058 |
 | D-059 | Campaign-resume performance enters GitHub only as scope-bound aggregate evidence with a local fail-closed first-pending stub | accepted | Exact request/plan/input/implementation hashes, no network, no identities/values/paths, and ADR-0059 |
 | D-060 | A CloudFront country block is a terminal regional-access failure, not an inferred Bybit IP-frequency ban | accepted | Bounded ephemeral classification, one-attempt global abort, no body retention/bypass/cooldown invention, and ADR-0060 |
+| D-061 | Funding compaction candidates are admitted only by an all-pair receipt-verified audit using unchanged ADR-0054 union semantics | accepted | Bounded inventory, no dedup/subset fabrication, private actionable bindings, sanitized aggregate counts, and ADR-0061 |
 
 ## Decisions requiring benchmark or owner evidence
 

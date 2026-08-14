@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0061 funding compaction candidate audit: bounded all-pair receipt verification, unchanged
+  duplicate/interval rejection, private actionable identities, sanitized aggregate evidence, and
+  no fabricated compaction input or Gate 2 implication.
 - ADR-0060 regional public-API block classification: bounded ephemeral CloudFront-body
   classification, one-attempt global abort, no invented IP-ban cooldown, no stored response body,
   no alternate-host retry, and unchanged handling for genuine Bybit rate-limit 403 responses.

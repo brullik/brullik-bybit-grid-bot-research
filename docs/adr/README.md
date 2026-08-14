@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0061 - Receipt-verified funding compaction candidate audit](ADR-0061-receipt-verified-funding-compaction-candidate-audit.md)
 - [ADR-0060 - Regional public-API block versus rate-limit classification](ADR-0060-regional-public-api-block-versus-rate-limit.md)
 - [ADR-0059 - Sanitized history-campaign resume performance evidence](ADR-0059-sanitized-campaign-resume-performance-evidence.md)
 - [ADR-0058 - Post-publication funding repair coverage audit](ADR-0058-post-publication-funding-repair-coverage-audit.md)

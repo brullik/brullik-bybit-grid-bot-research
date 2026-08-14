@@ -375,6 +375,13 @@ schema and sorted unique keys, checks settlement intervals across former parent 
 reduces at least two files to one receipt-last child. Compaction preserves existing chronology
 status; it never converts a blocked funding reason into acceptance.
 
+ADR-0061 adds bounded candidate discovery without weakening that boundary. Every receipt-verified
+same-partition funding pair is checked with the same schema/key/interval semantics and classified
+before any compaction is proposed. Detailed dataset and partition bindings remain private; GitHub
+receives only store/audit hashes and aggregate eligible/duplicate/interval/schema counts. A
+no-candidate result is store-state evidence, not a substitute for measured compaction when a real
+incremental or repair fragment later appears.
+
 ADR-0055 adds the first funding-specific repair boundary as discovery-only planning. It
 recomputes a blocked ADR-0034 audit and admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches when no other blocker exists. Candidate timestamps are derived

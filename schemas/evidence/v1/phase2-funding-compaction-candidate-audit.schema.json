@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-funding-compaction-candidate-audit.schema.json",
+  "title": "Sanitized Phase 2 funding compaction candidate audit evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "classification_counts",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "inventory",
+    "limitations",
+    "policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_canonical_funding_datasets_receipt_verified": true,
+        "all_same_partition_parent_pairs_classified": true,
+        "duplicate_keys_never_deduplicated": true,
+        "funding_values_or_timestamps_published": false,
+        "parent_datasets_mutated": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_artifact_sha256",
+        "auditor_software_identity",
+        "publisher_software_identity",
+        "store_state_sha256"
+      ],
+      "properties": {
+        "audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "auditor_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "store_state_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "classification_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duplicate-or-conflicting-keys",
+        "eligible",
+        "schema-mismatch",
+        "unresolved-settlement-interval"
+      ],
+      "properties": {
+        "duplicate-or-conflicting-keys": {"type": "integer", "minimum": 0},
+        "eligible": {"type": "integer", "minimum": 0},
+        "schema-mismatch": {"type": "integer", "minimum": 0},
+        "unresolved-settlement-interval": {"type": "integer", "minimum": 0}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-funding-compaction-candidate-audit/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_count",
+        "multi_parent_partition_count",
+        "pair_count",
+        "partition_count"
+      ],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "multi_parent_partition_count": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "pair_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "partition_count": {"type": "integer", "minimum": 1, "maximum": 10000}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "policy": {"const": "receipt-verified-all-funding-parent-pairs-v1"},
+    "status": {
+      "enum": [
+        "verified-eligible-funding-compaction-candidates",
+        "verified-no-eligible-funding-compaction-candidates"
+      ]
+    },
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_or_instrument_identities": false,
+        "evidence_contains_funding_rates_or_timestamps": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

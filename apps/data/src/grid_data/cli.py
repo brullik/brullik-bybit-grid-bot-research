@@ -55,6 +55,12 @@ from grid_data.funding_compaction import (
     publish_preflighted_funding_compaction,
     verify_funding_compaction_evidence,
 )
+from grid_data.funding_compaction_candidate_audit import (
+    build_funding_compaction_candidate_audit,
+    build_funding_compaction_candidate_evidence,
+    verify_funding_compaction_candidate_audit,
+    verify_funding_compaction_candidate_evidence,
+)
 from grid_data.funding_coverage_audit import build_completed_funding_coverage_audit
 from grid_data.funding_pilot_evidence import build_funding_pilot_evidence
 from grid_data.funding_publication import (
@@ -744,6 +750,30 @@ def parser() -> argparse.ArgumentParser:
         help="publish compacted funding Parquet and evidence; omitted is no-mutation preflight",
     )
     funding_compact.set_defaults(handler=_compact_funding)
+
+    funding_compaction_audit = commands.add_parser(
+        "audit-funding-compaction-candidates",
+        help="classify every receipt-verified same-partition funding parent pair",
+    )
+    funding_compaction_audit.add_argument("--store-root", type=Path, required=True)
+    funding_compaction_audit.add_argument("--software-identity", required=True)
+    funding_compaction_audit.add_argument("--output", type=Path, required=True)
+    funding_compaction_audit.add_argument(
+        "--execute",
+        action="store_true",
+        help="write the detailed private audit and receipt; omitted is no-mutation preflight",
+    )
+    funding_compaction_audit.set_defaults(handler=_audit_funding_compaction_candidates)
+
+    funding_compaction_evidence = commands.add_parser(
+        "funding-compaction-candidate-evidence",
+        help="publish a GitHub-safe aggregate from a verified private candidate audit",
+    )
+    funding_compaction_evidence.add_argument("--audit", type=Path, required=True)
+    funding_compaction_evidence.add_argument("--store-root", type=Path, required=True)
+    funding_compaction_evidence.add_argument("--software-identity", required=True)
+    funding_compaction_evidence.add_argument("--output", type=Path, required=True)
+    funding_compaction_evidence.set_defaults(handler=_funding_compaction_candidate_evidence)
 
     catalog_register = commands.add_parser(
         "catalog-register",
@@ -2203,6 +2233,79 @@ def _compact_funding(args: argparse.Namespace) -> int:
         }
     )
     print(json.dumps(summary))
+    return 0
+
+
+def _audit_funding_compaction_candidates(args: argparse.Namespace) -> int:
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        payload = verify_funding_compaction_candidate_audit(output, args.store_root)
+        if payload["auditor_software_identity"] != args.software_identity:
+            raise ValueError("existing funding candidate audit uses another software identity")
+    else:
+        preflight_evidence(output)
+        payload = build_funding_compaction_candidate_audit(
+            args.store_root,
+            auditor_software_identity=args.software_identity,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+    if args.execute and not existing:
+        artifact, receipt = publish_evidence(output, payload)
+    else:
+        artifact = output
+    summary = {
+        "artifact": str(artifact) if args.execute or existing else None,
+        "classification_counts": payload["classification_counts"],
+        "dataset_count": payload["dataset_count"],
+        "execute": bool(args.execute),
+        "existing_audit": existing,
+        "multi_parent_partition_count": payload["multi_parent_partition_count"],
+        "pair_count": payload["pair_count"],
+        "partition_count": payload["partition_count"],
+        "receipt": str(receipt) if args.execute or existing else None,
+        "status": payload["status"],
+    }
+    print(json.dumps(summary))
+    return 0
+
+
+def _funding_compaction_candidate_evidence(args: argparse.Namespace) -> int:
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        payload = verify_funding_compaction_candidate_evidence(
+            output,
+            args.audit,
+            args.store_root,
+        )
+        bindings = payload["bindings"]
+        if (
+            not isinstance(bindings, dict)
+            or bindings.get("publisher_software_identity") != args.software_identity
+        ):
+            raise ValueError("existing funding candidate evidence uses another software identity")
+        artifact = output
+    else:
+        preflight_evidence(output)
+        payload = build_funding_compaction_candidate_evidence(
+            args.audit,
+            args.store_root,
+            publisher_software_identity=args.software_identity,
+        )
+        artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "classification_counts": payload["classification_counts"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+            }
+        )
+    )
     return 0
 
 

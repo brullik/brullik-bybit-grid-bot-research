@@ -867,6 +867,19 @@ and one-attempt candle/funding resume preservation. The implementation, ADR, and
 proof are tracked in
 [PR #76](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/76).
 
+## Funding compaction candidate admission
+
+ADR-0061 adds a bounded read-only audit before ADR-0054 compaction. It receipt-verifies every
+canonical funding dataset, groups exact month/bucket partitions, and classifies every unordered
+same-partition parent pair with the unchanged schema, duplicate-key, and cross-parent settlement
+interval rules. Detailed dataset and partition identities remain in a receipt-last private audit;
+the public contract exposes only audit/store hashes, implementation identities, inventory counts,
+and aggregate classifications. The audit never deduplicates, subsets, splits, compacts, or mutates
+a parent. A post-merge measured audit/projection remains required to record whether the current
+store contains a genuine candidate; implementation alone is not ADR-0054 performance evidence.
+The implementation, ADR, schema, and synthetic proofs are tracked in
+[PR #77](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/77).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
