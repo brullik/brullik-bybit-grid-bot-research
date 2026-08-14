@@ -208,6 +208,13 @@ exact-key selector over bounded temporary synthetic fragments, then records both
 duration while proving the store fingerprint is unchanged. This measurement defines no Gate 2
 threshold and is not a substitute for the blocked full-history end-to-end performance run.
 
+ADR-0082 adds the corresponding retained full-history selector measurement without repeating the
+completed download or catalog registration. Four exact topology-scoped requests are receipt/hash
+verified, selected concurrently through the production path, immediately repeated, reconciled to
+the 978-object public catalog result, and checked for retained-state preservation. A post-merge
+artifact is required before observed timings are cited. This remains a component measurement and
+does not qualify the owner-reviewed end-to-end envelope by itself.
+
 The 2026-08-14 post-merge run bound to `9b68150b740d9bd8988ed791c98dbd9bf4a90a72`
 selected 368,640 rows across 16 same-partition fragments and 32 instruments. The first pass took
 816,325,700 ns (451,584 rows/second); the immediate repeat took 804,938,400 ns (457,972
