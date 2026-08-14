@@ -44,7 +44,6 @@ class AnnouncementPage:
             or len(self.items) > self.limit
         ):
             raise BybitPublicError("announcement page envelope is invalid")
-        date_timestamps: list[int] = []
         for item in self.items:
             raw_type = item.get("type")
             date_timestamp = item.get("dateTimestamp")
@@ -65,9 +64,6 @@ class AnnouncementPage:
                 )
             ):
                 raise BybitPublicError("announcement item lifecycle fields are invalid")
-            date_timestamps.append(date_timestamp)
-        if date_timestamps != sorted(date_timestamps, reverse=True):
-            raise BybitPublicError("announcement page is not reverse chronological")
 
 
 class BybitPublicClient:

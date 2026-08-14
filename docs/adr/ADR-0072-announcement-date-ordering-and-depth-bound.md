@@ -4,6 +4,7 @@
 - Date: 2026-08-14
 - Amends: ADR-0071 announcement ordering semantics
 - Legacy field semantics amended by: [ADR-0073](ADR-0073-optional-legacy-announcement-publish-time.md)
+- Order-validation scope amended by: [ADR-0074](ADR-0074-lifecycle-scoped-announcement-order-evidence.md)
 
 ## Context
 

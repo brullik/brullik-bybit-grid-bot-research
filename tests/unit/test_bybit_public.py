@@ -116,7 +116,7 @@ def test_announcement_page_uses_exact_public_endpoint_and_validates_lifecycle_fi
     ]
 
 
-def test_announcement_page_rejects_wrong_type_and_forward_order() -> None:
+def test_announcement_page_rejects_wrong_type_but_preserves_source_order() -> None:
     wrong_type = QueueTransport(
         [
             response(
@@ -149,11 +149,11 @@ def test_announcement_page_rejects_wrong_type_and_forward_order() -> None:
             )
         ]
     )
-    with pytest.raises(BybitPublicError, match="reverse chronological"):
-        BybitPublicClient(forward_order).announcement_page(announcement_type="other", page=1)
+    page = BybitPublicClient(forward_order).announcement_page(announcement_type="other", page=1)
+    assert [item["dateTimestamp"] for item in page.items] == [1, 2]
 
 
-def test_announcement_page_orders_by_date_timestamp_not_publish_time() -> None:
+def test_announcement_page_preserves_date_order_when_publish_time_differs() -> None:
     transport = QueueTransport(
         [
             response(
