@@ -13,6 +13,8 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0092 - Current-universe Gate 2 readiness v4](ADR-0092-current-universe-gate2-readiness-v4.md)
+- [ADR-0091 - Receipt-bound current-universe catalog performance](ADR-0091-receipt-bound-current-universe-catalog-performance.md)
 - [ADR-0090 - Receipt-linked current-universe funding evidence](ADR-0090-receipt-linked-current-universe-funding-evidence.md)
 - [ADR-0089 - Receipt-linked current-universe candle evidence](ADR-0089-receipt-linked-current-universe-candle-evidence.md)
 - [ADR-0088 - Receipt-bound history-campaign publication timing](ADR-0088-receipt-bound-history-campaign-publication-timing.md)

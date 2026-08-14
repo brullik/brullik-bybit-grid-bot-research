@@ -536,6 +536,15 @@ content hashes, aggregate inventory, timings, software versions, non-identifying
 facts, and cache-state disclosure. It excludes identities, time bounds, object keys, paths,
 values, accounts, and credentials, and does not qualify the owner-reviewed Gate 2 envelope.
 
+`grid.gate2-readiness-pack/v4` is ADR-0092's append-only, non-promoting successor. It binds the
+exact immutable v3 artifact to current-universe candle, funding, and catalog-performance
+evidence. All four inputs require valid receipts, schemas, canonical JSON, embedded content
+hashes, contracts, and statuses. Cross-source capacity, registry, universe, candle-artifact,
+bundle, catalog revision/hash, and aggregate catalog inventory must reconcile exactly. The public
+result preserves v3's six criteria, three/three readiness split, seven blockers, closed Gate 2,
+and false Phase 3 authorization; only sanitized aggregate observations and source hashes are
+added for owner review.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

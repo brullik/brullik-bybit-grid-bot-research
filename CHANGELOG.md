@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0092 and `grid.gate2-readiness-pack/v4`: the immutable v3 decision can be chained to
+  receipt-bound current-universe candle, funding, and catalog-performance observations without
+  repeating prior source work, changing seven blockers, opening Gate 2, or authorizing Phase 3.
 - ADR-0091 and `grid.phase2-current-universe-catalog-performance/v1`: the completed private
   catalog bundle can be selected twice through the production batch boundary with receipt/schema
   verification and before/after retained-state fingerprints, publishing only sanitized measured

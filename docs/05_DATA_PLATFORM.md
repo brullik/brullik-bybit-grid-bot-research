@@ -600,6 +600,14 @@ catalog snapshot verification per pass. Exact repeat equality and unchanged reta
 required. Only hashes, counts, timings, non-identifying environment facts, and limitations enter
 Git; the result does not define the owner-reviewed end-to-end envelope or change Gate 2.
 
+ADR-0092 chains those three current-universe projections to the exact immutable v3 readiness
+artifact. The offline builder verifies receipts, schemas, canonical encoding, hashes, contracts,
+statuses, scope equality, bundle/catalog lineage, and aggregate inventory before publishing one
+identifier-free review pack. It copies the v3 criteria, readiness counts, blocker set, and closed
+Gate 2 decision unchanged. Current-universe observations therefore become available immediately
+for owner review without repeating v3's fifteen-source build, but cannot qualify the envelope,
+accept lifecycle/cadence/absence policy, or authorize Phase 3.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

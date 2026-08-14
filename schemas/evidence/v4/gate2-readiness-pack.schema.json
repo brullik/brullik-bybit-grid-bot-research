@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v4/gate2-readiness-pack.schema.json",
+  "title": "Gate 2 current-universe non-promoting readiness pack v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "content_sha256", "criteria", "criteria_source",
+    "evidence_schema", "gate_2", "generated_at_utc", "observations", "readiness_counts",
+    "sources", "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "cross_source_bindings_verified": true,
+        "current_universe_scope_reconciled": true,
+        "network_request_performed": false,
+        "phase3_authorized": false,
+        "prior_readiness_decision_preserved": true,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_identity", "prior_readiness_artifact_sha256",
+        "prior_readiness_content_sha256", "source_chain_sha256"
+      ],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "prior_readiness_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "prior_readiness_content_sha256": {"$ref": "#/$defs/sha256"},
+        "source_chain_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "criteria": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/criterion"}
+    },
+    "criteria_source": {
+      "const": {
+        "artifact": "14_ROADMAP_AND_GATES.md",
+        "artifact_sha256": "492458c7126bb6768dbc1b328ec5959095e67e0cdbf865b7de54b05ecc94f534",
+        "criteria_count": 6
+      }
+    },
+    "evidence_schema": {"const": "grid.gate2-readiness-pack/v4"},
+    "gate_2": {
+      "const": {
+        "automatic_phase3_authorization": false,
+        "blocker_codes": [
+          "candle-repair-source-gap-remains",
+          "eligible-funding-repair-candidate-unavailable",
+          "full-history-end-to-end-performance-envelope-unqualified",
+          "funding-cadence-policy-unresolved",
+          "historical-point-in-time-metadata-missing",
+          "official-announcement-history-insufficient",
+          "unaccepted-candle-absence-reasons"
+        ],
+        "data_quality_owner_decision_required": true,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner"
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_universe_candles", "current_universe_catalog_performance",
+        "current_universe_funding", "owner_review"
+      ],
+      "properties": {
+        "current_universe_candles": {"$ref": "#/$defs/candleObservation"},
+        "current_universe_catalog_performance": {"$ref": "#/$defs/performanceObservation"},
+        "current_universe_funding": {"$ref": "#/$defs/fundingObservation"},
+        "owner_review": {"$ref": "#/$defs/ownerReview"}
+      }
+    },
+    "readiness_counts": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current-universe-candles", "current-universe-catalog-performance",
+        "current-universe-funding", "prior-readiness-v3"
+      ],
+      "properties": {
+        "current-universe-candles": {"$ref": "#/$defs/sourceRecord"},
+        "current-universe-catalog-performance": {"$ref": "#/$defs/sourceRecord"},
+        "current-universe-funding": {"$ref": "#/$defs/sourceRecord"},
+        "prior-readiness-v3": {"$ref": "#/$defs/sourceRecord"}
+      }
+    },
+    "status": {"const": "blocked-current-universe-evidence-awaiting-owner-policy"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "candleObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_dataset_count", "catalog_object_count", "catalog_row_count",
+        "catalog_size_bytes", "conflicting_key_count", "duplicate_key_count",
+        "instrument_count", "missing_minute_count", "selection_count", "source_count"
+      ],
+      "properties": {
+        "catalog_dataset_count": {"type": "integer", "minimum": 2},
+        "catalog_object_count": {"type": "integer", "minimum": 2},
+        "catalog_row_count": {"type": "integer", "minimum": 1},
+        "catalog_size_bytes": {"type": "integer", "minimum": 1},
+        "conflicting_key_count": {"const": 0},
+        "duplicate_key_count": {"const": 0},
+        "instrument_count": {"type": "integer", "minimum": 1, "maximum": 11200},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16}
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_codes", "criterion_id", "criterion_text", "evidence_roles", "readiness"
+      ],
+      "properties": {
+        "blocker_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "criterion_id": {"type": "string", "minLength": 1},
+        "criterion_text": {"type": "string", "minLength": 1},
+        "evidence_roles": {
+          "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}
+        },
+        "readiness": {"enum": ["blocked", "evidence-ready"]}
+      }
+    },
+    "fundingObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_dataset_count", "canonical_row_count", "duplicate_key_count",
+        "empty_range_page_count", "interval_change_count", "source_count", "symbol_count"
+      ],
+      "properties": {
+        "canonical_dataset_count": {"type": "integer", "minimum": 1},
+        "canonical_row_count": {"type": "integer", "minimum": 1},
+        "duplicate_key_count": {"const": 0},
+        "empty_range_page_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 2000}
+      }
+    },
+    "ownerReview": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "envelope_qualified": false,
+        "owner_review_required": true,
+        "unique_blocker_count": 7
+      }
+    },
+    "performanceObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_count", "deterministic_repeat_equal", "first_pass_rows_per_second",
+        "first_pass_wall_elapsed_ns", "repeat_pass_rows_per_second",
+        "repeat_pass_wall_elapsed_ns", "row_count", "state_fingerprint_equal_before_after"
+      ],
+      "properties": {
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "deterministic_repeat_equal": {"const": true},
+        "first_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "first_pass_wall_elapsed_ns": {"type": "integer", "minimum": 1},
+        "repeat_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "repeat_pass_wall_elapsed_ns": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 1, "maximum": 20000000000},
+        "state_fingerprint_equal_before_after": {"const": true}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "sourceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "content_sha256", "contract", "status"],
+      "properties": {
+        "artifact": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.json$"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

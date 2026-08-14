@@ -51,3 +51,25 @@ funding-repair-candidate, and full-history-catalog chains. It performs no networ
 scan, repair retry, publication, or catalog mutation. Exit code 2 remains required: the same three
 criteria remain blocked by seven codes, but the two stale evidence-missing descriptions are
 replaced by measured negative outcomes. Gate 2 stays closed and Phase 3 stays unauthorized.
+
+## Current-universe successor (v4)
+
+The v1 through v3 artifacts remain immutable. Build v4 only after the ADR-0089 candle, ADR-0090
+funding, and ADR-0091 catalog-performance evidence pairs exist and the v4 implementation is
+merged:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_readiness_pack_v4 `
+  --implementation-identity git:<merged-v4-implementation-sha> `
+  --prior-readiness benchmarks\results\m2-gate2-readiness-pack-v3-20260814.json `
+  --candle-evidence data\evidence\m2-current-universe-candle-evidence-<date>.json `
+  --funding-evidence data\evidence\m2-current-universe-funding-evidence-<date>.json `
+  --catalog-performance data\evidence\m2-current-universe-catalog-performance-<date>.json `
+  --output data\evidence\m2-gate2-readiness-pack-v4-<date>.json
+```
+
+The builder reuses the exact v3 decision rather than rebuilding its fifteen sources, verifies all
+four receipt/schema/canonical/content-hash chains, and reconciles current-universe scope,
+candle/funding lineage, bundle/catalog bindings, and catalog inventory. Exit code 2 remains
+required: v3's same three blocked criteria and seven blockers are preserved, owner review remains
+required, Gate 2 stays closed, and Phase 3 stays unauthorized.
