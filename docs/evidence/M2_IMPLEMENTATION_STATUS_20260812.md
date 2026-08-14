@@ -965,7 +965,9 @@ verification. The measured
 [receipt](../../benchmarks/results/m2-canonical-integrity-fault-injection-20260814.json.receipt.json)
 contain no runtime path, dataset/instrument identity, or market value and record no retained-store,
 network, private, or live access. This proves the named verifier behaviors only; it does not
-authorize cleanup, repair, Gate 2 acceptance, or Phase 3.
+authorize cleanup, repair, Gate 2 acceptance, or Phase 3. Publication and pinned contract
+assertions are tracked in
+[PR #84](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/84).
 
 ## Still required before Gate 2
 
