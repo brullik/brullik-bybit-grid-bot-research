@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0087 and an opt-in bounded history-campaign supervisor that automatically receipt-resumes
+  only classified DNS/socket/HTTP-5xx interruptions while preserving explicit rate-limit,
+  regional-access, contract, capacity, and unknown-failure stop conditions.
 - ADR-0086 and a preordered, single-parse canonical candle publication path that preserves exact
   Landing/admission/Arrow contracts, rejects order drift, and avoids a global sort or full admitted
   key set on multi-million-row history children.

@@ -114,6 +114,13 @@ to the exact campaign/input/implementation hashes. Its first pending failure is 
 403, so the qualification measures integrity traversal and fail-closed handoff without network
 access or disclosure of runtime identities.
 
+ADR-0087 adds an opt-in bounded supervisor for a still-incomplete campaign. It repeats the normal
+fresh campaign preflight and receipt-resume only after narrowly classified DNS, socket, or HTTP
+5xx exhaustion, with an explicit invocation ceiling and exponential cooldown. Rate-limit and
+regional-access aborts, contract/capacity/lock failures, malformed source data, and unknown errors
+remain non-retryable. The supervisor adds no probe and cannot change the immutable request's RPS,
+workers, page ownership, or per-page attempt bound.
+
 ## Data layers
 
 ```mermaid

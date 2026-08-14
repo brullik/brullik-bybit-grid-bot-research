@@ -172,6 +172,11 @@ from grid_data.history_sources import (
     build_history_source_assessment,
     build_one_minute_history_source_assessment,
 )
+from grid_data.history_supervisor import (
+    SUPERVISOR_EVENT_CONTRACT,
+    HistoryCampaignSupervisorPolicy,
+    run_history_campaign_supervisor,
+)
 from grid_data.host_probe import probe_host_snapshot
 from grid_data.instrument_registry import build_verified_registry_from_inventory
 from grid_data.instrument_timeline import (
@@ -376,6 +381,34 @@ def parser() -> argparse.ArgumentParser:
         help="write campaign/child receipts and call public endpoints; omitted means preflight",
     )
     history_campaign.set_defaults(handler=_history_campaign)
+
+    supervised_campaign = commands.add_parser(
+        "supervise-history-campaign",
+        help="bounded auto-resume for transient DNS/network failures only",
+    )
+    supervised_campaign.add_argument("--request", type=Path, required=True)
+    supervised_campaign.add_argument("--instrument-registry", type=Path, required=True)
+    supervised_campaign.add_argument("--capacity-evidence", type=Path, required=True)
+    supervised_campaign.add_argument("--staging-root", type=Path, required=True)
+    supervised_campaign.add_argument(
+        "--funding-source-boundary-root",
+        type=Path,
+        help=(
+            "optional completed receipt-verified source-boundary root used to clip and bind "
+            "funding starts"
+        ),
+    )
+    supervised_campaign.add_argument("--max-invocations", type=int, default=8)
+    supervised_campaign.add_argument("--base-cooldown-seconds", type=int, default=30)
+    supervised_campaign.add_argument(
+        "--execute",
+        action="store_true",
+        help=(
+            "write campaign/child receipts and call public endpoints; omitted means one "
+            "no-mutation preflight"
+        ),
+    )
+    supervised_campaign.set_defaults(handler=_supervise_history_campaign)
 
     campaign_verify = commands.add_parser(
         "verify-history-campaign",
@@ -1287,6 +1320,33 @@ def _history_campaign(args: argparse.Namespace) -> int:
     )
     print(json.dumps(summary))
     return 0
+
+
+def _supervise_history_campaign(args: argparse.Namespace) -> int:
+    policy = HistoryCampaignSupervisorPolicy(
+        max_invocations=args.max_invocations,
+        base_cooldown_seconds=args.base_cooldown_seconds,
+    )
+
+    def emit(payload: dict[str, object]) -> None:
+        print(json.dumps(payload), flush=True)
+
+    if not args.execute:
+        emit(
+            {
+                "base_cooldown_seconds": policy.base_cooldown_seconds,
+                "contract": SUPERVISOR_EVENT_CONTRACT,
+                "event": "supervisor-preflight",
+                "max_invocations": policy.max_invocations,
+                "network_request_performed_by_supervisor": False,
+            }
+        )
+        return _history_campaign(args)
+    return run_history_campaign_supervisor(
+        lambda: _history_campaign(args),
+        policy,
+        emit=emit,
+    )
 
 
 def _verify_history_campaign(args: argparse.Namespace) -> int:

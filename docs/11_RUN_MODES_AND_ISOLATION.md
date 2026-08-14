@@ -34,6 +34,10 @@ retrying through the documented IP-ban interval.
 ADR-0083 keeps one bounded public-only HTTPS connection pool across the sequential children of a
 CLI campaign. The pool cannot exceed the existing worker bound and does not change target RPS,
 application attempts, page ownership, endpoint scope, receipts, or resume semantics.
+ADR-0087 adds an opt-in supervisor around that same CLI campaign. It can repeat only a bounded
+number of fresh invocations after classified DNS/socket/HTTP-5xx exhaustion; it does not retry
+rate-limit, region, capacity, lock, contract, source-validation, or unknown failures. Each
+invocation retains the standard receipt verification, RPS, workers, and per-page attempt limit.
 Canonical campaign publication is a second `grid-data` coordinator: it consumes only a completed
 campaign, runs the existing receipt-last writers sequentially, and has no Bybit network client.
 
@@ -62,6 +66,10 @@ grid-data history-campaign --request <campaign-request.json> \
   --staging-root <local-path>
 # Repeat with --execute only after no-mutation peak-child preflight; children run sequentially.
 # Fresh free-space checks before/after each child stop safely and resume without refetching receipts.
+grid-data supervise-history-campaign --request <campaign-request.json> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --staging-root <local-path> --max-invocations 8 --base-cooldown-seconds 30
+# Repeat with --execute only when bounded transient auto-resume is desired.
 grid-data verify-history-campaign <completed-campaign-root>
 grid-data publish-history-campaign --campaign-root <completed-campaign-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
