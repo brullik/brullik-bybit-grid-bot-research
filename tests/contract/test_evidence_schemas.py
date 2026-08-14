@@ -132,6 +132,58 @@ def test_funding_compaction_candidate_audit_matches_schema_receipt_and_redaction
         assert forbidden not in rendered
 
 
+def test_funding_repair_candidate_audit_matches_schema_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-funding-repair-candidate-audit-20260814.json"
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-funding-repair-candidate-audit.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    content_hash = payload.pop("content_sha256")
+    assert content_hash == ("b2cae4567637649cc0fd9ec9dcb84410b1a65423c5c85fb5165e0792febc95e5")
+    assert content_hash == canonical_sha256(payload)
+    payload["content_sha256"] = content_hash
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "c14bee09eb5da94cf06b55c80f48c242e4eef9762c295f414cca3dc621740584"
+    )
+    assert payload["bindings"] == {
+        "audit_artifact_sha256": (
+            "e35cc8591742656d56d89d1f236b0aafff29528deb8f6a8155c421def71f6062"
+        ),
+        "auditor_software_identity": "git:3bbb2674eca9a66c174b565e6a725e645917dc82",
+        "capacity_evidence_sha256": (
+            "2363e5795c108186764f098e572388c6bf61185f77ab342c07e1fc61b2ac46d0"
+        ),
+        "input_set_sha256": ("36c9a3e6b5021c7a90622780ffa3756466eea0bc9fff0c5f24f5f808dad3c212"),
+        "publisher_software_identity": "git:3bbb2674eca9a66c174b565e6a725e645917dc82",
+    }
+    assert payload["inventory"] == {
+        "audit_count": 4,
+        "candidate_settlement_count": 0,
+        "interval_change_count": 11,
+        "planned_max_http_requests": 0,
+        "task_count": 0,
+    }
+    assert payload["classification_counts"] == {
+        "eligible": 0,
+        "non-isolated-or-non-integer-chronology": 4,
+    }
+    assert payload["status"] == "verified-no-eligible-funding-repair-candidates"
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        '"dataset_id"',
+        '"funding_rate"',
+        '"funding_time_ms"',
+        '"instrument_id"',
+        '"symbol"',
+        '"runtime_path"',
+        "c:\\",
+    ):
+        assert forbidden not in rendered
+
+
 def test_stale_output_fault_injection_matches_schema_receipt_and_redaction() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m2-stale-output-fault-injection-20260814.json"
     schema = load_json(

@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified funding repair candidate evidence: all four retained blocked audits and 11
+  cadence transitions were recomputed offline, none admits ADR-0055 discovery, and the resulting
+  zero-request aggregate prevents repeated Bybit attempts without accepting chronology.
 - ADR-0077 and a receipt-verified funding repair candidate audit that replays unchanged ADR-0055
   admission over all explicitly supplied blocked audits, prevents repeated ineligible Bybit
   attempts, and emits an identifier-free aggregate without changing Gate 2.
