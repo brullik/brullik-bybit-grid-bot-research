@@ -25,6 +25,7 @@ from grid_market_store import (
     CapacityBudget,
     HostSnapshot,
     build_canonical_candle_batch,
+    build_empty_canonical_candle_batch,
     canonical_partition_path,
 )
 
@@ -1445,7 +1446,15 @@ def _verify_completed_history_job(
         if batch_dataset_type is None:
             raise HistoryAcquisitionError("completed history job has no task dataset type")
         try:
-            batch = build_canonical_candle_batch(logical_rows, batch_dataset_type)
+            if logical_rows:
+                batch = build_canonical_candle_batch(logical_rows, batch_dataset_type)
+            else:
+                first_series = verified_spec.series[0]
+                batch = build_empty_canonical_candle_batch(
+                    batch_dataset_type,
+                    instrument_id=first_series.instrument_id,
+                    open_time_ms=first_series.start_ms,
+                )
         except ValueError as error:
             raise HistoryAcquisitionError(
                 "completed pages do not form one canonical batch"

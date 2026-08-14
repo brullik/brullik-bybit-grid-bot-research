@@ -1014,6 +1014,20 @@ tracked in
 artifact and receipt are tracked in
 [PR #87](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/87).
 
+## Zero-admission canonical candle publication
+
+The full-history no-mutation publication preflight exposed a previously untested valid Landing
+state: a child may contain no admitted candle rows because the endpoint returned no data or every
+returned row is retained only in quarantine. ADR-0067 preserves the ADR-0039 one-to-one child
+lineage by publishing an exact schema-only Parquet file with zero rows, zero instruments, null key
+bounds, and the normal immutable audit/manifest/receipt chain. The generic logical-row builder
+still rejects an unqualified empty input; only a semantically verified Landing request supplies
+the deterministic month/bucket partition.
+
+Coverage policy is unchanged. An empty canonical child remains exact source parity but its
+requested minutes are missing, and a quarantined source row remains an unaccepted ADR-0053 reason.
+The implementation does not accept a gap, register the child, close Gate 2, or authorize Phase 3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

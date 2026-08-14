@@ -57,6 +57,12 @@ class PublishingFundingClient:
         )
 
 
+class EmptyKlineClient(FakeKlineClient):
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        super().kline_page(**kwargs)
+        return ()
+
+
 def completed_source_campaign(tmp_path: Path):  # type: ignore[no-untyped-def]
     source_plan = preflight_source_campaign(
         tmp_path,
@@ -231,6 +237,40 @@ def test_publication_campaign_executes_verifies_schemas_and_is_idempotent(
     )
     assert same.manifest_sha256 == completed.manifest_sha256
     assert sha256_file(first_dataset / "manifest.json") == first_manifest_sha
+
+
+def test_publication_campaign_retains_zero_row_child_as_schema_only_dataset(
+    tmp_path: Path,
+) -> None:
+    source_plan = preflight_source_campaign(
+        tmp_path,
+        request=request_payload(
+            kinds=["trade", "funding"],
+            symbols=["AAAUSDT"],
+            end_ms=JANUARY_31_2026_2358_MS,
+        ),
+    )
+    source = execute_source_campaign(
+        source_plan,
+        EmptyKlineClient(),
+        PublishingFundingClient(),
+    )
+    plan = preflight_publication(tmp_path, source.campaign_root)
+
+    assert [job.row_count for job in plan.jobs] == [0, 1]
+    completed = execute_publication(plan)
+    assert completed.dataset_count == 2
+    assert completed.row_count == 1
+    first_dataset = plan.store_root / plan.jobs[0].dataset_root
+    first_manifest = json.loads((first_dataset / "manifest.json").read_text(encoding="utf-8"))
+    assert first_manifest["row_count"] == 0
+    assert first_manifest["instrument_count"] == 0
+    assert first_manifest["min_time_ms"] is None
+    assert first_manifest["max_time_ms"] is None
+    verify_completed_history_campaign_publication(
+        completed.publication_root,
+        source.campaign_root,
+    )
 
 
 def test_interrupted_publication_resumes_from_canonical_receipts(tmp_path: Path) -> None:

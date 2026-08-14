@@ -160,6 +160,12 @@ aggregate verifier recomputes source-derived dataset/build identities and verifi
 file, audit, manifest, and receipt. This is publication lineage, not coverage/lifecycle acceptance
 or catalog registration. See ADR-0039.
 
+ADR-0067 keeps that one-to-one lineage when a verified candle child has zero admitted rows. The
+child publishes one schema-only Parquet file with the unchanged canonical schema, zero rows and
+instruments, null key bounds, and normal audit/manifest/receipt bindings. Campaign v1 child row
+counts therefore allow zero. This marker does not accept an empty requested range or quarantined
+source row; the unchanged coverage audit remains blocked and classifies the exact missing reason.
+
 ADR-0046 makes the verifier mode explicit. Initial/pending publication and coverage auditing use
 semantic source admission. A completed aggregate publication may reverify source children through
 their exact artifact bytes, page receipts, task/manifest facts, child receipts, allowlists, and

@@ -70,6 +70,7 @@
 | D-064 | Canonical orphan and partial-write detection is evidenced only in temporary cloned commits | accepted | Candle/funding production verifiers, six named faults, complete tree-fingerprint preservation, sanitized post-merge proof, and ADR-0064 |
 | D-065 | Ambiguous same-partition incremental catalog fragments require bounded streaming exact-key admission | accepted | Receipt/file reverification, candle/funding key-column merge, exact duplicate rejection, 4,096-row batches, 128-stream ceiling, and ADR-0065 |
 | D-066 | Incremental exact-key selection performance is measured only in bounded temporary production-path fixtures | accepted | Two deterministic selection passes, unchanged store fingerprint, sanitized aggregate evidence, no PM threshold, and ADR-0066 |
+| D-067 | A verified zero-admission candle child publishes as one schema-only immutable canonical dataset | accepted | Exact request-derived partition, zero-row Parquet and null bounds, unchanged source lineage, fail-closed coverage, and ADR-0067 |
 
 ## Decisions requiring benchmark or owner evidence
 
