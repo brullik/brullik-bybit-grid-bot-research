@@ -1088,20 +1088,28 @@ to 11,981,671 `rest_returned_no_data`, 74 `canonical_representation_overflow`, a
 prove immutable publication and quantify the remaining data-quality blockers; they do not close
 Gate 2, repair history, register datasets, or authorize Phase 3.
 
-ADR-0070 adds a receipt-bound follow-up diagnostic for this already-proven candle coverage. It
-reuses the canonical objects returned by the aggregate verifier and scans only instrument/time
-columns once, so topology analysis does not repeat the public download or Landing semantic decode.
-The sanitized result remains bound to the existing ADR-0041 audit and cannot accept first observed
-data as listing metadata. A post-merge run over the full campaign is still required before its
-measured topology and elapsed time are treated as GitHub evidence.
+ADR-0070, merged through
+[PR #92](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/92) as
+`060ba5fe2a6c2de2f99c8135bae1a73647dc0a2a`, adds a receipt-bound follow-up diagnostic for this
+already-proven candle coverage. The post-merge
+[sanitized diagnostic](../../benchmarks/results/m2-candle-boundary-diagnostic-20260814.json)
+reused all 978 canonical objects returned by the aggregate verifier and scanned 30,832,334
+instrument/time keys once in 203,043 ms, without a public download or Landing semantic decode. It
+reconciles the 353 child-local gap ranges into 10 leading ranges containing 11,981,670 minutes and
+75 internal ranges containing 76 minutes; there are zero trailing and zero fully absent ranges.
+All ten leading ranges belong to series whose requested start was clipped to the current registry
+launch boundary. The sanitized result remains bound to the unchanged blocked ADR-0041 audit:
+current launch metadata and first returned data do not prove historical listing time, so no minute
+or reason is accepted.
 
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
   timeline begins on 2026-08-12 and does not reconstruct earlier point-in-time metadata;
-- owner-reviewed policy/evidence for 11,981,671 historical `rest_returned_no_data` minutes across
-  the current-universe bootstrap, plus reconciliation of 74 canonical representation overflows
-  and one quarantined source row;
+- owner-reviewed lifecycle evidence/policy for 11,981,671 historical `rest_returned_no_data`
+  minutes across the current-universe bootstrap; ADR-0070 now proves aggregate topology but does
+  not turn first returned data into listing metadata, and 74 canonical representation overflows
+  plus one quarantined source row remain unaccepted;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
