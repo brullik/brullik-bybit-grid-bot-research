@@ -129,9 +129,9 @@ def test_bounded_archive_depth_is_schema_valid_hashed_and_redacted(tmp_path: Pat
     assert payload["status"] == "blocked-insufficient-official-announcement-history"
     assert payload["archive_depth"] == {
         "all_selected_registry_launches_within_new_listing_archive": False,
-        "delistings_oldest_publish_time_ms": 1_650_002_000_000,
-        "global_oldest_publish_time_ms": 1_650_000_000_000,
-        "new_crypto_oldest_publish_time_ms": 1_650_000_000_000,
+        "delistings_oldest_date_timestamp_ms": 1_650_002_000_000,
+        "global_oldest_date_timestamp_ms": 1_650_000_000_000,
+        "new_crypto_oldest_date_timestamp_ms": 1_650_000_000_000,
         "selected_launch_before_new_listing_archive_count": 2,
         "selected_registry_launch_max_ms": 1_610_000_000_000,
         "selected_registry_launch_min_ms": 1_600_000_000_000,

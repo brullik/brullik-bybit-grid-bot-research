@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0072 - Announcement date ordering and archive-depth bound](ADR-0072-announcement-date-ordering-and-depth-bound.md)
 - [ADR-0071 - Bounded official announcement archive-depth evidence](ADR-0071-bounded-official-announcement-archive-depth.md)
 - [ADR-0070 - Receipt-bound fast candle-boundary diagnostic](ADR-0070-receipt-bound-fast-candle-boundary-diagnostic.md)
 - [ADR-0069 - Receipt-bound canonical publication plan checkpoint](ADR-0069-receipt-bound-publication-plan-checkpoint.md)

@@ -60,10 +60,10 @@ def _expected_item_count(total: int, page: int) -> int:
     return max(0, min(PAGE_LIMIT, total - first_index))
 
 
-def _publish_times(page: AnnouncementPage) -> tuple[int, ...]:
-    values = tuple(item["publishTime"] for item in page.items)
+def _integer_times(page: AnnouncementPage, field: str) -> tuple[int, ...]:
+    values = tuple(item[field] for item in page.items)
     if any(isinstance(value, bool) or not isinstance(value, int) for value in values):
-        raise AnnouncementArchiveDepthError("validated announcement page lost publish times")
+        raise AnnouncementArchiveDepthError(f"validated announcement page lost {field} times")
     return cast(tuple[int, ...], values)
 
 
@@ -148,11 +148,18 @@ def build_announcement_archive_depth_evidence(
             raise AnnouncementArchiveDepthError(
                 f"announcement type {announcement_type} changed during bounded probing"
             )
-        first_times = _publish_times(first)
-        last_times = _publish_times(last)
-        latest_publish_time_ms = max(first_times)
-        oldest_publish_time_ms = min(last_times)
-        if oldest_publish_time_ms > latest_publish_time_ms:
+        first_date_times = _integer_times(first, "dateTimestamp")
+        last_date_times = _integer_times(last, "dateTimestamp")
+        first_publish_times = _integer_times(first, "publishTime")
+        last_publish_times = _integer_times(last, "publishTime")
+        latest_date_timestamp_ms = max(first_date_times)
+        oldest_date_timestamp_ms = min(last_date_times)
+        latest_publish_time_ms = max(first_publish_times)
+        oldest_publish_time_ms = min(last_publish_times)
+        if (
+            oldest_date_timestamp_ms > latest_date_timestamp_ms
+            or oldest_publish_time_ms > latest_publish_time_ms
+        ):
             raise AnnouncementArchiveDepthError(
                 f"announcement type {announcement_type} has inverted source bounds"
             )
@@ -164,16 +171,18 @@ def build_announcement_archive_depth_evidence(
                 "last_page_item_count": len(last.items),
                 "last_page_number": last_page_number,
                 "last_page_result_sha256": _page_result_sha256(last),
+                "latest_date_timestamp_ms": latest_date_timestamp_ms,
                 "latest_publish_time_ms": latest_publish_time_ms,
+                "oldest_date_timestamp_ms": oldest_date_timestamp_ms,
                 "oldest_publish_time_ms": oldest_publish_time_ms,
                 "total_announcements": first.total,
             }
         )
 
     by_type = {str(item["announcement_type"]): item for item in type_probes}
-    new_crypto_start = cast(int, by_type["new_crypto"]["oldest_publish_time_ms"])
-    delistings_start = cast(int, by_type["delistings"]["oldest_publish_time_ms"])
-    global_start = min(cast(int, item["oldest_publish_time_ms"]) for item in type_probes)
+    new_crypto_start = cast(int, by_type["new_crypto"]["oldest_date_timestamp_ms"])
+    delistings_start = cast(int, by_type["delistings"]["oldest_date_timestamp_ms"])
+    global_start = min(cast(int, item["oldest_date_timestamp_ms"]) for item in type_probes)
     launch_times = tuple(item.launch_time_ms for item in selected)
     launch_before_listing_archive_count = sum(value < new_crypto_start for value in launch_times)
     archive_covers_all = launch_before_listing_archive_count == 0
@@ -188,9 +197,9 @@ def build_announcement_archive_depth_evidence(
     payload: dict[str, object] = {
         "archive_depth": {
             "all_selected_registry_launches_within_new_listing_archive": archive_covers_all,
-            "delistings_oldest_publish_time_ms": delistings_start,
-            "global_oldest_publish_time_ms": global_start,
-            "new_crypto_oldest_publish_time_ms": new_crypto_start,
+            "delistings_oldest_date_timestamp_ms": delistings_start,
+            "global_oldest_date_timestamp_ms": global_start,
+            "new_crypto_oldest_date_timestamp_ms": new_crypto_start,
             "selected_launch_before_new_listing_archive_count": (
                 launch_before_listing_archive_count
             ),

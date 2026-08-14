@@ -153,6 +153,32 @@ def test_announcement_page_rejects_wrong_type_and_forward_order() -> None:
         BybitPublicClient(forward_order).announcement_page(announcement_type="other", page=1)
 
 
+def test_announcement_page_orders_by_date_timestamp_not_publish_time() -> None:
+    transport = QueueTransport(
+        [
+            response(
+                {
+                    "list": [
+                        {
+                            "dateTimestamp": 2,
+                            "publishTime": 1,
+                            "type": {"key": "other"},
+                        },
+                        {
+                            "dateTimestamp": 1,
+                            "publishTime": 2,
+                            "type": {"key": "other"},
+                        },
+                    ],
+                    "total": 2,
+                }
+            )
+        ]
+    )
+    page = BybitPublicClient(transport).announcement_page(announcement_type="other", page=1)
+    assert [item["publishTime"] for item in page.items] == [1, 2]
+
+
 def test_kline_pagination_moves_inclusive_end_backward_without_duplicates() -> None:
     transport = QueueTransport(
         [
