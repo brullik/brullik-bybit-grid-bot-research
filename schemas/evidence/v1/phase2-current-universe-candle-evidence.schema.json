@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-current-universe-candle-evidence.schema.json",
+  "title": "Receipt-linked Phase 2 current-universe candle evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "catalog", "content_sha256", "evidence_schema",
+    "excluded_funding", "generated_at_utc", "inventory", "limitations", "performance",
+    "quality", "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "catalog_inventory_reconciled": true,
+        "catalog_source_chain_reconciled": true,
+        "cross_source_bindings_verified": true,
+        "market_store_read": false,
+        "network_request_performed": false,
+        "phase3_authorized": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capacity_evidence_sha256", "catalog_bundle_artifact_sha256",
+        "catalog_bundle_content_sha256", "evidence_builder_software_identity",
+        "instrument_registry_sha256", "source_evidence_chain_sha256"
+      ],
+      "properties": {
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "catalog_bundle_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "catalog_bundle_content_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_builder_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "source_evidence_chain_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_sha256", "revision"],
+      "properties": {
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-current-universe-candle-evidence/v1"},
+    "excluded_funding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_dataset_count", "canonical_row_count", "landing_job_count",
+        "landing_row_count"
+      ],
+      "properties": {
+        "canonical_dataset_count": {"type": "integer", "minimum": 0},
+        "canonical_row_count": {"type": "integer", "minimum": 0},
+        "landing_job_count": {"type": "integer", "minimum": 0},
+        "landing_row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "by_kind", "empty_object_count", "instrument_count", "selection_count", "source_count"
+      ],
+      "properties": {
+        "by_kind": {
+          "type": "array",
+          "prefixItems": [
+            {"$ref": "#/$defs/tradeInventory"},
+            {"$ref": "#/$defs/markInventory"}
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "empty_object_count": {"type": "integer", "minimum": 0},
+        "instrument_count": {"type": "integer", "minimum": 1, "maximum": 11200},
+        "selection_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acquisition", "envelope", "publication"],
+      "properties": {
+        "acquisition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "campaign_count", "earliest_started_at_ms", "latest_completed_at_ms",
+            "observed_wall_span_ms", "summed_campaign_elapsed_ms", "summed_child_elapsed_ms"
+          ],
+          "properties": {
+            "campaign_count": {"type": "integer", "minimum": 1, "maximum": 16},
+            "earliest_started_at_ms": {"type": "integer", "minimum": 0},
+            "latest_completed_at_ms": {"type": "integer", "minimum": 0},
+            "observed_wall_span_ms": {"type": "integer", "minimum": 0},
+            "summed_campaign_elapsed_ms": {"type": "integer", "minimum": 0},
+            "summed_child_elapsed_ms": {"type": "integer", "minimum": 0}
+          }
+        },
+        "envelope": {
+          "const": {
+            "owner_review_required": true,
+            "qualified": false
+          }
+        },
+        "publication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "complete_source_timing", "earliest_started_at_ms", "latest_completed_at_ms",
+            "source_count", "summed_elapsed_ms", "timed_source_count"
+          ],
+          "properties": {
+            "complete_source_timing": {"type": "boolean"},
+            "earliest_started_at_ms": {"$ref": "#/$defs/nullableTimestamp"},
+            "latest_completed_at_ms": {"$ref": "#/$defs/nullableTimestamp"},
+            "source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+            "summed_elapsed_ms": {"type": "integer", "minimum": 0},
+            "timed_source_count": {"type": "integer", "minimum": 0, "maximum": 16}
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_reason_count", "candle", "canonical_representation_excluded_row_count",
+        "coverage_status", "quarantined_source_row_count", "reason_counts"
+      ],
+      "properties": {
+        "accepted_reason_count": {"const": 0},
+        "candle": {"$ref": "#/$defs/candleQuality"},
+        "canonical_representation_excluded_row_count": {"type": "integer", "minimum": 0},
+        "coverage_status": {"enum": ["passed", "blocked"]},
+        "quarantined_source_row_count": {"type": "integer", "minimum": 0},
+        "reason_counts": {"$ref": "#/$defs/reasonCounts"}
+      }
+    },
+    "status": {"const": "verified-current-universe-candle-evidence"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_identities": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_request_time_bounds": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_catalog_or_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "candleQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflicting_key_count", "duplicate_key_count", "expected_minute_count",
+        "gap_range_count", "lifecycle_failure_count", "missing_minute_count",
+        "observed_row_count", "unexpected_timestamp_count", "unrequested_row_count"
+      ],
+      "properties": {
+        "conflicting_key_count": {"type": "integer", "minimum": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "expected_minute_count": {"type": "integer", "minimum": 0},
+        "gap_range_count": {"type": "integer", "minimum": 0},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "missing_minute_count": {"type": "integer", "minimum": 0},
+        "observed_row_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0},
+        "unrequested_row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "kindInventoryBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_dataset_count", "canonical_file_count", "canonical_parquet_bytes",
+        "canonical_row_count", "catalog_dataset_count", "catalog_object_count",
+        "catalog_row_count", "catalog_selection_count", "catalog_size_bytes",
+        "coverage_blocked_count", "coverage_passed_count", "kind",
+        "landing_http_request_count", "landing_job_count", "landing_page_count",
+        "landing_row_count"
+      ],
+      "properties": {
+        "canonical_dataset_count": {"type": "integer", "minimum": 1},
+        "canonical_file_count": {"type": "integer", "minimum": 1},
+        "canonical_parquet_bytes": {"type": "integer", "minimum": 1},
+        "canonical_row_count": {"type": "integer", "minimum": 0},
+        "catalog_dataset_count": {"type": "integer", "minimum": 1},
+        "catalog_object_count": {"type": "integer", "minimum": 1},
+        "catalog_row_count": {"type": "integer", "minimum": 0},
+        "catalog_selection_count": {"type": "integer", "minimum": 1},
+        "catalog_size_bytes": {"type": "integer", "minimum": 1},
+        "coverage_blocked_count": {"type": "integer", "minimum": 0},
+        "coverage_passed_count": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["trade", "mark"]},
+        "landing_http_request_count": {"type": "integer", "minimum": 1},
+        "landing_job_count": {"type": "integer", "minimum": 1},
+        "landing_page_count": {"type": "integer", "minimum": 1},
+        "landing_row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tradeInventory": {
+      "allOf": [
+        {"$ref": "#/$defs/kindInventoryBase"},
+        {"properties": {"kind": {"const": "trade"}}}
+      ]
+    },
+    "markInventory": {
+      "allOf": [
+        {"$ref": "#/$defs/kindInventoryBase"},
+        {"properties": {"kind": {"const": "mark"}}}
+      ]
+    },
+    "nullableTimestamp": {
+      "oneOf": [
+        {"type": "integer", "minimum": 0},
+        {"type": "null"}
+      ]
+    },
+    "reasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_representation_overflow", "canonical_source_mismatch",
+        "duplicate_canonical_key", "internal_interval_mismatch",
+        "predecessor_interval_mismatch", "quarantined_source_row",
+        "registry_lifecycle_failure", "rest_returned_no_data",
+        "source_window_returned_no_event", "unexpected_settlement_timestamp",
+        "unrequested_instrument_row", "unexplained_interval_change"
+      ],
+      "properties": {
+        "canonical_representation_overflow": {"type": "integer", "minimum": 0},
+        "canonical_source_mismatch": {"type": "integer", "minimum": 0},
+        "duplicate_canonical_key": {"type": "integer", "minimum": 0},
+        "internal_interval_mismatch": {"type": "integer", "minimum": 0},
+        "predecessor_interval_mismatch": {"type": "integer", "minimum": 0},
+        "quarantined_source_row": {"type": "integer", "minimum": 0},
+        "registry_lifecycle_failure": {"type": "integer", "minimum": 0},
+        "rest_returned_no_data": {"type": "integer", "minimum": 0},
+        "source_window_returned_no_event": {"type": "integer", "minimum": 0},
+        "unexpected_settlement_timestamp": {"type": "integer", "minimum": 0},
+        "unrequested_instrument_row": {"type": "integer", "minimum": 0},
+        "unexplained_interval_change": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

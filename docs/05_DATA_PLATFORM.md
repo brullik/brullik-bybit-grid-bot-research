@@ -576,6 +576,14 @@ selections run against one verified catalog snapshot before output. Execution pu
 receipt-resumable private plan/selection/manifest bundle; GitHub receives only its sanitized
 hash-and-count projection. This reuses retained history without accepting coverage or Gate 2.
 
+ADR-0089 composes the public side of that multi-campaign boundary. One offline builder consumes
+the catalog-bundle evidence plus the ordered Landing/publication/coverage evidence triplet for
+every source. It recomputes ADR-0085's source-chain hash and requires exact per-kind
+Landing-to-canonical-to-coverage-to-catalog row, dataset, file/object, and byte reconciliation.
+Only hashes, aggregate trade/mark counts, quality reasons, and receipt-bound timings enter GitHub;
+funding is reported separately as excluded. The output records incomplete legacy publication
+timing explicitly and cannot qualify the owner-reviewed performance envelope or change Gate 2.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

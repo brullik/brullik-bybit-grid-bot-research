@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0089 and `grid.phase2-current-universe-candle-evidence/v1`: one offline receipt-linked pack
+  reconciles ordered Landing/publication/coverage triplets with the exact multi-campaign catalog
+  bundle while keeping funding, performance-envelope acceptance, Gate 2, and Phase 3 separate.
 - Receipt-verified post-merge Gate 2 readiness v3 evidence bound to `97cf471`: all fifteen source
   chains verify offline, the unchanged result remains three evidence-ready and three blocked
   criteria with seven current blockers, Gate 2 stays closed, and Phase 3 authorization is false.
