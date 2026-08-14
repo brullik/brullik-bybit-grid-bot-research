@@ -545,6 +545,14 @@ result preserves v3's six criteria, three/three readiness split, seven blockers,
 and false Phase 3 authorization; only sanitized aggregate observations and source hashes are
 added for owner review.
 
+`grid.history-campaign-progress/v1` is ADR-0093's transient local observation over one through
+sixteen receipt-resumable campaign roots. It verifies the campaign plan chain and completed-child
+plan/manifest metadata, reads no Landing page artifact, reconciles an aggregate completion pair
+when present, and emits only integer counts, page-weighted millionths, recent milli-pages/second,
+ceiling-rounded ETA, and minimum free bytes. Active run-locks remain pending. The output is not a
+committed evidence artifact, authoritative source verification, performance-envelope evidence,
+Gate 2 acceptance, or Phase 3/live authority.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured
