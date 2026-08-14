@@ -954,6 +954,8 @@ must remain identical before and after verification, proving that detection does
 clean or mutate diagnostic state. The retained market store, network, private/live endpoints,
 credentials, account, order, bot, and transfer capabilities are absent. A post-merge measured
 artifact remains required; implementation alone is not data-quality acceptance or Gate 2 closure.
+The implementation, ADR, schema, and mutation-detection regression proof are tracked in
+[PR #83](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/83).
 
 ## Still required before Gate 2
 
