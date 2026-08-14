@@ -940,6 +940,8 @@ artifact/content hashes, statuses, and cross-source bindings verified. The resul
 of six criteria as `evidence-ready`, four as blocked, and seven unique blockers. Gate 2 remains
 `closed-pending-data-quality-owner`; automatic Phase 3 authorization and automatic gate
 acceptance are false. This is a reproducible negative readiness result, not a Gate 2 decision.
+Publication and pinned contract assertions are tracked in
+[PR #82](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/82).
 
 ## Still required before Gate 2
 
