@@ -1064,7 +1064,28 @@ evidence JSON and receipts; it does not open Landing, Parquet, DuckDB, or Bybit.
 coverage reasons and publication timing coverage. The output deliberately leaves the performance
 envelope unqualified and cannot close Gate 2 or authorize Phase 3.
 
-## 21. Adaptive public REST pacing
+## 21. Build the current-universe funding evidence pack
+
+After the candle pack and all funding source evidence receipts exist, write one private canonical
+`grid.current-universe-funding-evidence-request/v1` manifest. Preserve the ADR-0085 candle source
+order, mark new funding-only campaigns as `boundary-backed`, and mark the retained non-overlapping
+July campaign as `reused-bounded`. Then run:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.current_universe_funding_evidence `
+  --source-manifest reports\private\m2-current-universe-funding-sources-<date>.json `
+  --artifact-root . `
+  --software-identity git:<current-universe-funding-builder-merge-sha> `
+  --output benchmarks\results\m2-current-universe-funding-evidence-<date>.json
+```
+
+Do not restart any acquisition to satisfy this pack. The builder reuses receipts, compares the
+private per-symbol interval unions, and fails on a gap, overlap, source substitution, boundary
+count mismatch, or accepted/unknown reason. The public output contains no identities or market
+time bounds. Mixed-kind reused-campaign timing is not funding-only; coverage policy, performance
+qualification, Gate 2, and Phase 3 remain separate.
+
+## 22. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header

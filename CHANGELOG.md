@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0090 and `grid.phase2-current-universe-funding-evidence/v1`: one offline receipt-linked pack
+  proves exact per-symbol interval parity between the current candle bundle and four
+  boundary-backed plus one retained bounded funding source, without repeating acquisition or
+  changing Gate 2.
 - ADR-0089 and `grid.phase2-current-universe-candle-evidence/v1`: one offline receipt-linked pack
   reconciles ordered Landing/publication/coverage triplets with the exact multi-campaign catalog
   bundle while keeping funding, performance-envelope acceptance, Gate 2, and Phase 3 separate.

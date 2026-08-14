@@ -516,6 +516,17 @@ available receipt-bound timing; legacy publication timing remains explicitly inc
 funding is excluded. The contract always leaves performance-envelope qualification false and has
 no Gate 2 or Phase 3 authority. See ADR-0089.
 
+`grid.current-universe-funding-evidence-request/v1` is a private canonical source manifest with
+safe-relative paths to that candle chain and to boundary-backed or narrowly reused funding
+request/evidence chains. `grid.phase2-current-universe-funding-evidence/v1` receipt-verifies those
+inputs, privately reconstructs their per-symbol minute intervals, rejects overlap, and requires
+the normalized funding union to equal the candle bundle exactly. The public result exposes only
+hashes, aggregate inventory/quality/boundary counts, and receipt-bound timing; it excludes
+identities, time bounds, rates, settlement timestamps, paths, values, accounts, and credentials.
+Blocked cadence remains blocked, mixed-kind timing is not funding-only, the performance envelope
+remains unqualified, and the contract has no Gate 2, Phase 3, research, or live authority. See
+ADR-0090.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

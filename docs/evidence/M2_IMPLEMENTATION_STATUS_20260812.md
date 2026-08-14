@@ -1334,6 +1334,20 @@ owner-reviewed performance envelope unqualified. Measured current-universe evide
 pending the active 95/700 acquisition, publication, coverage, registration, and ADR-0085 watcher;
 the implementation performs no network or retained-store scan and does not change Gate 2.
 
+## Current-universe funding evidence pack
+
+ADR-0090 adds the offline funding handoff after the candle pack. A private canonical manifest
+names the exact candle bundle chain and five funding source chains: four new boundary-backed
+funding-only ranges and the already retained non-overlapping July funding slice. The builder
+receipt- and schema-verifies every input, reconstructs private per-symbol minute intervals, rejects
+overlap, and requires the normalized funding union to equal the candle union exactly.
+
+The sanitized result exposes only chain hashes, aggregate funding inventory, quality,
+source-boundary totals, and timing. It performs no Bybit request or retained-store scan; the
+retained July source is not downloaded again. Measured evidence remains pending the active
+current-universe acquisition/publication/coverage watchers. Funding cadence policy, the
+owner-reviewed performance envelope, Gate 2, and Phase 3 remain unchanged.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
