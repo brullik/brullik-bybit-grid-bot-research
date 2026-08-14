@@ -1,5 +1,8 @@
 # Canonical evidence and source text must keep byte-stable LF endings on every platform.
 .gitattributes text eol=lf
+.gitignore text eol=lf
+.github/CODEOWNERS text eol=lf
+*.ps1 text eol=lf
 *.json text eol=lf
 *.sha256 text eol=lf
 *.py text eol=lf
