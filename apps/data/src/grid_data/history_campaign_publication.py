@@ -244,6 +244,7 @@ class CompletedHistoryCampaignPublication:
     row_count: int
     file_count: int
     parquet_bytes: int
+    published_datasets: tuple[PublishedDataset, ...]
 
 
 def _load_canonical_object(path: Path) -> dict[str, object]:
@@ -1532,6 +1533,7 @@ def verify_completed_history_campaign_publication(
     total_rows = 0
     total_files = 0
     total_bytes = 0
+    published_datasets: list[PublishedDataset] = []
     for sequence, (raw_job, raw_dataset, source) in enumerate(
         zip(raw_jobs, raw_datasets, source_jobs, strict=True)
     ):
@@ -1660,6 +1662,7 @@ def verify_completed_history_campaign_publication(
             or raw_dataset.get("parquet_bytes") != parquet_bytes
         ):
             raise HistoryCampaignPublicationError("canonical file totals differ from manifest")
+        published_datasets.append(published)
         _integer("required free bytes", raw_job.get("required_free_bytes"), minimum=1)
         _integer("planned peak memory bytes", raw_job.get("planned_peak_memory_bytes"), minimum=1)
         total_rows += expected_row_count
@@ -1696,4 +1699,5 @@ def verify_completed_history_campaign_publication(
         row_count=total_rows,
         file_count=total_files,
         parquet_bytes=total_bytes,
+        published_datasets=tuple(published_datasets),
     )

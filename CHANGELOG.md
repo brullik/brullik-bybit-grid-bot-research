@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0070 and a receipt-bound candle boundary diagnostic that reuses already verified canonical
+  datasets, scans only instrument/time columns once, reconciles exact topology with the prior
+  semantic coverage audit, performs no download or Landing row decode, and keeps every absence
+  unaccepted.
 - Receipt-verified full-history Landing evidence: five current linear symbols, 103 months, 978
   jobs, 43,328 pages, 30,832,408 admitted rows, one quarantined source row, 96 retries, and
   explicit incomplete response-header coverage without private identities or market values.

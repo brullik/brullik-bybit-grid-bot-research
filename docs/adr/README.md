@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0070 - Receipt-bound fast candle-boundary diagnostic](ADR-0070-receipt-bound-fast-candle-boundary-diagnostic.md)
 - [ADR-0069 - Receipt-bound canonical publication plan checkpoint](ADR-0069-receipt-bound-publication-plan-checkpoint.md)
 - [ADR-0068 - Receipt-bound canonical representation admission quarantine](ADR-0068-canonical-representation-admission-quarantine.md)
 - [ADR-0067 - Schema-only canonical candle publication for zero-admission source partitions](ADR-0067-schema-only-canonical-candle-publication.md)
