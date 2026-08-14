@@ -507,6 +507,15 @@ request time bounds, object keys, paths, values, account data, or credentials. I
 deterministic candle selection union, not lifecycle coverage, funding chronology, Gate 2, Phase 3,
 research promotion, or live readiness.
 
+`grid.phase2-current-universe-candle-evidence/v1` consumes the ordered public
+Landing/publication/coverage triplets corresponding to that catalog bundle. It receipt- and
+schema-verifies every input, recomputes the ordered ADR-0085 source chain, and reconciles exact
+trade/mark rows, datasets, files/objects, and bytes through acquisition, canonical publication,
+coverage, and catalog selection. It aggregates only hashes, identifier-free quality counts, and
+available receipt-bound timing; legacy publication timing remains explicitly incomplete and
+funding is excluded. The contract always leaves performance-envelope qualification false and has
+no Gate 2 or Phase 3 authority. See ADR-0089.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

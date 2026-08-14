@@ -1039,7 +1039,32 @@ sanitized topology artifact was committed successfully and missing minutes remai
 The first returned candle is not listing metadata; do not use this diagnostic to alter lifecycle
 bounds, repair data, or bypass the data-quality-owner Gate 2 decision.
 
-## 20. Adaptive public REST pacing
+## 20. Build the current-universe candle evidence pack
+
+After all source evidence and the ADR-0085 catalog bundle are committed locally, run the offline
+builder with the Landing, publication, and coverage arguments repeated in exactly the same source
+order as the private catalog-bundle request:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.current_universe_candle_evidence `
+  --landing-evidence reports\private\<source-1-landing>.json `
+  --publication-evidence reports\private\<source-1-publication>.json `
+  --coverage-evidence reports\private\<source-1-coverage>.json `
+  --landing-evidence reports\private\<source-2-landing>.json `
+  --publication-evidence reports\private\<source-2-publication>.json `
+  --coverage-evidence reports\private\<source-2-coverage>.json `
+  --catalog-bundle-evidence data\evidence\<catalog-bundle-evidence>.json `
+  --software-identity git:<current-universe-evidence-builder-merge-sha> `
+  --output benchmarks\results\m2-current-universe-candle-evidence-<date>.json
+```
+
+Repeat each triplet once per source. Reordering a triplet, substituting a source, or changing a
+catalog count fails against the ADR-0085 source-chain hash. The command reads only public-safe
+evidence JSON and receipts; it does not open Landing, Parquet, DuckDB, or Bybit. Review the
+coverage reasons and publication timing coverage. The output deliberately leaves the performance
+envelope unqualified and cannot close Gate 2 or authorize Phase 3.
+
+## 21. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header

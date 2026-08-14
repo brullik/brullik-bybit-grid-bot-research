@@ -1319,6 +1319,21 @@ missing 24-dataset candle/funding publication was atomically registered in local
 and a bounded retained-data diagnostic only; the complete current-universe bundle remains pending
 the active downloads/publications and does not change Gate 2.
 
+## Current-universe candle evidence pack
+
+ADR-0089 adds the offline public handoff after the ADR-0085 bundle. The builder consumes the five
+ordered Landing/publication/coverage evidence triplets and the catalog-bundle evidence, verifies
+every receipt/schema/content hash, recomputes the private bundle's identifier-free source-chain
+hash, and requires exact trade/mark row, dataset, file/object, and byte reconciliation across all
+four stages. Reordered sources, repeated campaigns, accepted/unknown reasons, or catalog count
+substitution fail closed.
+
+The sanitized output aggregates quality reasons and available receipt-bound timing, reports
+funding counts separately as excluded from the candle catalog scope, and explicitly leaves the
+owner-reviewed performance envelope unqualified. Measured current-universe evidence remains
+pending the active 95/700 acquisition, publication, coverage, registration, and ADR-0085 watcher;
+the implementation performs no network or retained-store scan and does not change Gate 2.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
