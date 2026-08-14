@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-announcement-archive-depth.schema.json",
+  "title": "Bounded official Bybit announcement archive-depth evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archive_depth",
+    "bindings",
+    "blocker_codes",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "process",
+    "scope",
+    "source_policy",
+    "status",
+    "storage_policy",
+    "type_probes"
+  ],
+  "properties": {
+    "archive_depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_selected_registry_launches_within_new_listing_archive",
+        "delistings_oldest_publish_time_ms",
+        "global_oldest_publish_time_ms",
+        "new_crypto_oldest_publish_time_ms",
+        "selected_launch_before_new_listing_archive_count",
+        "selected_registry_launch_max_ms",
+        "selected_registry_launch_min_ms"
+      ],
+      "properties": {
+        "all_selected_registry_launches_within_new_listing_archive": {"type": "boolean"},
+        "delistings_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+        "global_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+        "new_crypto_oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+        "selected_launch_before_new_listing_archive_count": {"type": "integer", "minimum": 0, "maximum": 700},
+        "selected_registry_launch_max_ms": {"$ref": "#/$defs/timestamp"},
+        "selected_registry_launch_min_ms": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instrument_registry_artifact_sha256",
+        "instrument_registry_content_sha256",
+        "selected_instrument_set_sha256"
+      ],
+      "properties": {
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_content_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_instrument_set_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "blocker_codes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "archive-depth-does-not-prove-instrument-lifecycle",
+          "official-new-listing-archive-starts-after-selected-launch"
+        ]
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-announcement-archive-depth/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documented_announcement_type_count",
+        "first_and_last_page_only",
+        "maximum_response_count",
+        "response_count",
+        "reused_single_page_count",
+        "software_identity"
+      ],
+      "properties": {
+        "documented_announcement_type_count": {"const": 8},
+        "first_and_last_page_only": {"const": true},
+        "maximum_response_count": {"const": 16},
+        "response_count": {"type": "integer", "minimum": 8, "maximum": 16},
+        "reused_single_page_count": {"type": "integer", "minimum": 0, "maximum": 8},
+        "software_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected_instrument_count"],
+      "properties": {
+        "selected_instrument_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "source_policy": {
+      "const": {
+        "authentication": "none",
+        "base_url": "https://api.bybit.com",
+        "endpoint": "/v5/announcements/index",
+        "locale": "en-US",
+        "page_limit": 20,
+        "private_endpoints_called": false,
+        "query_policy": "first-and-declared-last-page-per-documented-type-v1",
+        "raw_announcement_bodies_persisted": false,
+        "transport_max_attempts": 1
+      }
+    },
+    "status": {
+      "enum": [
+        "blocked-insufficient-official-announcement-history",
+        "source-depth-compatible-needs-record-matching"
+      ]
+    },
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_announcement_text_or_urls": false,
+        "evidence_contains_credentials": false,
+        "evidence_contains_instrument_identifiers": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false
+      }
+    },
+    "type_probes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "announcement_type",
+          "first_page_item_count",
+          "first_page_result_sha256",
+          "last_page_item_count",
+          "last_page_number",
+          "last_page_result_sha256",
+          "latest_publish_time_ms",
+          "oldest_publish_time_ms",
+          "total_announcements"
+        ],
+        "properties": {
+          "announcement_type": {"$ref": "#/$defs/announcementType"},
+          "first_page_item_count": {"type": "integer", "minimum": 1, "maximum": 20},
+          "first_page_result_sha256": {"$ref": "#/$defs/sha256"},
+          "last_page_item_count": {"type": "integer", "minimum": 1, "maximum": 20},
+          "last_page_number": {"type": "integer", "minimum": 1, "maximum": 500000},
+          "last_page_result_sha256": {"$ref": "#/$defs/sha256"},
+          "latest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+          "oldest_publish_time_ms": {"$ref": "#/$defs/timestamp"},
+          "total_announcements": {"type": "integer", "minimum": 1, "maximum": 10000000}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "announcementType": {
+      "enum": [
+        "new_crypto",
+        "latest_bybit_news",
+        "delistings",
+        "latest_activities",
+        "product_updates",
+        "maintenance_updates",
+        "new_fiat_listings",
+        "other"
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "timestamp": {"type": "integer", "minimum": 0, "maximum": 9999999999999}
+  }
+}

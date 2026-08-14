@@ -210,3 +210,15 @@ def test_transport_marks_bybit_limit_code_and_invalid_partial_headers(
     assert observed.header_state == "invalid"
     assert observed.limit is None
     assert observed.rate_limited is True
+
+
+def test_transport_allows_exact_announcement_path_and_rejects_adjacent_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = Response({"retCode": 0, "result": {"list": [], "total": 0}})
+    monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: response)
+    transport = UrllibJsonTransport(max_attempts=1)
+
+    assert transport.get("/v5/announcements/index", {"locale": "en-US"})["retCode"] == 0
+    with pytest.raises(TransportError, match="permits only"):
+        transport.get("/v5/announcements/private", {})

@@ -6,7 +6,12 @@ from grid_bybit_public.archive import (
     ProductIndexSummary,
     TradeArchiveCoverage,
 )
-from grid_bybit_public.client import BybitPublicClient, BybitPublicError
+from grid_bybit_public.client import (
+    ANNOUNCEMENT_TYPES,
+    AnnouncementPage,
+    BybitPublicClient,
+    BybitPublicError,
+)
 from grid_bybit_public.historical_catalog import (
     CATALOG_ENDPOINT,
     BybitHistoricalDataCatalog,
@@ -16,7 +21,9 @@ from grid_bybit_public.historical_catalog import (
 from grid_bybit_public.transport import RateLimitObservation, UrllibJsonTransport
 
 __all__ = [
+    "ANNOUNCEMENT_TYPES",
     "CATALOG_ENDPOINT",
+    "AnnouncementPage",
     "ArchivePathNotFound",
     "BybitArchiveIndex",
     "BybitHistoricalDataCatalog",

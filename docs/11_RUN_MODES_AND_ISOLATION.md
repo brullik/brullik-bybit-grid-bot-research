@@ -46,6 +46,10 @@ grid-data instrument-timeline --instrument-registry <registry-1.json> \
 grid-data verify-instrument-timeline <timeline.json>
 grid-data instrument-timeline-summary --timeline <timeline.json> \
   --software-identity git:<full-commit-sha> --output <sanitized-summary.json>
+grid-data announcement-archive-depth --instrument-registry <registry.json> \
+  --instrument-id <id> [--instrument-id <id> ...] \
+  --software-identity git:<full-commit-sha> --output <sanitized-depth-evidence.json>
+# This makes at most 16 public responses, persists no announcement body, and never closes Gate 2.
 grid-data history-1m --request <request.json> --instrument-registry <registry.json> \
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.
