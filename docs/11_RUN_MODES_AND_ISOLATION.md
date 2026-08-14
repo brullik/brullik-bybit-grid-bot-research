@@ -57,8 +57,13 @@ grid-data history-campaign --request <campaign-request.json> \
 grid-data verify-history-campaign <completed-campaign-root>
 grid-data publish-history-campaign --campaign-root <completed-campaign-root> \
   --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
-  --store-root <local-path> --software-identity git:<full-commit-sha>
-# Repeat with --execute only after aggregate no-mutation preflight; canonical children are serial.
+  --store-root <local-path> --software-identity git:<full-commit-sha> --prepare-plan
+# Review the prepared summary, then execute/resume from the printed receipt-bound root.
+grid-data publish-history-campaign --campaign-root <completed-campaign-root> \
+  --instrument-registry <registry.json> --capacity-evidence <capacity.json> \
+  --store-root <local-path> --software-identity git:<full-commit-sha> --execute \
+  --publication-root <store>/.publication-campaigns/<prepared-root>
+# Pending children are serial and each is semantically preflighted immediately before mutation.
 grid-data verify-history-campaign-publication \
   <store>/.publication-campaigns/<publication-campaign-root> \
   --campaign-root <completed-campaign-root>

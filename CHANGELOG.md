@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0069 prepared canonical-campaign plans: one explicit full semantic planning pass persists
+  only a receipt-bound aggregate checkpoint, while fast execute/resume verifies its immutable
+  bindings and retains a fresh full semantic preflight immediately before every child mutation.
 - ADR-0066 and an offline incremental catalog-selection benchmark that measures two production
   exact-key passes over bounded temporary fragments, proves deterministic output and unchanged
   store fingerprints, and emits only sanitized aggregate evidence without a Gate 2 threshold.
