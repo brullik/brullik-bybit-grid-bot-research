@@ -892,6 +892,18 @@ an eligible incremental or repair fragment appears. The aggregate artifact, rece
 redaction/contract assertions are tracked in
 [PR #78](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/78).
 
+## Stale output fault-injection boundary
+
+ADR-0062 adds a fully offline temporary-store runner for the unchanged Gate 2 stale-building
+criterion. It invokes the production candle publication, funding publication, candle compaction,
+and catalog registration preflights after injecting five deterministic building/lock markers.
+Every case must raise the expected fail-closed error, preserve the marker byte-for-byte, and leave
+the target dataset/catalog absent; any mismatch prevents evidence publication. Temporary fixtures
+are removed, while the public contract retains only named boundaries, aggregate outcomes, and the
+merged implementation identity. No retained market store, network request, private/live endpoint,
+credential, account, order, bot, or transfer is involved. A post-merge measured artifact remains
+required; implementation alone does not accept the Gate 2 criterion.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

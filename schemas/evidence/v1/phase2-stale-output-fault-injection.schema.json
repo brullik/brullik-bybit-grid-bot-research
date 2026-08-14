@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-stale-output-fault-injection.schema.json",
+  "title": "Phase 2 stale output fault-injection evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "cases",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "measurement",
+    "scope",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "injected_markers_preserved": true,
+        "network_request_performed": false,
+        "production_preflight_functions_exercised": true,
+        "private_or_live_capability_used": false,
+        "target_mutation_observed": false,
+        "temporary_fixture_removed": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_identity"],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "boundary",
+          "case_id",
+          "detected",
+          "error_class",
+          "marker_kind",
+          "marker_preserved",
+          "target_mutated"
+        ],
+        "properties": {
+          "boundary": {
+            "enum": [
+              "canonical-candle-compaction",
+              "canonical-candle-publication",
+              "canonical-catalog-registration",
+              "canonical-funding-publication"
+            ]
+          },
+          "case_id": {
+            "enum": [
+              "canonical-candle-compaction-building",
+              "canonical-candle-publication-building",
+              "canonical-funding-publication-building",
+              "catalog-registration-building",
+              "catalog-registration-lock"
+            ]
+          },
+          "detected": {"const": true},
+          "error_class": {"enum": ["CatalogError", "PublicationError"]},
+          "marker_kind": {
+            "enum": [
+              "building-directory-marker",
+              "catalog-building-file",
+              "catalog-write-lock"
+            ]
+          },
+          "marker_preserved": {"const": true},
+          "target_mutated": {"const": false}
+        }
+      },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"case_id": {"const": "canonical-candle-compaction-building"}},
+            "required": ["case_id"]
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"case_id": {"const": "canonical-candle-publication-building"}},
+            "required": ["case_id"]
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"case_id": {"const": "canonical-funding-publication-building"}},
+            "required": ["case_id"]
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"case_id": {"const": "catalog-registration-building"}},
+            "required": ["case_id"]
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"case_id": {"const": "catalog-registration-lock"}},
+            "required": ["case_id"]
+          }
+        }
+      ]
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-stale-output-fault-injection/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "measurement": {
+      "const": {
+        "case_count": 5,
+        "detected_count": 5,
+        "marker_preserved_count": 5,
+        "target_mutation_count": 0
+      }
+    },
+    "scope": {
+      "const": {
+        "canonical_candle_compaction": true,
+        "canonical_candle_publication": true,
+        "canonical_catalog_registration": true,
+        "canonical_funding_publication": true
+      }
+    },
+    "status": {"const": "verified-stale-output-fault-injection"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_fixture_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
