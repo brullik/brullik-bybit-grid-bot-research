@@ -848,6 +848,27 @@ reused only inside the same preflight/execute process so hundreds of completed c
 hashed twice before the first pending request. A partial child still semantically validates every
 existing page, and `verify-history-campaign` remains the explicit full semantic verifier.
 
+For an unattended first bootstrap, use the ADR-0087 supervisor with the same arguments. Omit
+`--execute` first; this performs one ordinary no-mutation campaign preflight and prints the outer
+invocation/cooldown policy:
+
+```powershell
+.venv\Scripts\grid-data.exe supervise-history-campaign `
+  --request benchmarks\specifications\m2-representative-5x24-history-campaign-request-20260813.json `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --staging-root data\history `
+  --max-invocations 8 `
+  --base-cooldown-seconds 30
+```
+
+Repeat with `--execute` after reviewing both the unchanged campaign preflight and supervisor
+bound. Only exhausted DNS, allowlisted socket/TLS-EOF, or HTTP-5xx failures schedule another fresh
+campaign invocation. Each retry exponentially waits 30, 60, 120 seconds and so on, capped at ten
+minutes, and reuses all valid receipts. Rate-limit/region classifications, invalid source data,
+stale locks, capacity or contract failures, and unknown errors stop immediately. Do not wrap the
+supervisor in an unbounded shell loop.
+
 Verify the printed root independently:
 
 ```powershell
