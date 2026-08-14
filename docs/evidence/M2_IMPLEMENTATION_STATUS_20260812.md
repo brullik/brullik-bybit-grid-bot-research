@@ -1243,9 +1243,16 @@ equality, complete public inventory reconciliation, unchanged catalog/dataset st
 post-measurement catalog verification are mandatory.
 
 The implementation repeats no Bybit acquisition, canonical publication, coverage scan, repair, or
-catalog registration. A post-merge sanitized result remains required before timings become GitHub
-evidence. This component cannot qualify the end-to-end envelope, close Gate 2, or authorize Phase
-3.
+catalog registration. The receipt-verified
+[performance artifact](../../benchmarks/results/m2-full-history-catalog-performance-20260814.json)
+is bound to implementation merge `377830046cf51440ebbdd2caad0c2919f09b45f9`. Its first concurrent
+pass selected 978 datasets, 30,832,334 rows, and 529,794,759 bytes in 22,307,350,800 ns
+(1,382,160 rows/second); the immediate deterministic repeat took 22,576,478,100 ns
+(1,365,683 rows/second). Both retained-state fingerprints remained unchanged. The artifact
+SHA-256 is `5f5168f0bdeae30d6e67799c72747bba90f80ea24eff8fa19f3ee76d148af77d`; its embedded content
+SHA-256 is `4622399e6b902d84e318c66d5e60c35584238bfdd278a5bfb3d2b33238c71040`.
+
+This component cannot qualify the end-to-end envelope, close Gate 2, or authorize Phase 3.
 
 ## Still required before Gate 2
 

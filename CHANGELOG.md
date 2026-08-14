@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified post-merge full-history catalog performance evidence: four concurrent
+  production selectors reconcile 978 datasets and 30,832,334 rows in 22.307 seconds on the first
+  pass and preserve the retained store without repeating acquisition or registration.
 - ADR-0082 and `grid.phase2-full-history-catalog-performance/v1`: a read-only two-pass production
   selector measurement over the existing four receipt-bound full-history topology requests,
   without repeating download, publication, repair, or catalog registration and without changing

@@ -2743,6 +2743,93 @@ def test_full_history_catalog_result_is_receipt_bound_reconciled_and_sanitized()
         assert forbidden not in rendered
 
 
+def test_full_history_catalog_performance_is_receipt_bound_and_sanitized() -> None:
+    artifact = ROOT / "benchmarks" / "results" / "m2-full-history-catalog-performance-20260814.json"
+    receipt_path = artifact.with_name(f"{artifact.name}.receipt.json")
+    schema = load_json(
+        ROOT / "schemas" / "evidence" / "v1" / "phase2-full-history-catalog-performance.schema.json"
+    )
+    payload = load_json(artifact)
+    receipt = load_json(receipt_path)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert embedded_hash == "4622399e6b902d84e318c66d5e60c35584238bfdd278a5bfb3d2b33238c71040"
+    assert verify_evidence(artifact)
+    artifact_sha256 = "5f5168f0bdeae30d6e67799c72747bba90f80ea24eff8fa19f3ee76d148af77d"
+    assert sha256_file(artifact) == artifact_sha256
+    assert receipt == {
+        "artifact": artifact.name,
+        "artifact_sha256": artifact_sha256,
+        "receipt_schema": "grid.evidence-receipt/v1",
+        "status": "complete",
+    }
+    assert payload["evidence_schema"] == "grid.phase2-full-history-catalog-performance/v1"
+    assert payload["status"] == "measured-full-history-catalog-selection"
+    assert payload["bindings"] == {
+        "catalog_content_sha256": (
+            "91bc7695737585b6bb1f36af159d03d6a4aeb1e8debc506bffcf023e4ce0c20e"
+        ),
+        "catalog_result_artifact_sha256": (
+            "c36612505d1b07f50ae6092efe4a158129ced9f25832e2f9a757924a514366d0"
+        ),
+        "catalog_result_content_sha256": (
+            "5836c774e353f6deaae7e5642c8390a45dea7a66f396944ae45f46a2def858f8"
+        ),
+        "catalog_revision": 5,
+        "implementation_identity": "git:377830046cf51440ebbdd2caad0c2919f09b45f9",
+        "selection_chain_sha256": (
+            "42a45c427d643fdff2b16000ded91386cebdb416734b7a2ba1ae9fde165f2502"
+        ),
+    }
+    assert payload["correctness"] == {
+        "catalog_verified_after_measurement": True,
+        "deterministic_repeat_equal": True,
+        "selected_dataset_count": 978,
+        "selected_object_count": 978,
+        "selected_row_count": 30_832_334,
+        "selected_size_bytes": 529_794_759,
+        "selection_fingerprint_sha256": (
+            "c5ab1862d07be6d20f3727b7250b7f0d424f4ef67c7f3f59c57cd06824b91556"
+        ),
+        "state_fingerprint_equal_before_after": True,
+        "topology_segment_count": 2,
+    }
+    assert payload["measurement"] == {
+        "first_pass_rows_per_second": 1_382_160,
+        "first_pass_wall_elapsed_ns": 22_307_350_800,
+        "first_pass_worker_elapsed_sum_ns": 80_943_551_100,
+        "repeat_pass_rows_per_second": 1_365_683,
+        "repeat_pass_wall_elapsed_ns": 22_576_478_100,
+        "repeat_pass_worker_elapsed_sum_ns": 80_272_504_800,
+    }
+    assert payload["assurances"] == {
+        "catalog_and_dataset_state_preserved": True,
+        "network_request_performed": False,
+        "private_or_live_capability_used": False,
+        "production_catalog_selector_exercised": True,
+        "retained_market_store_accessed_read_only": True,
+        "selection_receipts_verified": True,
+    }
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        '"api_key"',
+        '"api_secret"',
+        '"dataset_id"',
+        '"end_time_ms"',
+        '"instrument_id"',
+        '"market_value"',
+        '"object_key"',
+        '"start_time_ms"',
+        '"symbol"',
+    ):
+        assert forbidden not in rendered
+
+
 class FakeValidateTransport:
     environment = "testnet"
 
