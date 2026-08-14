@@ -411,7 +411,7 @@ def _relative(root: Path, path: Path) -> str:
 def _fixture(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     candle_triplets = []
     candle_requests = [
-        _campaign_request(campaign_id="candle-a", symbols=["AAA"], kinds=["trade", "mark"]),
+        _campaign_request(campaign_id="candle-a", symbols=["AAA", "CCC"], kinds=["trade", "mark"]),
         _campaign_request(campaign_id="candle-b", symbols=["BBB"], kinds=["trade", "mark"]),
     ]
     for index, request in enumerate(candle_requests):
@@ -489,7 +489,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
             "by_kind": by_kind,
             "dataset_count": 4,
             "empty_object_count": 0,
-            "instrument_count": 2,
+            "instrument_count": 3,
             "object_count": 4,
             "row_count": 12,
             "selection_count": 2,
@@ -525,14 +525,16 @@ def _fixture(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     funding_a = _publish_campaign_triplet(
         tmp_path,
         label="funding-a",
-        request=_campaign_request(campaign_id="funding-a", symbols=["AAA"], kinds=["funding"]),
+        request=_campaign_request(
+            campaign_id="funding-a", symbols=["CCC", "AAA"], kinds=["funding"]
+        ),
         rows_by_kind={"funding": 2},
         boundary_manifest=boundary_manifest,
     )
     boundary_request, boundary_evidence = _publish_boundary(
         tmp_path,
         label="funding-a",
-        symbols=["AAA"],
+        symbols=["AAA", "CCC"],
         manifest_hash=boundary_manifest,
         landing_rows=2,
     )
@@ -597,7 +599,7 @@ def test_current_universe_funding_evidence_reconciles_exact_scope(tmp_path: Path
         "candle_source_count": 2,
         "funding_source_count": 2,
         "interval_partition_exact": True,
-        "symbol_count": 2,
+        "symbol_count": 3,
     }
     assert payload["inventory"]["canonical_row_count"] == 4
     assert payload["source_boundary"]["source_count"] == 1
@@ -608,6 +610,7 @@ def test_current_universe_funding_evidence_reconciles_exact_scope(tmp_path: Path
     for forbidden in (
         '"aaa"',
         '"bbb"',
+        '"ccc"',
         "c:\\",
         "/home/",
         "api_key",
