@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-campaign-progress.schema.json",
+  "title": "Read-only history campaign progress observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "campaign_count",
+    "campaigns",
+    "contract",
+    "integrity_scope",
+    "minimum_volume_free_bytes",
+    "observed_at_ms",
+    "projection",
+    "summary"
+  ],
+  "properties": {
+    "assurances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoritative_campaign_verification_performed",
+        "mutation_performed",
+        "network_request_performed",
+        "page_artifact_bytes_read",
+        "receipt_bound_metadata_verified"
+      ],
+      "properties": {
+        "authoritative_campaign_verification_performed": {"const": false},
+        "mutation_performed": {"const": false},
+        "network_request_performed": {"const": false},
+        "page_artifact_bytes_read": {"const": 0},
+        "receipt_bound_metadata_verified": {"const": true}
+      }
+    },
+    "campaign_count": {"type": "integer", "minimum": 1, "maximum": 16},
+    "campaigns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/campaign"}
+    },
+    "contract": {"const": "grid.history-campaign-progress/v1"},
+    "integrity_scope": {"const": "receipt-bound-metadata-no-page-read/v1"},
+    "minimum_volume_free_bytes": {"type": "integer", "minimum": 0},
+    "observed_at_ms": {"type": "integer", "minimum": 0},
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eta_seconds", "rate_is_descriptive_not_acceptance_evidence", "window_seconds"],
+      "properties": {
+        "eta_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "rate_is_descriptive_not_acceptance_evidence": {"const": true},
+        "window_seconds": {"type": "integer", "minimum": 60, "maximum": 86400}
+      }
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableNonNegativeInteger": {"type": ["integer", "null"], "minimum": 0},
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "campaign_plan_sha256",
+        "completed_job_count",
+        "completed_planned_page_count",
+        "completed_row_count",
+        "eta_seconds",
+        "job_count",
+        "last_completed_at_ms",
+        "last_completion_age_seconds",
+        "pending_job_count",
+        "pending_planned_page_count",
+        "planned_page_count",
+        "progress_millionths",
+        "rate_sample_completed_job_count",
+        "rate_sample_elapsed_ms",
+        "rate_sample_planned_page_count",
+        "recent_rate_milli_pages_per_second",
+        "status"
+      ],
+      "properties": {
+        "campaign_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+        "campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "completed_job_count": {"type": "integer", "minimum": 0, "maximum": 2880},
+        "completed_planned_page_count": {"type": "integer", "minimum": 0},
+        "completed_row_count": {"type": "integer", "minimum": 0},
+        "eta_seconds": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "last_completed_at_ms": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "last_completion_age_seconds": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "pending_job_count": {"type": "integer", "minimum": 0, "maximum": 2880},
+        "pending_planned_page_count": {"type": "integer", "minimum": 0},
+        "planned_page_count": {"type": "integer", "minimum": 1},
+        "progress_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "rate_sample_completed_job_count": {"type": "integer", "minimum": 0, "maximum": 2880},
+        "rate_sample_elapsed_ms": {"type": "integer", "minimum": 0},
+        "rate_sample_planned_page_count": {"type": "integer", "minimum": 0},
+        "recent_rate_milli_pages_per_second": {
+          "$ref": "#/$defs/nullableNonNegativeInteger"
+        },
+        "status": {"enum": ["complete", "finalization-pending", "in-progress", "not-started"]}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed_campaign_count",
+        "completed_job_count",
+        "completed_planned_page_count",
+        "job_count",
+        "pending_campaign_count",
+        "pending_job_count",
+        "pending_planned_page_count",
+        "planned_page_count",
+        "progress_millionths"
+      ],
+      "properties": {
+        "completed_campaign_count": {"type": "integer", "minimum": 0, "maximum": 16},
+        "completed_job_count": {"type": "integer", "minimum": 0},
+        "completed_planned_page_count": {"type": "integer", "minimum": 0},
+        "job_count": {"type": "integer", "minimum": 1},
+        "pending_campaign_count": {"type": "integer", "minimum": 0, "maximum": 16},
+        "pending_job_count": {"type": "integer", "minimum": 0},
+        "pending_planned_page_count": {"type": "integer", "minimum": 0},
+        "planned_page_count": {"type": "integer", "minimum": 1},
+        "progress_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      }
+    }
+  }
+}

@@ -1378,6 +1378,19 @@ cross-bound source rejection, quality-contradiction rejection, and the committed
 Runtime evidence remains pending the active current-universe pipeline; the builder itself performs
 no network request, retained-store read, policy acceptance, or gate promotion.
 
+## Read-only multi-campaign progress
+
+ADR-0093 adds one bounded `history-campaign-progress` snapshot for up to sixteen active or
+completed campaign roots. It verifies campaign plans plus completed-child plan/manifest receipt
+metadata and reconciles aggregate completion when present, while reading zero Landing page bytes,
+making zero network requests, and performing zero writes. Output includes exact integer job/page
+counts, page-weighted millionths, minimum free bytes, and a clearly descriptive recent rate/ETA.
+An active `.run-lock` remains pending and insufficient rate evidence produces a null ETA.
+
+The command replaces repeated manual log/plan arithmetic during the current-universe bootstrap.
+It is not authoritative page-level verification, performance-envelope evidence, Gate 2
+acceptance, or Phase 3 authorization.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

@@ -129,6 +129,7 @@ from grid_data.history_campaign_boundary_diagnostic import (
 )
 from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_evidence import build_history_campaign_evidence
+from grid_data.history_campaign_progress import build_history_campaign_progress
 from grid_data.history_campaign_publication import (
     execute_history_campaign_publication,
     load_prepared_history_campaign_publication,
@@ -409,6 +410,25 @@ def parser() -> argparse.ArgumentParser:
         ),
     )
     supervised_campaign.set_defaults(handler=_supervise_history_campaign)
+
+    campaign_progress = commands.add_parser(
+        "history-campaign-progress",
+        help="inspect receipt-bound progress for several campaigns without page reads or network",
+    )
+    campaign_progress.add_argument(
+        "--campaign-root",
+        action="append",
+        type=Path,
+        required=True,
+        help="campaign root below .campaigns; repeat for one combined snapshot",
+    )
+    campaign_progress.add_argument(
+        "--window-seconds",
+        type=int,
+        default=3_600,
+        help="recent completion window used only for descriptive rate and ETA",
+    )
+    campaign_progress.set_defaults(handler=_history_campaign_progress)
 
     campaign_verify = commands.add_parser(
         "verify-history-campaign",
@@ -1347,6 +1367,16 @@ def _supervise_history_campaign(args: argparse.Namespace) -> int:
         policy,
         emit=emit,
     )
+
+
+def _history_campaign_progress(args: argparse.Namespace) -> int:
+    payload = build_history_campaign_progress(
+        args.campaign_root,
+        observed_at_ms=time.time_ns() // 1_000_000,
+        window_seconds=args.window_seconds,
+    )
+    print(json.dumps(payload))
+    return 0
 
 
 def _verify_history_campaign(args: argparse.Namespace) -> int:

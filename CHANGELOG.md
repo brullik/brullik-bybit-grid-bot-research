@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0093 and `grid-data history-campaign-progress`: one bounded read-only invocation verifies
+  receipt-bound metadata and reports page-weighted progress, recent rate, ETA, and free space for
+  up to sixteen campaigns without reading Landing pages, making requests, writing runtime state,
+  or changing Gate 2.
 - ADR-0092 and `grid.gate2-readiness-pack/v4`: the immutable v3 decision can be chained to
   receipt-bound current-universe candle, funding, and catalog-performance observations without
   repeating prior source work, changing seven blockers, opening Gate 2, or authorizing Phase 3.

@@ -89,6 +89,7 @@
 | D-090 | Current-universe funding evidence must exactly equal the candle interval union without repeating retained July acquisition | accepted | Boundary-backed new sources, one disjoint reused bounded source, private identity comparison, sanitized receipt-linked aggregate, unchanged cadence/Gate 2 policy, and ADR-0090 |
 | D-091 | Current-universe catalog performance is measured by replaying the exact completed private bundle read-only | accepted | Two one-snapshot production batch passes, receipt/schema/hash binding, unchanged catalog/dataset fingerprints, sanitized timings, unchanged owner-reviewed Gate 2 envelope, and ADR-0091 |
 | D-092 | Current-universe observations extend the exact immutable v3 Gate 2 decision without repeating its fifteen-source build | accepted | Four receipt/schema/canonical/content-hash sources, exact cross-bindings, unchanged six criteria/seven blockers/closed gate, owner review required, and ADR-0092 |
+| D-093 | Concurrent history-campaign progress is observed from receipt-bound metadata without page reads | accepted | One bounded read-only multi-root snapshot, integer progress/rate/ETA, active-lock undercount, explicit non-authoritative scope, and ADR-0093 |
 
 ## Decisions requiring benchmark or owner evidence
 

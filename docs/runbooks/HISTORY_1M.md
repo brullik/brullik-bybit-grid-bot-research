@@ -869,6 +869,24 @@ minutes, and reuses all valid receipts. Rate-limit/region classifications, inval
 stale locks, capacity or contract failures, and unknown errors stop immediately. Do not wrap the
 supervisor in an unbounded shell loop.
 
+Inspect several active campaigns with one ADR-0093 read-only snapshot instead of repeating their
+ordinary preflights or manually merging progress logs:
+
+```powershell
+.venv\Scripts\grid-data.exe history-campaign-progress `
+  --campaign-root data\history\.campaigns\<campaign-a>--<plan-prefix> `
+  --campaign-root data\history\.campaigns\<campaign-b>--<plan-prefix> `
+  --window-seconds 3600
+```
+
+The command verifies campaign plans and completed-child manifest metadata, but opens no Landing
+page, performs no network request, and writes nothing. Review `progress_millionths`, page/job
+counts, `minimum_volume_free_bytes`, recent milli-pages/second, and ETA. A child currently holding
+`.run-lock` is intentionally counted as pending. A null ETA means the receipt-bound recent sample
+is insufficient. The rate and ETA are descriptive operating estimates only; never substitute
+this command for `verify-history-campaign`, canonical publication/coverage audit, or Gate 2
+performance evidence.
+
 Verify the printed root independently:
 
 ```powershell

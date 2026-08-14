@@ -608,6 +608,13 @@ Gate 2 decision unchanged. Current-universe observations therefore become availa
 for owner review without repeating v3's fifteen-source build, but cannot qualify the envelope,
 accept lifecycle/cadence/absence policy, or authorize Phase 3.
 
+ADR-0093 adds a bounded read-only progress observation for up to sixteen concurrent history
+campaigns. It verifies campaign and completed-child receipt-bound metadata, reconciles aggregate
+completion when present, and reports integer page-weighted progress, recent rate, ETA, and minimum
+free bytes without opening Landing pages, making a request, or writing runtime state. An active
+`.run-lock` remains pending. The transient output is operational guidance only; full campaign
+verification, performance evidence, coverage, Gate 2, and Phase 3 authority are unchanged.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.
