@@ -32,6 +32,9 @@ from grid_market_store.catalog import (
 )
 
 from grid_data import __version__
+from grid_data.announcement_archive_depth import (
+    build_announcement_archive_depth_evidence,
+)
 from grid_data.archive_inventory import (
     build_archive_coverage_matrix,
     build_archive_inventory,
@@ -217,6 +220,22 @@ def parser() -> argparse.ArgumentParser:
     timeline_summary.add_argument("--software-identity", required=True)
     timeline_summary.add_argument("--output", type=Path, required=True)
     timeline_summary.set_defaults(handler=_instrument_timeline_summary)
+
+    announcement_depth = commands.add_parser(
+        "announcement-archive-depth",
+        help="probe only official announcement first/last pages for lifecycle source depth",
+    )
+    announcement_depth.add_argument("--instrument-registry", type=Path, required=True)
+    announcement_depth.add_argument(
+        "--instrument-id",
+        action="append",
+        type=int,
+        required=True,
+        help="selected public registry identity; repeat without publishing identities",
+    )
+    announcement_depth.add_argument("--software-identity", required=True)
+    announcement_depth.add_argument("--output", type=Path, required=True)
+    announcement_depth.set_defaults(handler=_announcement_archive_depth)
 
     archive = commands.add_parser(
         "archive-inventory", help="inventory official public.bybit.com daily trade archives"
@@ -932,6 +951,33 @@ def _instrument_timeline_summary(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _announcement_archive_depth(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    client = BybitPublicClient(UrllibJsonTransport(max_attempts=1))
+    payload = build_announcement_archive_depth_evidence(
+        client,
+        instrument_registry_path=args.instrument_registry,
+        instrument_ids=tuple(args.instrument_id),
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    process = payload["process"]
+    assert isinstance(process, dict)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "response_count": process["response_count"],
+                "status": payload["status"],
+            }
+        )
+    )
+    return 2 if payload["status"] == "blocked-insufficient-official-announcement-history" else 0
 
 
 def _history_1m(args: argparse.Namespace) -> int:

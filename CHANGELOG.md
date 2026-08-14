@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0071 and a bounded official-announcement archive-depth command that replaces full archive
+  downloads with at most 16 first/last-page responses, hashes but does not persist announcement
+  bodies, and fails closed without turning archive depth into lifecycle acceptance.
 - Receipt-verified ADR-0070 full-history boundary evidence: one 203,043 ms offline diagnostic
   reused 978 verified canonical datasets, scanned 30,832,334 instrument/time keys once, and
   reconciled 11,981,670 leading, 76 internal, zero trailing, and zero fully absent minutes to the

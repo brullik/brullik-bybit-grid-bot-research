@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from grid_bybit_public.transport import JsonTransport, RateLimitObservation
@@ -10,6 +11,58 @@ from grid_bybit_public.transport import JsonTransport, RateLimitObservation
 
 class BybitPublicError(RuntimeError):
     pass
+
+
+ANNOUNCEMENT_TYPES = (
+    "new_crypto",
+    "latest_bybit_news",
+    "delistings",
+    "latest_activities",
+    "product_updates",
+    "maintenance_updates",
+    "new_fiat_listings",
+    "other",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnouncementPage:
+    announcement_type: str
+    page: int
+    limit: int
+    total: int
+    items: tuple[Mapping[str, Any], ...]
+
+    def __post_init__(self) -> None:
+        if (
+            self.announcement_type not in ANNOUNCEMENT_TYPES
+            or self.page < 1
+            or not 1 <= self.limit <= 20
+            or isinstance(self.total, bool)
+            or not isinstance(self.total, int)
+            or self.total < 0
+            or len(self.items) > self.limit
+        ):
+            raise BybitPublicError("announcement page envelope is invalid")
+        publish_times: list[int] = []
+        for item in self.items:
+            raw_type = item.get("type")
+            date_timestamp = item.get("dateTimestamp")
+            publish_time = item.get("publishTime")
+            if (
+                not isinstance(raw_type, dict)
+                or raw_type.get("key") != self.announcement_type
+                or isinstance(date_timestamp, bool)
+                or not isinstance(date_timestamp, int)
+                or date_timestamp < 0
+                or isinstance(publish_time, bool)
+                or not isinstance(publish_time, int)
+                or publish_time < 0
+            ):
+                raise BybitPublicError("announcement item lifecycle fields are invalid")
+            publish_times.append(publish_time)
+        if publish_times != sorted(publish_times, reverse=True):
+            raise BybitPublicError("announcement page is not reverse chronological")
 
 
 class BybitPublicClient:
@@ -34,6 +87,11 @@ class BybitPublicClient:
             return None
         observed = take()
         return observed if isinstance(observed, RateLimitObservation) else None
+
+    @property
+    def transport_max_attempts(self) -> int | None:
+        value = getattr(self._transport, "max_attempts", None)
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
 
     def iter_instrument_pages(
         self,
@@ -120,6 +178,50 @@ class BybitPublicClient:
         if len(symbols) != len(set(symbols)):
             raise BybitPublicError("ticker response contains duplicate symbols")
         return tuple(raw_items)
+
+    def announcement_page(
+        self,
+        *,
+        announcement_type: str,
+        page: int,
+        locale: str = "en-US",
+        limit: int = 20,
+    ) -> AnnouncementPage:
+        """Return one validated page from the exact public announcements endpoint."""
+
+        if announcement_type not in ANNOUNCEMENT_TYPES:
+            raise ValueError("announcement type is not in the documented Bybit enum")
+        if locale != "en-US":
+            raise ValueError("announcement depth evidence uses the fixed en-US locale")
+        if page < 1 or not 1 <= limit <= 20:
+            raise ValueError("announcement page must be positive and limit must be in [1, 20]")
+        result = self._request(
+            "/v5/announcements/index",
+            {
+                "locale": locale,
+                "type": announcement_type,
+                "page": page,
+                "limit": limit,
+            },
+        )
+        total = result.get("total")
+        raw_items = result.get("list")
+        if (
+            isinstance(total, bool)
+            or not isinstance(total, int)
+            or total < 0
+            or not isinstance(raw_items, list)
+            or len(raw_items) > limit
+            or any(not isinstance(item, dict) for item in raw_items)
+        ):
+            raise BybitPublicError("announcement result total/list contract is invalid")
+        return AnnouncementPage(
+            announcement_type=announcement_type,
+            page=page,
+            limit=limit,
+            total=total,
+            items=tuple(raw_items),
+        )
 
     def kline_page(
         self,

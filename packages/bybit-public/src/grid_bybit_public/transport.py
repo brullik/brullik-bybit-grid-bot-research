@@ -162,8 +162,10 @@ class UrllibJsonTransport:
         self.base_url = self.base_url.rstrip("/")
 
     def get(self, path: str, params: Mapping[str, str | int]) -> Mapping[str, Any]:
-        if not path.startswith("/v5/market/"):
-            raise TransportError("public transport permits only /v5/market/* endpoints")
+        if not (path.startswith("/v5/market/") or path == "/v5/announcements/index"):
+            raise TransportError(
+                "public transport permits only /v5/market/* and /v5/announcements/index"
+            )
         query = urllib.parse.urlencode(params)
         request = urllib.request.Request(
             f"{self.base_url}{path}?{query}",
