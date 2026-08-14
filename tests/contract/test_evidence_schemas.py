@@ -29,6 +29,61 @@ def test_all_json_schemas_are_valid_draft_2020_12() -> None:
         Draft202012Validator.check_schema(load_json(path))
 
 
+def test_funding_compaction_candidate_audit_matches_schema_receipt_and_redaction() -> None:
+    artifact = (
+        ROOT / "benchmarks" / "results" / "m2-funding-compaction-candidate-audit-20260814.json"
+    )
+    schema = load_json(
+        ROOT
+        / "schemas"
+        / "evidence"
+        / "v1"
+        / "phase2-funding-compaction-candidate-audit.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    content_hash = payload.pop("content_sha256")
+    assert content_hash == canonical_sha256(payload)
+    payload["content_sha256"] = content_hash
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "f7c47dabb42a7749c048ed601aa01f760c81d17b22f9fef5dd6225871df1c3c5"
+    )
+    assert payload["bindings"] == {
+        "audit_artifact_sha256": (
+            "6256d7dad13559454a35c460073da32c24ab5341bf57e1b19a39805c9fb19bd9"
+        ),
+        "auditor_software_identity": "git:b57e6b6c328ee7fa5db3812a2fe2b1b7753e07f6",
+        "publisher_software_identity": "git:b57e6b6c328ee7fa5db3812a2fe2b1b7753e07f6",
+        "store_state_sha256": ("09b699e184f1bb0f052d7214c4321dceebd6f7aef748b99fb1fdc55b6078a79b"),
+    }
+    assert payload["inventory"] == {
+        "dataset_count": 37,
+        "multi_parent_partition_count": 1,
+        "pair_count": 3,
+        "partition_count": 35,
+    }
+    assert payload["classification_counts"] == {
+        "duplicate-or-conflicting-keys": 3,
+        "eligible": 0,
+        "schema-mismatch": 0,
+        "unresolved-settlement-interval": 0,
+    }
+    assert payload["status"] == "verified-no-eligible-funding-compaction-candidates"
+    rendered = json.dumps(payload).lower()
+    for forbidden in (
+        '"dataset_id"',
+        '"funding_rate"',
+        '"funding_time_ms"',
+        '"instrument_id"',
+        '"parents"',
+        '"partition"',
+        "c:\\",
+    ):
+        assert forbidden not in rendered
+
+
 def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-public-sample.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-public-sample.schema.json")
