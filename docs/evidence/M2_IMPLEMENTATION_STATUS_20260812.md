@@ -1264,8 +1264,20 @@ and sanitized response-limit observations remain thread-local.
 
 This changes no target RPS, application retry ceiling, immutable page ownership, response
 validation, receipt, resume, endpoint, credential, or Gate 2 contract. Unit/fault tests are
-implementation evidence only; a bounded post-merge real public throughput result remains required
-before a measured speedup is claimed.
+implementation evidence only.
+
+The receipt-verified 2026-08-14
+[pooled performance artifact](../../benchmarks/results/m2-pooled-public-rest-performance-20260814.json)
+is bound to implementation merge `6fc48f1af3244c4c73e4455f5f3ddbc9c1af889b`. Its fixed 24-worker,
+10-RPS run completed 100/100 public pages and 100,000 rows without errors, retained no rows or
+market values, and produced the same aggregate response hash as the earlier baseline. Observed
+throughput rose from 7.764397 to 9.709345 requests/second (1.250496x), while wall time fell from
+12,879,301,000 to 10,299,356,000 ns (20.031716%). The artifact SHA-256 is
+`7b35117f0e09eb1c65b860a3cc915913cbca375063cb4eb5746b85f4120d58d1`; its embedded content
+SHA-256 is `4e96f03cbe6831952c3a0d99c26286d1926fe3b894164deff4f00bc244854e87`.
+
+This single-host component result does not measure a complete acquisition/publication campaign,
+close Gate 2, authorize Phase 3, or enable live execution.
 
 ## Still required before Gate 2
 

@@ -223,6 +223,14 @@ and 529,794,759 bytes through four concurrent production selectors. The first pa
 catalog and dataset metadata fingerprint. Cache state was uncontrolled-first followed by an
 immediate repeat, so the result is descriptive component evidence rather than a Gate 2 threshold.
 
+ADR-0083 removes repeated TLS setup from high-volume public acquisition without raising the
+reviewed 10-RPS campaign target. Its receipt-verified 2026-08-14 post-merge run bound to
+`6fc48f1af3244c4c73e4455f5f3ddbc9c1af889b` completed the same 100-page, 100,000-row workload as
+the earlier confirmation with an identical aggregate response hash and zero errors. The pooled
+transport measured 9.709345 requests/second in 10,299,356,000 ns versus 7.764397 requests/second
+in 12,879,301,000 ns: a 1.250496 request-rate ratio and 20.031716% lower wall time. This is one
+host/network observation and remains component evidence rather than a Gate 2 threshold.
+
 The 2026-08-14 post-merge run bound to `9b68150b740d9bd8988ed791c98dbd9bf4a90a72`
 selected 368,640 rows across 16 same-partition fragments and 32 instruments. The first pass took
 816,325,700 ns (451,584 rows/second); the immediate repeat took 804,938,400 ns (457,972

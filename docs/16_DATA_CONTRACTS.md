@@ -365,6 +365,14 @@ network or write operation. Only aggregate scope, timing, throughput, hashes, no
 facts, and limitations are public; it defines no Gate 2 threshold or Phase 3 authority. See
 ADR-0082.
 
+`grid.phase2-pooled-public-rest-performance/v1` binds the merged ADR-0083 transport identity to
+one fixed 24-worker, 10-RPS, 100-page public trade/mark workload and the receipt-verified earlier
+confirmation. It requires exact request/page/row success, zero errors, identical deterministic
+selection and aggregate response hash, fresh non-identifying host capacity facts, and unchanged
+retry/rate ceilings. Symbols, instrument IDs, request bounds, commands, paths, response rows,
+market values, account data, and credentials are excluded. The result defines no Gate 2 threshold
+or Phase 3/live authority.
+
 `grid.phase2-canonical-integrity-fault-injection/v1` binds a merged implementation identity to
 six offline candle/funding verifier cases: orphan file, missing manifest-bound Parquet, and missing
 completion receipt for each dataset type. Every case must be detected and retain an identical
