@@ -224,6 +224,67 @@ def test_gate2_readiness_pack_matches_schema_receipt_and_remains_blocked() -> No
         assert forbidden not in rendered
 
 
+def test_canonical_integrity_fault_injection_matches_schema_receipt_and_redaction() -> None:
+    artifact = ROOT / "benchmarks/results/m2-canonical-integrity-fault-injection-20260814.json"
+    schema = load_json(
+        ROOT / "schemas/evidence/v1/phase2-canonical-integrity-fault-injection.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "9dff752b91209daae385473120a06c6235f603ececcc0fe24f013d469752c3d2"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "93af2d7b5cf73e7f672a9d846a19bbc858e770cde2ed54780150a1ce2222e8a1"
+    )
+    assert payload["bindings"] == {
+        "implementation_identity": "git:d38ed8e618de9580623aba3de8b26f1ccd5d9c37"
+    }
+    assert payload["measurement"] == {
+        "case_count": 6,
+        "detected_count": 6,
+        "filesystem_state_preserved_count": 6,
+    }
+    assert payload["assurances"] == {
+        "filesystem_state_preserved_during_verification": True,
+        "network_request_performed": False,
+        "private_or_live_capability_used": False,
+        "production_verifier_functions_exercised": True,
+        "retained_market_store_accessed": False,
+        "temporary_fixture_removed": True,
+    }
+    assert {case["case_id"] for case in payload["cases"]} == {
+        "canonical-candle-missing-completion-receipt",
+        "canonical-candle-missing-parquet",
+        "canonical-candle-orphan-file",
+        "canonical-funding-missing-completion-receipt",
+        "canonical-funding-missing-parquet",
+        "canonical-funding-orphan-file",
+    }
+    assert all(case["detected"] is True for case in payload["cases"])
+    assert all(case["filesystem_state_preserved"] is True for case in payload["cases"])
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        '"authorization":',
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"runtime_path"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_public_sample_evidence_matches_schema_and_hashes() -> None:
     artifact = ROOT / "benchmarks" / "results" / "m1-bybit-public-sample.json"
     schema = load_json(ROOT / "schemas" / "evidence" / "v1" / "bybit-public-sample.schema.json")

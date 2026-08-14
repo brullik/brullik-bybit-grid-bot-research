@@ -957,6 +957,16 @@ artifact remains required; implementation alone is not data-quality acceptance o
 The implementation, ADR, schema, and mutation-detection regression proof are tracked in
 [PR #83](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/83).
 
+The post-merge runner was then executed against merge commit
+`d38ed8e618de9580623aba3de8b26f1ccd5d9c37`. The receipt-verified public result records six of
+six faults detected and six of six complete injected filesystem states preserved during
+verification. The measured
+[artifact](../../benchmarks/results/m2-canonical-integrity-fault-injection-20260814.json) and
+[receipt](../../benchmarks/results/m2-canonical-integrity-fault-injection-20260814.json.receipt.json)
+contain no runtime path, dataset/instrument identity, or market value and record no retained-store,
+network, private, or live access. This proves the named verifier behaviors only; it does not
+authorize cleanup, repair, Gate 2 acceptance, or Phase 3.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

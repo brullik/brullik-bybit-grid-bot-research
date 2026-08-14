@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Post-merge canonical integrity evidence bound to merge `d38ed8e`: all six candle/funding orphan,
+  missing-Parquet, and missing-receipt cases were detected and preserved byte-for-byte at the tree
+  level without retained-store or network access.
 - ADR-0064 offline canonical integrity fault injection: six candle/funding orphan, missing-Parquet,
   and missing-receipt cases against production verifiers, with complete injected tree preservation
   and no retained-store, network, private, or live access.
