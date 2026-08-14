@@ -6,6 +6,16 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified full-history Landing evidence: five current linear symbols, 103 months, 978
+  jobs, 43,328 pages, 30,832,408 admitted rows, one quarantined source row, 96 retries, and
+  explicit incomplete response-header coverage without private identities or market values.
+- Receipt-verified full-history canonical publication evidence: 978 immutable datasets/files,
+  30,832,334 admitted rows, 74 exact representation exclusions, 529,794,759 Parquet bytes, and a
+  complete source/canonical integrity chain bound to merge `85440ea`.
+- Receipt-verified full-history coverage evidence: 696 datasets passed and 282 remain blocked by
+  11,981,671 REST no-data minutes, 74 canonical representation overflows, and one quarantined
+  source row; no unknown, duplicate, conflicting, unrequested, lifecycle, or timestamp reasons
+  were observed, and Gate 2 remains closed.
 - ADR-0069 prepared canonical-campaign plans: one explicit full semantic planning pass persists
   only a receipt-bound aggregate checkpoint, while fast execute/resume verifies its immutable
   bindings and retains a fresh full semantic preflight immediately before every child mutation.
