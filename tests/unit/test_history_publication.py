@@ -14,6 +14,7 @@ from grid_data.history_acquisition import (
     HistoryJobSpec,
     HistorySeries,
     execute_history_job,
+    load_completed_history_batch,
     preflight_history_job,
 )
 from grid_data.history_coverage_audit import build_completed_history_coverage_audit
@@ -110,6 +111,21 @@ class AllQuarantinedPageClient:
         )
 
 
+class OverScaleVolumePageClient:
+    def kline_page(self, **kwargs: object) -> tuple[tuple[str, ...], ...]:
+        return (
+            (
+                str(kwargs["start_ms"]),
+                "100.00000001",
+                "102",
+                "99.5",
+                "101",
+                "10.50001",
+                "1050.000000000001",
+            ),
+        )
+
+
 def snapshot(root: Path, *, observed_at_ms: int = 1_000) -> HostSnapshot:
     return HostSnapshot(
         observed_at_ms=observed_at_ms,
@@ -187,6 +203,7 @@ def completed_inputs(
         | type[SparsePageClient]
         | type[QuarantinedPageClient]
         | type[AllQuarantinedPageClient]
+        | type[OverScaleVolumePageClient]
     ) = OnePageClient,
 ) -> tuple[Path, Path, Path]:
     registry_payload = build_instrument_registry(
@@ -647,6 +664,80 @@ def test_all_quarantined_source_partition_publishes_empty_and_stays_blocked(
     }
     assert audit.payload["quality"]["observed_row_count"] == 0
     assert audit.payload["quality"]["missing_minute_count"] == 1
+
+
+def test_over_scale_volume_is_bound_excluded_and_not_repairable(tmp_path: Path) -> None:
+    job_root, registry_path, capacity_path = completed_inputs(
+        tmp_path,
+        client_factory=OverScaleVolumePageClient,
+    )
+    with pytest.raises(HistoryAcquisitionError, match="do not form one canonical batch"):
+        load_completed_history_batch(job_root)
+    store_root = tmp_path / "market-store"
+    resolved = preflight_completed_history_publication(
+        store_root,
+        job_root,
+        registry_path,
+        capacity_path,
+        snapshot(tmp_path, observed_at_ms=2_000),
+        now_ms=2_001,
+        software_identity=SOFTWARE_IDENTITY,
+    )
+
+    admission = resolved.canonical_admission
+    assert admission.source_row_count == 1
+    assert admission.admitted_row_count == 0
+    assert admission.excluded_row_count == 1
+    assert admission.reason_counts == {"volume_exceeds_canonical_scale": 1}
+    assert len(admission.excluded_rows_sha256) == 64
+    assert resolved.plan.batch.table.num_rows == 0
+    assert resolved.plan.spec.source_evidence_sha256[-1] == admission.excluded_rows_sha256
+
+    published = publish_preflighted_history(
+        resolved,
+        lambda: snapshot(tmp_path, observed_at_ms=2_002),
+        lambda: 2_003,
+    )
+    assert published.manifest.row_count == 0
+
+    audit = build_completed_history_coverage_audit(
+        job_root,
+        registry_path,
+        capacity_path,
+        store_root,
+        publisher_software_identity=SOFTWARE_IDENTITY,
+        audit_software_identity=AUDIT_SOFTWARE_IDENTITY,
+        generated_at_utc="2026-08-14T06:00:00Z",
+    )
+    assert audit.passed is False
+    assert audit.payload["reason_policy"] == {
+        "accepted_reason_codes": [],
+        "observed_reason_counts": {"canonical_representation_overflow": 1},
+        "unaccepted_reason_codes": ["canonical_representation_overflow"],
+        "unknown_reason_count": 0,
+    }
+    schema = json.loads(
+        (
+            Path(__file__).parents[2]
+            / "schemas"
+            / "evidence"
+            / "v1"
+            / "canonical-1m-coverage-audit.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(audit.payload)
+
+    audit_path, _ = publish_evidence(tmp_path / "representation-audit.json", audit.payload)
+    with pytest.raises(HistoryAcquisitionError, match="not repair-plan compatible"):
+        build_gap_repair_plan(
+            audit_path,
+            job_root,
+            registry_path,
+            capacity_path,
+            store_root,
+            generated_at_utc="2026-08-14T06:01:00Z",
+            planner_software_identity=PLANNER_SOFTWARE_IDENTITY,
+        )
 
 
 def test_canonical_coverage_audit_does_not_double_count_quarantined_missing_minute(

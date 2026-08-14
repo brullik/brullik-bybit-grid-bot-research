@@ -109,6 +109,11 @@ registry, and capacity receipt; checks their hash bindings and lifecycle bounds;
 host snapshot; and prints the deterministic dataset ID, row count, memory bound, and required
 free space. Preserve the exact software identity for the execution and all idempotent reruns.
 
+If preflight reports canonical representation exclusions, review their aggregate count and hash.
+Do not edit Landing, round volume, or widen Decimal128(38, 4) locally. The exact source rows remain
+private and immutable; the resulting canonical child may have fewer rows or be schema-only, and
+its later coverage audit must remain blocked under ADR-0068.
+
 ## 7. Publish and verify the canonical dataset
 
 After reviewing the preflight, repeat the exact command with `--execute`, then verify the printed
@@ -177,6 +182,11 @@ A receipt-bound row excluded by the narrow ADR-0050 OHLC quarantine is reported 
 ordinary same-endpoint gap repair. Preserve the local Landing job and escalate to a separate
 source-reconciliation decision; do not disclose the exact row, key, symbol, or timestamp in
 GitHub evidence.
+
+A receipt-bound trade candle whose exact volume exceeds canonical scale 4 is reported as
+`canonical_representation_overflow`, not `rest_returned_no_data`. It is also ineligible for
+ordinary repair: preserve its hash-bound Landing lineage and require a reviewed physical-contract
+or source-policy decision. Never publish the exact row, key, symbol, or timestamp.
 
 The audit evidence accepts the same bounded 1 through 700 series as the acquisition request. This
 does not enlarge the pilot-evidence contract: `history-pilot-evidence` remains limited to 16 series

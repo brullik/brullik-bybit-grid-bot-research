@@ -14,7 +14,6 @@ from typing import Final, Literal, cast
 
 from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha256_file
 from grid_market_store import (
-    CANONICAL_LAYOUT_ID,
     FUNDING_CANONICAL_LAYOUT_ID,
     MAX_MEMORY_PERCENT,
     FundingPublicationPlan,
@@ -38,6 +37,8 @@ from grid_data.funding_publication import (
     publish_preflighted_funding,
 )
 from grid_data.history_acquisition import (
+    CANONICAL_ADMISSION_POLICY,
+    CANONICAL_ADMISSION_REASONS,
     CompletedHistoryJob,
     HistoryAcquisitionError,
     verify_completed_history_job_integrity,
@@ -49,8 +50,8 @@ from grid_data.history_campaign import (
     verify_completed_history_campaign,
 )
 from grid_data.history_publication import (
-    HISTORY_PUBLICATION_CONTRACT,
     ResolvedHistoryPublication,
+    history_publication_build_config_sha256,
     preflight_completed_history_publication,
     publish_preflighted_history,
 )
@@ -103,6 +104,10 @@ _PLAN_JOB_KEYS: Final = {
     "source_job_plan_sha256",
     "source_job_root",
 }
+_PLAN_JOB_ADMISSION_KEYS: Final = _PLAN_JOB_KEYS | {
+    "canonical_admission",
+    "source_row_count",
+}
 _MANIFEST_DATASET_KEYS: Final = {
     "dataset_id",
     "dataset_root",
@@ -115,6 +120,18 @@ _MANIFEST_DATASET_KEYS: Final = {
     "row_count",
     "sequence",
     "source_job_manifest_sha256",
+}
+_MANIFEST_DATASET_ADMISSION_KEYS: Final = _MANIFEST_DATASET_KEYS | {
+    "canonical_admission",
+    "source_row_count",
+}
+_CANONICAL_ADMISSION_KEYS: Final = {
+    "admitted_row_count",
+    "excluded_row_count",
+    "excluded_rows_sha256",
+    "policy",
+    "reason_counts",
+    "source_row_count",
 }
 
 
@@ -148,12 +165,14 @@ class PreparedCampaignPublication:
     input_table_sha256: str
     publication_request_sha256: str
     row_count: int
+    source_row_count: int
+    canonical_admission: dict[str, object] | None
     required_free_bytes: int
     planned_peak_memory_bytes: int
     existing_commit: bool
 
     def plan_payload(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "dataset_id": self.dataset_id,
             "dataset_root": self.dataset_root,
             "dataset_type": self.dataset_type,
@@ -169,6 +188,10 @@ class PreparedCampaignPublication:
             "source_job_plan_sha256": self.source_job_plan_sha256,
             "source_job_root": self.source_job_root,
         }
+        if self.canonical_admission is not None:
+            payload["canonical_admission"] = self.canonical_admission
+            payload["source_row_count"] = self.source_row_count
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +295,46 @@ def _integer(name: str, value: object, *, minimum: int = 0) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise HistoryCampaignPublicationError(f"{name} must be an integer >= {minimum}")
     return value
+
+
+def _canonical_admission(
+    value: object,
+    *,
+    source_row_count: int,
+) -> dict[str, object] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != _CANONICAL_ADMISSION_KEYS:
+        raise HistoryCampaignPublicationError("canonical admission fields differ from v1")
+    admitted = _integer("canonical admitted row count", value.get("admitted_row_count"))
+    excluded = _integer(
+        "canonical excluded row count",
+        value.get("excluded_row_count"),
+        minimum=1,
+    )
+    if (
+        value.get("policy") != CANONICAL_ADMISSION_POLICY
+        or value.get("source_row_count") != source_row_count
+        or admitted + excluded != source_row_count
+    ):
+        raise HistoryCampaignPublicationError("canonical admission counts do not verify")
+    excluded_sha = value.get("excluded_rows_sha256")
+    if not isinstance(excluded_sha, str) or re.fullmatch(r"[0-9a-f]{64}", excluded_sha) is None:
+        raise HistoryCampaignPublicationError("canonical admission exclusion hash is invalid")
+    raw_reasons = value.get("reason_counts")
+    if (
+        not isinstance(raw_reasons, dict)
+        or set(raw_reasons) != set(CANONICAL_ADMISSION_REASONS)
+        or any(
+            isinstance(raw_reasons[reason], bool)
+            or not isinstance(raw_reasons[reason], int)
+            or cast(int, raw_reasons[reason]) < 0
+            for reason in CANONICAL_ADMISSION_REASONS
+        )
+        or sum(cast(int, raw_reasons[reason]) for reason in CANONICAL_ADMISSION_REASONS) != excluded
+    ):
+        raise HistoryCampaignPublicationError("canonical admission reasons do not verify")
+    return cast(dict[str, object], value)
 
 
 def _source_job_path(
@@ -416,7 +479,20 @@ def _prepare_child(
         raise HistoryCampaignPublicationError("canonical dataset type differs from source kind")
     if child_plan.spec.dataset_id != _dataset_id(source.kind, source.job_manifest_sha256):
         raise HistoryCampaignPublicationError("canonical dataset id is not source-derived")
-    if child_plan.batch.table.num_rows != source.row_count:
+    canonical_admission: dict[str, object] | None = None
+    if isinstance(resolved, ResolvedHistoryPublication):
+        admission = resolved.canonical_admission
+        if admission.source_row_count != source.row_count:
+            raise HistoryCampaignPublicationError(
+                "canonical admission source count differs from source job"
+            )
+        if admission.excluded_row_count:
+            canonical_admission = admission.public_payload()
+        if child_plan.batch.table.num_rows != admission.admitted_row_count:
+            raise HistoryCampaignPublicationError(
+                "canonical input row count differs from admission result"
+            )
+    elif child_plan.batch.table.num_rows != source.row_count:
         raise HistoryCampaignPublicationError("canonical input row count differs from source job")
     expected_root = PurePosixPath("datasets") / child_plan.spec.dataset_id
     try:
@@ -440,6 +516,8 @@ def _prepare_child(
         input_table_sha256=child_plan.input_table_sha256,
         publication_request_sha256=child_plan.request_sha256,
         row_count=child_plan.batch.table.num_rows,
+        source_row_count=source.row_count,
+        canonical_admission=canonical_admission,
         required_free_bytes=child_plan.required_free_bytes,
         planned_peak_memory_bytes=child_plan.planned_peak_memory_bytes,
         existing_commit=child_plan.existing_commit,
@@ -653,7 +731,8 @@ def preflight_history_campaign_publication(
             or child.source_job_root != source.job_root_relative
             or child.source_job_plan_sha256 != source.job_plan_sha256
             or child.source_job_manifest_sha256 != source.job_manifest_sha256
-            or child.row_count != source.row_count
+            or child.source_row_count != source.row_count
+            or child.row_count > source.row_count
         ):
             raise HistoryCampaignPublicationError(
                 "publication preflight child differs from source campaign inventory"
@@ -744,7 +823,7 @@ def _published_entry(
         or published.manifest.row_count != child.row_count
     ):
         raise HistoryCampaignPublicationError("published child differs from campaign plan")
-    return {
+    payload: dict[str, object] = {
         "dataset_id": child.dataset_id,
         "dataset_root": child.dataset_root,
         "dataset_type": child.dataset_type,
@@ -757,6 +836,10 @@ def _published_entry(
         "sequence": child.sequence,
         "source_job_manifest_sha256": child.source_job_manifest_sha256,
     }
+    if child.canonical_admission is not None:
+        payload["canonical_admission"] = child.canonical_admission
+        payload["source_row_count"] = child.source_row_count
+    return payload
 
 
 def _assert_source_campaign_envelope_unchanged(
@@ -886,6 +969,7 @@ def _expected_build_config(
     dataset_id: str,
     source_manifest_sha256: str,
     software_identity: str,
+    canonical_admission: dict[str, object] | None = None,
 ) -> str:
     if kind == "funding":
         return canonical_sha256(
@@ -898,23 +982,27 @@ def _expected_build_config(
                 "software_identity": software_identity,
             }
         )
-    return canonical_sha256(
-        {
-            "canonical_layout": CANONICAL_LAYOUT_ID,
-            "contract": HISTORY_PUBLICATION_CONTRACT,
-            "dataset_id": dataset_id,
-            "history_manifest_sha256": source_manifest_sha256,
-            "semantic_version": "1.0.0",
-            "software_identity": software_identity,
-        }
+    return history_publication_build_config_sha256(
+        dataset_id=dataset_id,
+        history_manifest_sha256=source_manifest_sha256,
+        software_identity=software_identity,
+        canonical_admission=canonical_admission,
     )
 
 
 def _expected_source_evidence(
     source: SourceCampaignJob,
     instrument_evidence_sha256: str,
+    canonical_admission: dict[str, object] | None = None,
 ) -> tuple[str, ...]:
     values = [source.job_manifest_sha256, instrument_evidence_sha256]
+    if canonical_admission is not None:
+        values.append(
+            _text(
+                "canonical admission exclusion hash",
+                canonical_admission.get("excluded_rows_sha256"),
+            )
+        )
     if source.kind == "funding":
         source_manifest = _load_canonical_object(source.job_root / "manifest.json")
         values.append(
@@ -1037,7 +1125,18 @@ def verify_completed_history_campaign_publication(
     ):
         if not isinstance(raw_job, dict) or not isinstance(raw_dataset, dict):
             raise HistoryCampaignPublicationError("publication child must be an object")
-        if set(raw_job) != _PLAN_JOB_KEYS or set(raw_dataset) != _MANIFEST_DATASET_KEYS:
+        job_fields = set(raw_job)
+        dataset_fields = set(raw_dataset)
+        has_admission = job_fields == _PLAN_JOB_ADMISSION_KEYS
+        if (
+            job_fields not in (_PLAN_JOB_KEYS, _PLAN_JOB_ADMISSION_KEYS)
+            or dataset_fields
+            not in (
+                _MANIFEST_DATASET_KEYS,
+                _MANIFEST_DATASET_ADMISSION_KEYS,
+            )
+            or has_admission != (dataset_fields == _MANIFEST_DATASET_ADMISSION_KEYS)
+        ):
             raise HistoryCampaignPublicationError("publication child fields differ from v1")
         if raw_job.get("sequence") != sequence or raw_dataset.get("sequence") != sequence:
             raise HistoryCampaignPublicationError("publication sequences are not contiguous")
@@ -1058,10 +1157,27 @@ def verify_completed_history_campaign_publication(
         seen_ids.add(dataset_id)
         dataset_type = _dataset_type(source.kind)
         expected_dataset_root = (PurePosixPath("datasets") / dataset_id).as_posix()
+        canonical_admission = _canonical_admission(
+            raw_job.get("canonical_admission"),
+            source_row_count=source.row_count,
+        )
+        if canonical_admission is not None and source.kind == "funding":
+            raise HistoryCampaignPublicationError(
+                "funding publication cannot carry candle canonical admission"
+            )
+        expected_row_count = (
+            cast(int, canonical_admission["admitted_row_count"])
+            if canonical_admission is not None
+            else source.row_count
+        )
         if (
             raw_job.get("dataset_type") != dataset_type
             or raw_job.get("dataset_root") != expected_dataset_root
-            or raw_job.get("row_count") != source.row_count
+            or raw_job.get("row_count") != expected_row_count
+            or (
+                canonical_admission is not None
+                and raw_job.get("source_row_count") != source.row_count
+            )
         ):
             raise HistoryCampaignPublicationError(
                 "publication dataset identity differs from source"
@@ -1074,6 +1190,11 @@ def verify_completed_history_campaign_publication(
             "publication_request_sha256",
             "row_count",
             "source_job_manifest_sha256",
+            *(
+                ("canonical_admission", "source_row_count")
+                if canonical_admission is not None
+                else ()
+            ),
         ):
             if raw_dataset.get(field) != raw_job.get(field):
                 raise HistoryCampaignPublicationError(
@@ -1093,16 +1214,18 @@ def verify_completed_history_campaign_publication(
         expected_source_evidence = _expected_source_evidence(
             source,
             cast(str, plan["instrument_evidence_sha256"]),
+            canonical_admission,
         )
         expected_build_config = _expected_build_config(
             source.kind,
             dataset_id=dataset_id,
             source_manifest_sha256=source.job_manifest_sha256,
             software_identity=software_identity,
+            canonical_admission=canonical_admission,
         )
         if (
             published.manifest.dataset_type.value != dataset_type
-            or published.manifest.row_count != source.row_count
+            or published.manifest.row_count != expected_row_count
             or published.manifest.parent_dataset_ids
             or published.manifest.source_evidence_sha256 != expected_source_evidence
             or published.manifest.build_config_sha256 != expected_build_config
@@ -1127,7 +1250,7 @@ def verify_completed_history_campaign_publication(
             raise HistoryCampaignPublicationError("canonical file totals differ from manifest")
         _integer("required free bytes", raw_job.get("required_free_bytes"), minimum=1)
         _integer("planned peak memory bytes", raw_job.get("planned_peak_memory_bytes"), minimum=1)
-        total_rows += source.row_count
+        total_rows += expected_row_count
         total_files += file_count
         total_bytes += parquet_bytes
     totals = {

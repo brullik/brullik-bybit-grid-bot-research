@@ -12,6 +12,10 @@ from typing import Final, cast
 
 from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha256_file
 
+from grid_data.history_acquisition import (
+    CANONICAL_ADMISSION_POLICY,
+    CANONICAL_ADMISSION_REASONS,
+)
 from grid_data.history_campaign_publication import (
     CAMPAIGN_PUBLICATION_MANIFEST_CONTRACT,
     CAMPAIGN_PUBLICATION_PLAN_CONTRACT,
@@ -127,6 +131,10 @@ def build_history_campaign_publication_evidence(
     )
     required_free_bytes: list[int] = []
     planned_peak_memory_bytes: list[int] = []
+    candle_source_rows = 0
+    candle_admitted_rows = 0
+    canonical_excluded_rows = 0
+    canonical_reason_counts = {reason: 0 for reason in CANONICAL_ADMISSION_REASONS}
     for raw_job, raw_dataset in zip(
         cast(list[dict[str, object]], raw_jobs),
         cast(list[dict[str, object]], raw_datasets),
@@ -139,7 +147,41 @@ def build_history_campaign_publication_evidence(
         by_kind[kind]["dataset_count"] += 1
         by_kind[kind]["file_count"] += _integer(raw_dataset, "file_count", minimum=1)
         by_kind[kind]["parquet_bytes"] += _integer(raw_dataset, "parquet_bytes", minimum=1)
-        by_kind[kind]["row_count"] += _integer(raw_dataset, "row_count", minimum=1)
+        dataset_rows = _integer(raw_dataset, "row_count")
+        by_kind[kind]["row_count"] += dataset_rows
+        if kind != "funding":
+            candle_admitted_rows += dataset_rows
+            raw_admission = raw_job.get("canonical_admission")
+            if raw_admission is None:
+                candle_source_rows += dataset_rows
+            else:
+                if (
+                    not isinstance(raw_admission, dict)
+                    or raw_dataset.get("canonical_admission") != raw_admission
+                    or raw_dataset.get("source_row_count") != raw_job.get("source_row_count")
+                    or raw_admission.get("policy") != CANONICAL_ADMISSION_POLICY
+                ):
+                    raise HistoryCampaignPublicationError(
+                        "publication evidence canonical admission differs"
+                    )
+                source_rows = _integer(raw_admission, "source_row_count", minimum=1)
+                admitted_rows = _integer(raw_admission, "admitted_row_count")
+                excluded_rows = _integer(raw_admission, "excluded_row_count", minimum=1)
+                raw_reasons = raw_admission.get("reason_counts")
+                if (
+                    admitted_rows != dataset_rows
+                    or source_rows != admitted_rows + excluded_rows
+                    or raw_job.get("source_row_count") != source_rows
+                    or not isinstance(raw_reasons, dict)
+                    or set(raw_reasons) != set(CANONICAL_ADMISSION_REASONS)
+                ):
+                    raise HistoryCampaignPublicationError(
+                        "publication evidence canonical admission counts differ"
+                    )
+                candle_source_rows += source_rows
+                canonical_excluded_rows += excluded_rows
+                for reason in CANONICAL_ADMISSION_REASONS:
+                    canonical_reason_counts[reason] += _integer(raw_reasons, reason)
         required_free_bytes.append(_integer(raw_job, "required_free_bytes", minimum=1))
         planned_peak_memory_bytes.append(_integer(raw_job, "planned_peak_memory_bytes", minimum=1))
     if not required_free_bytes:
@@ -161,6 +203,26 @@ def build_history_campaign_publication_evidence(
     if set(cast(list[str], raw_kinds)) != set(by_kind):
         raise HistoryCampaignPublicationError("publication and source kind inventories differ")
 
+    canonical_payload: dict[str, object] = {
+        "by_kind": [{"kind": kind, **by_kind[kind]} for kind in _KIND_ORDER if kind in by_kind],
+        "dataset_count": completed.dataset_count,
+        "file_count": completed.file_count,
+        "parquet_bytes": completed.parquet_bytes,
+        "row_count": completed.row_count,
+    }
+    if canonical_excluded_rows:
+        if sum(canonical_reason_counts.values()) != canonical_excluded_rows:
+            raise HistoryCampaignPublicationError(
+                "publication evidence canonical admission reasons differ"
+            )
+        canonical_payload["admission"] = {
+            "admitted_row_count": candle_admitted_rows,
+            "excluded_row_count": canonical_excluded_rows,
+            "policy": CANONICAL_ADMISSION_POLICY,
+            "reason_counts": canonical_reason_counts,
+            "source_row_count": candle_source_rows,
+        }
+
     payload: dict[str, object] = {
         "bindings": {
             "capacity_evidence_sha256": _sha(publication_plan, "capacity_evidence_sha256"),
@@ -173,13 +235,7 @@ def build_history_campaign_publication_evidence(
             "source_campaign_plan_sha256": source_plan_sha,
             "source_campaign_request_sha256": _sha(source_plan, "campaign_request_sha256"),
         },
-        "canonical": {
-            "by_kind": [{"kind": kind, **by_kind[kind]} for kind in _KIND_ORDER if kind in by_kind],
-            "dataset_count": completed.dataset_count,
-            "file_count": completed.file_count,
-            "parquet_bytes": completed.parquet_bytes,
-            "row_count": completed.row_count,
-        },
+        "canonical": canonical_payload,
         "evidence_schema": CAMPAIGN_PUBLICATION_EVIDENCE_CONTRACT,
         "generated_at_utc": generated_at_utc,
         "limitations": [
@@ -191,6 +247,14 @@ def build_history_campaign_publication_evidence(
             "for a strategy release.",
             "Hashes cannot reconstruct market rows; the verified runtime artifacts require a "
             "separate retention and backup policy.",
+            *(
+                [
+                    "Canonical representation exclusions remain unaccepted and keep coverage "
+                    "blocked pending a reviewed physical-contract or source-policy decision."
+                ]
+                if canonical_excluded_rows
+                else []
+            ),
             "This evidence does not close Gate 2 or authorize private endpoints, orders, bots, "
             "transfers, or live execution.",
         ],

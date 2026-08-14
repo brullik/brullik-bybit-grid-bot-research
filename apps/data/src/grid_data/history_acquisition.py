@@ -21,6 +21,7 @@ from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha
 from grid_contracts.market import MINUTE_MS, Candle1m, DatasetType, MarkCandle1m
 from grid_market_store import (
     MAX_MEMORY_PERCENT,
+    VOLUME_SCALE,
     CanonicalCandleBatch,
     CapacityBudget,
     HostSnapshot,
@@ -59,6 +60,8 @@ QUARANTINE_REASONS: Final = (
     "low_exceeds_high",
     "open_outside_low_high",
 )
+CANONICAL_ADMISSION_POLICY: Final = "canonical-candle-representation-admission-v1"
+CANONICAL_ADMISSION_REASONS: Final = ("volume_exceeds_canonical_scale",)
 
 
 class HistoryAcquisitionError(RuntimeError):
@@ -254,6 +257,27 @@ class CompletedHistoryJob:
     row_count: int
     quarantined_row_count: int
     quarantined_source_keys: tuple[tuple[int, int], ...] | None
+
+
+@dataclass(frozen=True, slots=True)
+class CanonicalCandleAdmission:
+    policy: str
+    source_row_count: int
+    admitted_row_count: int
+    excluded_row_count: int
+    excluded_rows_sha256: str
+    reason_counts: dict[str, int]
+    excluded_source_keys: tuple[tuple[int, int], ...]
+
+    def public_payload(self) -> dict[str, object]:
+        return {
+            "admitted_row_count": self.admitted_row_count,
+            "excluded_row_count": self.excluded_row_count,
+            "excluded_rows_sha256": self.excluded_rows_sha256,
+            "policy": self.policy,
+            "reason_counts": dict(self.reason_counts),
+            "source_row_count": self.source_row_count,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -1071,7 +1095,12 @@ def _verify_completed_history_job(
     *,
     load_batch: bool,
     verify_page_semantics: bool = True,
-) -> tuple[CompletedHistoryJob, CanonicalCandleBatch | None]:
+    admit_canonical_representation: bool = False,
+) -> tuple[
+    CompletedHistoryJob,
+    CanonicalCandleBatch | None,
+    CanonicalCandleAdmission | None,
+]:
     """Verify once and optionally build the exact batch from those same verified page bytes."""
 
     root = job_root.resolve()
@@ -1169,6 +1198,8 @@ def _verify_completed_history_job(
     empty_pages = 0
     if load_batch and not verify_page_semantics:
         raise HistoryAcquisitionError("history batch loading requires semantic page verification")
+    if admit_canonical_representation and not load_batch:
+        raise HistoryAcquisitionError("canonical admission requires history batch loading")
     logical_rows: list[Candle1m | MarkCandle1m] | None = [] if load_batch else None
     batch_dataset_type: DatasetType | None = None
     expected_files = {
@@ -1442,12 +1473,47 @@ def _verify_completed_history_job(
     )
 
     batch: CanonicalCandleBatch | None = None
+    canonical_admission: CanonicalCandleAdmission | None = None
     if logical_rows is not None:
         if batch_dataset_type is None:
             raise HistoryAcquisitionError("completed history job has no task dataset type")
+        admitted_rows = logical_rows
+        if admit_canonical_representation:
+            admitted_rows = []
+            excluded_bindings: list[dict[str, object]] = []
+            excluded_source_keys: list[tuple[int, int]] = []
+            admission_reason_counts = {reason: 0 for reason in CANONICAL_ADMISSION_REASONS}
+            for row in logical_rows:
+                admission_reason: str | None = None
+                if isinstance(row, Candle1m):
+                    scaled_volume = row.volume.scaleb(VOLUME_SCALE)
+                    if scaled_volume != scaled_volume.to_integral_value():
+                        admission_reason = "volume_exceeds_canonical_scale"
+                if admission_reason is None:
+                    admitted_rows.append(row)
+                    continue
+                admission_reason_counts[admission_reason] += 1
+                excluded_source_keys.append((row.instrument_id, row.open_time_ms))
+                excluded_bindings.append(
+                    {
+                        "instrument_id": row.instrument_id,
+                        "open_time_ms": row.open_time_ms,
+                        "reason": admission_reason,
+                        "source_row_sha256": canonical_sha256(row),
+                    }
+                )
+            canonical_admission = CanonicalCandleAdmission(
+                policy=CANONICAL_ADMISSION_POLICY,
+                source_row_count=len(logical_rows),
+                admitted_row_count=len(admitted_rows),
+                excluded_row_count=len(excluded_bindings),
+                excluded_rows_sha256=canonical_sha256(excluded_bindings),
+                reason_counts=admission_reason_counts,
+                excluded_source_keys=tuple(excluded_source_keys),
+            )
         try:
-            if logical_rows:
-                batch = build_canonical_candle_batch(logical_rows, batch_dataset_type)
+            if admitted_rows:
+                batch = build_canonical_candle_batch(admitted_rows, batch_dataset_type)
             else:
                 first_series = verified_spec.series[0]
                 batch = build_empty_canonical_candle_batch(
@@ -1459,20 +1525,20 @@ def _verify_completed_history_job(
             raise HistoryAcquisitionError(
                 "completed pages do not form one canonical batch"
             ) from error
-    return completed, batch
+    return completed, batch, canonical_admission
 
 
 def verify_completed_history_job(job_root: Path) -> CompletedHistoryJob:
     """Verify plan, page receipts, completion manifest, and the exact file allowlist."""
 
-    completed, _batch = _verify_completed_history_job(job_root, load_batch=False)
+    completed, _batch, _admission = _verify_completed_history_job(job_root, load_batch=False)
     return completed
 
 
 def verify_completed_history_job_integrity(job_root: Path) -> CompletedHistoryJob:
     """Verify the immutable receipt/hash chain and manifest facts without row decoding."""
 
-    completed, _batch = _verify_completed_history_job(
+    completed, _batch, _admission = _verify_completed_history_job(
         job_root,
         load_batch=False,
         verify_page_semantics=False,
@@ -1485,10 +1551,25 @@ def load_verified_completed_history_batch(
 ) -> tuple[CompletedHistoryJob, CanonicalCandleBatch]:
     """Verify and convert a completed job in one linear page read."""
 
-    completed, batch = _verify_completed_history_job(job_root, load_batch=True)
+    completed, batch, _admission = _verify_completed_history_job(job_root, load_batch=True)
     if batch is None:  # pragma: no cover - guarded by load_batch=True
         raise HistoryAcquisitionError("completed history batch was not built")
     return completed, batch
+
+
+def load_verified_completed_history_publication_batch(
+    job_root: Path,
+) -> tuple[CompletedHistoryJob, CanonicalCandleBatch, CanonicalCandleAdmission]:
+    """Verify Landing and return its canonical-admitted batch plus exclusion evidence."""
+
+    completed, batch, admission = _verify_completed_history_job(
+        job_root,
+        load_batch=True,
+        admit_canonical_representation=True,
+    )
+    if batch is None or admission is None:  # pragma: no cover - guarded by load_batch=True
+        raise HistoryAcquisitionError("completed history publication batch was not built")
+    return completed, batch, admission
 
 
 def load_completed_history_batch(job_root: Path) -> CanonicalCandleBatch:

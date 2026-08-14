@@ -300,6 +300,13 @@ zero-instrument manifest with null bounds. It does not skip the child, admit qua
 claim coverage; ADR-0026 still reports every requested missing minute and ADR-0053 preserves the
 quarantine reason.
 
+ADR-0068 adds an exact canonical-representation admission step without changing the accepted
+physical contract. A trade candle volume with more than four fractional digits remains unchanged
+in immutable Landing and is excluded before Decimal128(38, 4) Arrow construction. The aggregate
+publication binds source/admitted/excluded counts, a complete reason counter, and an exclusion
+hash into plan, manifest, build identity, and source evidence. It publishes no key or market value,
+never rounds, and uses ADR-0067 if the admitted canonical table becomes empty.
+
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact
 records their canonical hashes, requested ranges, exact 1m coverage, counts, immutable publisher
@@ -360,6 +367,11 @@ ADR-0053 makes that reason exact when ADR-0050 quarantine is present. A receipt-
 excluded for an OHLC envelope violation is `quarantined_source_row`, not
 `rest_returned_no_data`; it remains a blocker even if its key is otherwise covered. Exact keys
 stay in runtime verification, while aggregate campaign evidence may expose only the reason count.
+
+ADR-0068 likewise classifies a receipt-bound row excluded only at the physical representation
+boundary as `canonical_representation_overflow`. It is not double-counted as
+`rest_returned_no_data`, remains unaccepted, and cannot enter ordinary same-endpoint repair. P-001
+and Gate 2 remain unchanged pending a separately reviewed contract migration or source decision.
 
 ADR-0027 implements deterministic repair planning without downloading or mutating data. It
 recomputes a receipt-verified blocked audit, permits only `rest_returned_no_data` missing-minute

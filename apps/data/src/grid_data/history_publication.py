@@ -25,9 +25,10 @@ from grid_market_store import (
 )
 
 from grid_data.history_acquisition import (
+    CanonicalCandleAdmission,
     CompletedHistoryJob,
     HistoryAcquisitionError,
-    load_verified_completed_history_batch,
+    load_verified_completed_history_publication_batch,
 )
 from grid_data.history_request import (
     active_and_building_bytes_from_capacity,
@@ -45,6 +46,7 @@ SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
 @dataclass(frozen=True, slots=True)
 class ResolvedHistoryPublication:
     completed_history: CompletedHistoryJob
+    canonical_admission: CanonicalCandleAdmission
     instrument_registry: VerifiedInstrumentRegistry
     capacity_evidence_path: Path
     capacity_evidence_sha256: str
@@ -54,6 +56,7 @@ class ResolvedHistoryPublication:
 @dataclass(frozen=True, slots=True)
 class VerifiedHistoryPublicationInput:
     completed_history: CompletedHistoryJob
+    canonical_admission: CanonicalCandleAdmission
     instrument_registry: VerifiedInstrumentRegistry
     capacity_evidence_path: Path
     capacity_evidence_sha256: str
@@ -117,7 +120,9 @@ def load_verified_history_publication_input(
 ) -> VerifiedHistoryPublicationInput:
     """Verify Landing and upstream evidence without probing the host or mutating storage."""
 
-    completed, batch = load_verified_completed_history_batch(job_root)
+    completed, batch, canonical_admission = load_verified_completed_history_publication_batch(
+        job_root
+    )
     manifest = _object(completed.manifest_path, name="history manifest")
     history_plan = _object(completed.plan_path, name="history plan")
     registry = load_verified_instrument_registry(instrument_registry_path)
@@ -137,6 +142,7 @@ def load_verified_history_publication_input(
     _validate_registry_coverage(registry, batch)
     return VerifiedHistoryPublicationInput(
         completed_history=completed,
+        canonical_admission=canonical_admission,
         instrument_registry=registry,
         capacity_evidence_path=capacity_path,
         capacity_evidence_sha256=capacity_sha,
@@ -157,24 +163,28 @@ def history_publication_spec(
         raise HistoryAcquisitionError(
             "software_identity must be git:<40-character-lowercase-commit-sha>"
         )
-    build_config_sha = canonical_sha256(
-        {
-            "canonical_layout": CANONICAL_LAYOUT_ID,
-            "contract": HISTORY_PUBLICATION_CONTRACT,
-            "dataset_id": verified.dataset_id,
-            "history_manifest_sha256": verified.completed_history.manifest_sha256,
-            "semantic_version": "1.0.0",
-            "software_identity": software_identity,
-        }
+    admission_payload = (
+        verified.canonical_admission.public_payload()
+        if verified.canonical_admission.excluded_row_count
+        else None
     )
+    build_config_sha = history_publication_build_config_sha256(
+        dataset_id=verified.dataset_id,
+        history_manifest_sha256=verified.completed_history.manifest_sha256,
+        software_identity=software_identity,
+        canonical_admission=admission_payload,
+    )
+    source_evidence = [
+        verified.completed_history.manifest_sha256,
+        verified.instrument_registry.artifact_sha256,
+    ]
+    if admission_payload is not None:
+        source_evidence.append(verified.canonical_admission.excluded_rows_sha256)
     return CandleDatasetSpec(
         dataset_id=verified.dataset_id,
         semantic_version="1.0.0",
         parent_dataset_ids=(),
-        source_evidence_sha256=(
-            verified.completed_history.manifest_sha256,
-            verified.instrument_registry.artifact_sha256,
-        ),
+        source_evidence_sha256=tuple(source_evidence),
         coverage_evidence_sha256=verified.completed_history.manifest_sha256,
         capacity_evidence_sha256=verified.capacity_evidence_sha256,
         build_config_sha256=build_config_sha,
@@ -210,11 +220,34 @@ def preflight_completed_history_publication(
     )
     return ResolvedHistoryPublication(
         completed_history=verified.completed_history,
+        canonical_admission=verified.canonical_admission,
         instrument_registry=verified.instrument_registry,
         capacity_evidence_path=verified.capacity_evidence_path,
         capacity_evidence_sha256=verified.capacity_evidence_sha256,
         plan=publication_plan,
     )
+
+
+def history_publication_build_config_sha256(
+    *,
+    dataset_id: str,
+    history_manifest_sha256: str,
+    software_identity: str,
+    canonical_admission: dict[str, object] | None = None,
+) -> str:
+    """Hash the v1 candle publication build identity, including any exact exclusions."""
+
+    payload: dict[str, object] = {
+        "canonical_layout": CANONICAL_LAYOUT_ID,
+        "contract": HISTORY_PUBLICATION_CONTRACT,
+        "dataset_id": dataset_id,
+        "history_manifest_sha256": history_manifest_sha256,
+        "semantic_version": "1.0.0",
+        "software_identity": software_identity,
+    }
+    if canonical_admission is not None:
+        payload["canonical_admission"] = canonical_admission
+    return canonical_sha256(payload)
 
 
 def publish_preflighted_history(
