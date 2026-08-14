@@ -863,7 +863,9 @@ a Bybit rate-limit event and does not invent ADR-0043's ten-minute IP-ban cooldo
 private endpoint, retry, proxy, or bypass is added. The remaining 51 candle jobs therefore remain
 blocked until an officially supported network and region can reach the public endpoint. Tests
 cover the sanitized transport classification, unchanged genuine-403 cooldown, global pacer abort,
-and one-attempt candle/funding resume preservation.
+and one-attempt candle/funding resume preservation. The implementation, ADR, and fault-injection
+proof are tracked in
+[PR #76](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/76).
 
 ## Still required before Gate 2
 
