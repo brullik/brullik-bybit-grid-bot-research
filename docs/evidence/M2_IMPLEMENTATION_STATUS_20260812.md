@@ -917,6 +917,21 @@ provide runtime evidence only for the unchanged stale-building-output criterion.
 accept the remainder of Gate 2. Publication and its pinned contract assertions are tracked in
 [PR #80](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/80).
 
+## Gate 2 readiness aggregation
+
+ADR-0063 adds an offline, non-promoting readiness builder over the unchanged six Gate 2 criteria
+and eight exact public Phase 2 evidence artifacts. It requires every input receipt, JSON Schema,
+artifact SHA-256, embedded content SHA-256, expected contract/status, and the cross-source
+100-instrument campaign lineage to verify before producing a result. The fixed v1 assessment
+classifies no-mutation-before-preflight and stale-building detection as `evidence-ready`; the
+remaining four criteria stay blocked by seven explicit full-history, repair, funding cadence,
+lifecycle, and end-to-end performance blockers. `evidence-ready` is not acceptance. The builder
+keeps Gate 2 closed, requires a data-quality-owner decision, disables automatic Phase 3
+authorization, performs no network or market-store mutation, and returns exit code 2 for the
+current blocked set. A post-merge receipt-verified pack remains required; implementation alone
+does not change Gate 2 status. The implementation, ADR, schema, and fail-closed tests are tracked
+in [PR #81](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/81).
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

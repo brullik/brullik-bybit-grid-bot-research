@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0063 and a non-promoting Gate 2 readiness-pack builder that verifies the unchanged six
+  criteria and eight exact receipt/schema/content-hash evidence sources, retaining four blocked
+  criteria, two evidence-ready criteria, seven blockers, and mandatory data-quality-owner review.
 - Post-merge stale-output fault-injection evidence bound to merge `5ba2811`: all five named
   production preflight cases detected and preserved their injected marker, with zero target
   mutations, zero network access, and a receipt-verified sanitized artifact.

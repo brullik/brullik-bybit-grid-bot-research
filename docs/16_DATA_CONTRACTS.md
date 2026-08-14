@@ -282,6 +282,12 @@ detected, preserve the injected marker, and leave its target uncreated. The arti
 market values, runtime paths, device/account identity, credentials, or private/live capability and
 does not itself accept Gate 2.
 
+`grid.gate2-readiness-pack/v1` binds the unchanged roadmap criteria hash and eight exact public
+Phase 2 artifacts after receipt, schema, content-hash, artifact-hash, status, and lineage
+verification. It records two `evidence-ready` and four blocked criteria plus seven explicit
+blockers. Evidence readiness is not acceptance: data-quality-owner review remains mandatory,
+Gate 2 remains closed, and automatic Phase 3 authorization is always false.
+
 `grid.bybit-funding-repair-plan/v1` is a receipt-last, no-network private discovery plan. It
 recomputes the exact blocked `grid.canonical-funding-coverage-audit/v1` and is valid only when
 `unexplained_interval_change` is the sole blocker and every changed edge belongs to an isolated
