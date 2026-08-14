@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0077 and a receipt-verified funding repair candidate audit that replays unchanged ADR-0055
+  admission over all explicitly supplied blocked audits, prevents repeated ineligible Bybit
+  attempts, and emits an identifier-free aggregate without changing Gate 2.
 - Receipt-verified candle repair outcome: one bounded public request returned zero rows for the
   genuine one-minute gap; the source gap remains, the parent is unchanged, no replacement was
   published, and the sanitized artifact prevents wasteful retries.

@@ -70,6 +70,13 @@ from grid_data.funding_publication import (
     preflight_completed_funding_publication,
     publish_preflighted_funding,
 )
+from grid_data.funding_repair_candidate_audit import (
+    FundingRepairCandidateInput,
+    build_funding_repair_candidate_audit,
+    build_funding_repair_candidate_evidence,
+    verify_funding_repair_candidate_audit,
+    verify_funding_repair_candidate_evidence,
+)
 from grid_data.funding_repair_coverage_audit import (
     build_funding_repair_coverage_audit,
     verify_funding_repair_coverage_audit,
@@ -846,6 +853,50 @@ def parser() -> argparse.ArgumentParser:
     funding_compaction_evidence.add_argument("--software-identity", required=True)
     funding_compaction_evidence.add_argument("--output", type=Path, required=True)
     funding_compaction_evidence.set_defaults(handler=_funding_compaction_candidate_evidence)
+
+    funding_repair_candidate_audit = commands.add_parser(
+        "audit-funding-repair-candidates",
+        help="classify receipt-verified blocked funding audits before repair discovery",
+    )
+    funding_repair_candidate_audit.add_argument(
+        "--coverage-audit", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_audit.add_argument(
+        "--job-root", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_audit.add_argument(
+        "--instrument-registry", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_audit.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_candidate_audit.add_argument("--store-root", type=Path, required=True)
+    funding_repair_candidate_audit.add_argument("--software-identity", required=True)
+    funding_repair_candidate_audit.add_argument("--output", type=Path, required=True)
+    funding_repair_candidate_audit.add_argument(
+        "--execute",
+        action="store_true",
+        help="write the detailed private audit and receipt; omitted is no-mutation preflight",
+    )
+    funding_repair_candidate_audit.set_defaults(handler=_audit_funding_repair_candidates)
+
+    funding_repair_candidate_evidence = commands.add_parser(
+        "funding-repair-candidate-evidence",
+        help="publish a GitHub-safe aggregate from a verified private repair audit",
+    )
+    funding_repair_candidate_evidence.add_argument("--audit", type=Path, required=True)
+    funding_repair_candidate_evidence.add_argument(
+        "--coverage-audit", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_evidence.add_argument(
+        "--job-root", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_evidence.add_argument(
+        "--instrument-registry", type=Path, action="append", required=True
+    )
+    funding_repair_candidate_evidence.add_argument("--capacity-evidence", type=Path, required=True)
+    funding_repair_candidate_evidence.add_argument("--store-root", type=Path, required=True)
+    funding_repair_candidate_evidence.add_argument("--software-identity", required=True)
+    funding_repair_candidate_evidence.add_argument("--output", type=Path, required=True)
+    funding_repair_candidate_evidence.set_defaults(handler=_funding_repair_candidate_evidence)
 
     catalog_register = commands.add_parser(
         "catalog-register",
@@ -2476,6 +2527,108 @@ def _funding_compaction_candidate_evidence(args: argparse.Namespace) -> int:
         preflight_evidence(output)
         payload = build_funding_compaction_candidate_evidence(
             args.audit,
+            args.store_root,
+            publisher_software_identity=args.software_identity,
+        )
+        artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "classification_counts": payload["classification_counts"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _funding_repair_candidate_inputs(
+    args: argparse.Namespace,
+) -> tuple[FundingRepairCandidateInput, ...]:
+    audits = args.coverage_audit
+    job_roots = args.job_root
+    registries = args.instrument_registry
+    if not (len(audits) == len(job_roots) == len(registries)):
+        raise ValueError("coverage-audit, job-root, and instrument-registry counts must match")
+    return tuple(
+        FundingRepairCandidateInput(audit, job_root, registry)
+        for audit, job_root, registry in zip(audits, job_roots, registries, strict=True)
+    )
+
+
+def _audit_funding_repair_candidates(args: argparse.Namespace) -> int:
+    candidates = _funding_repair_candidate_inputs(args)
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        payload = verify_funding_repair_candidate_audit(
+            output,
+            candidates,
+            args.capacity_evidence,
+            args.store_root,
+        )
+        if payload["auditor_software_identity"] != args.software_identity:
+            raise ValueError("existing funding repair audit uses another software identity")
+    else:
+        preflight_evidence(output)
+        payload = build_funding_repair_candidate_audit(
+            candidates,
+            args.capacity_evidence,
+            args.store_root,
+            auditor_software_identity=args.software_identity,
+            generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        )
+    if args.execute and not existing:
+        artifact, receipt = publish_evidence(output, payload)
+    else:
+        artifact = output
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact) if args.execute or existing else None,
+                "audit_count": payload["audit_count"],
+                "classification_counts": payload["classification_counts"],
+                "execute": bool(args.execute),
+                "existing_audit": existing,
+                "receipt": str(receipt) if args.execute or existing else None,
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _funding_repair_candidate_evidence(args: argparse.Namespace) -> int:
+    candidates = _funding_repair_candidate_inputs(args)
+    output = args.output.resolve()
+    receipt = output.with_suffix(output.suffix + ".receipt.json")
+    existing = output.exists() or receipt.exists()
+    if existing:
+        payload = verify_funding_repair_candidate_evidence(
+            output,
+            args.audit,
+            candidates,
+            args.capacity_evidence,
+            args.store_root,
+        )
+        bindings = payload["bindings"]
+        if (
+            not isinstance(bindings, dict)
+            or bindings.get("publisher_software_identity") != args.software_identity
+        ):
+            raise ValueError(
+                "existing funding repair candidate evidence uses another software identity"
+            )
+        artifact = output
+    else:
+        preflight_evidence(output)
+        payload = build_funding_repair_candidate_evidence(
+            args.audit,
+            candidates,
+            args.capacity_evidence,
             args.store_root,
             publisher_software_identity=args.software_identity,
         )
