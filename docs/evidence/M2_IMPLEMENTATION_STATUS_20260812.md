@@ -1056,13 +1056,45 @@ whole-campaign decode. Every pending child still undergoes the unchanged current
 preflight immediately before mutation; committed children are receipt/hash/audit-verified without
 row decoding. All resource, receipt-last, immutable lineage, final source-integrity verification,
 coverage, and Gate 2 constraints remain unchanged. Post-merge full-history prepared-plan and
-execution measurements remain required.
+execution measurements remain required. The implementation and regression proofs are tracked in
+[PR #90](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/90), merged as
+`85440ea1febfc9ada3b72c04a6b5f4e4b92ffebc`.
+
+## Full-history Landing, canonical publication, and coverage evidence
+
+The receipt-verified 2026-08-14 Landing projection covers five current linear symbols, two candle
+kinds, 103 months, 978 jobs, and 43,328 retained pages from 2018-01-01 through the dated acquisition
+cutoff. It records 30,832,408 admitted rows from 30,832,409 source rows, one quarantined source row,
+43,424 transport attempts, 96 retries, and 1,994,193,097 retained artifact bytes. Response
+classification is complete for observed responses, but only 43,246 of 43,328 completed pages carry
+the current sanitized observation, so complete response-header coverage remains false. This is
+Landing evidence only and does not accept missing venue history.
+
+The full semantic plan was persisted through ADR-0069 and executed from its exact prepared root
+using publisher merge `85440ea1febfc9ada3b72c04a6b5f4e4b92ffebc`; the legacy aggregate
+preflight was not repeated. The completed aggregate receipt independently verifies 978 immutable
+canonical datasets/files, 30,832,334 rows, and 529,794,759 Parquet bytes. Trade contributes 489
+datasets and 15,413,811 rows; mark contributes 489 datasets and 15,418,523 rows. Exact canonical
+admission excludes 74 trade rows solely for volume scale above Decimal128(38, 4), without rounding,
+and binds those exclusions under ADR-0068. The sanitized publication projection reverified the
+complete source/canonical integrity chain in 90,912 ms without source-row decoding.
+
+The separate full semantic coverage audit remains fail closed: 696 datasets pass and 282 are
+blocked. It observes 42,814,080 requested candle minutes, 30,832,334 canonical rows, 11,981,746
+missing minutes across 353 gap ranges, zero duplicate/conflicting keys, zero unexpected or
+unrequested timestamps, and zero lifecycle failures. The missing-minute reasons reconcile exactly
+to 11,981,671 `rest_returned_no_data`, 74 `canonical_representation_overflow`, and one
+`quarantined_source_row`; unknown reason count is zero. No reason is accepted. These artifacts
+prove immutable publication and quantify the remaining data-quality blockers; they do not close
+Gate 2, repair history, register datasets, or authorize Phase 3.
 
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
   timeline begins on 2026-08-12 and does not reconstruct earlier point-in-time metadata;
-- canonical publication and coverage-audit evidence for the full-history controlled scale;
+- owner-reviewed policy/evidence for 11,981,671 historical `rest_returned_no_data` minutes across
+  the current-universe bootstrap, plus reconciliation of 74 canonical representation overflows
+  and one quarantined source row;
 - dated historical evidence or a separately owner-reviewed policy for the blocked April funding
   cadence transitions;
 - measured repair execution/replacement evidence when a genuine gap is observed;
