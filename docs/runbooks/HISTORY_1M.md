@@ -1106,7 +1106,29 @@ read-only production batch selections, and fails if any input, selection result,
 selected-dataset metadata changes. Commit only the sanitized artifact and receipt. Its timing is
 an owner-review input, not automatic Gate 2 acceptance.
 
-## 23. Adaptive public REST pacing
+## 23. Build current-universe Gate 2 readiness v4
+
+After the candle, funding, and catalog-performance evidence receipts exist, run ADR-0092 from its
+merged implementation commit:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_readiness_pack_v4 `
+  --implementation-identity git:<v4-merge-sha> `
+  --prior-readiness benchmarks\results\m2-gate2-readiness-pack-v3-20260814.json `
+  --candle-evidence data\evidence\m2-current-universe-candle-evidence-<date>.json `
+  --funding-evidence data\evidence\m2-current-universe-funding-evidence-<date>.json `
+  --catalog-performance data\evidence\m2-current-universe-catalog-performance-<date>.json `
+  --repo-root . `
+  --output data\evidence\m2-gate2-readiness-pack-v4-<date>.json
+```
+
+Exit code 2 is the expected successful negative result: the artifact and receipt are written
+first, while Gate 2 remains closed. Do not edit the v3 source, substitute a current-universe
+artifact, treat catalog component throughput as the end-to-end envelope, or use v4 to authorize
+Phase 3. Publish only the sanitized v4 pair and send it to the data-quality owner for the separate
+policy/readiness decision.
+
+## 24. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header

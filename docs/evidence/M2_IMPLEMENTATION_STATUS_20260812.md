@@ -1362,6 +1362,22 @@ cover successful redaction, receipt drift, and retained-state mutation. The meas
 artifact remains pending the active ADR-0085 watcher. This component does not qualify the
 owner-reviewed end-to-end envelope, change Gate 2, or authorize Phase 3.
 
+## Current-universe Gate 2 readiness v4 implementation
+
+ADR-0092 adds the no-repeat owner-review handoff after the three current-universe public evidence
+pairs exist. The builder verifies the immutable v3 readiness artifact plus candle, funding, and
+catalog-performance evidence by receipt, schema, canonical JSON, embedded content hash, contract,
+status, and artifact hash. It also reconciles the common capacity/registry universe, the funding
+to candle-artifact binding, the candle bundle/catalog to performance binding, and exact aggregate
+catalog inventory.
+
+The v3 criteria, three/three readiness split, seven blocker codes, closed Gate 2 decision, and
+false Phase 3 authorization are required constants. Only identifier-free counts, quality totals,
+timings, and source-chain hashes are added. Tests cover successful schema/hash/redaction behavior,
+cross-bound source rejection, quality-contradiction rejection, and the committed v3 receipt.
+Runtime evidence remains pending the active current-universe pipeline; the builder itself performs
+no network request, retained-store read, policy acceptance, or gate promotion.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the
