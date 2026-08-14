@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified ADR-0070 full-history boundary evidence: one 203,043 ms offline diagnostic
+  reused 978 verified canonical datasets, scanned 30,832,334 instrument/time keys once, and
+  reconciled 11,981,670 leading, 76 internal, zero trailing, and zero fully absent minutes to the
+  unchanged blocked semantic audit.
 - ADR-0070 and a receipt-bound candle boundary diagnostic that reuses already verified canonical
   datasets, scans only instrument/time columns once, reconciles exact topology with the prior
   semantic coverage audit, performs no download or Landing row decode, and keeps every absence
