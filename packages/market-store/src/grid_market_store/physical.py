@@ -291,21 +291,28 @@ def _ordered_unique_rows(
     if any(not isinstance(row, expected_class) for row in rows):
         raise PhysicalContractError("logical row class does not match dataset_type")
     ordered = tuple(sorted(rows, key=lambda row: (row.instrument_id, row.open_time_ms)))
-    keys = [(row.instrument_id, row.open_time_ms) for row in ordered]
-    if len(keys) != len(set(keys)):
-        raise PhysicalContractError("duplicate canonical candle key")
+    _assert_preordered_unique_rows(ordered)
     return ordered
 
 
-def build_canonical_candle_batch(
-    rows: Sequence[Candle1m | MarkCandle1m],
+def _assert_preordered_unique_rows(rows: Sequence[Candle1m | MarkCandle1m]) -> None:
+    previous: tuple[int, int] | None = None
+    for row in rows:
+        current = (row.instrument_id, row.open_time_ms)
+        if previous is not None and current <= previous:
+            if current == previous:
+                raise PhysicalContractError("duplicate canonical candle key")
+            raise PhysicalContractError("canonical candle rows are not preordered")
+        previous = current
+
+
+def _build_canonical_candle_batch_from_ordered(
+    ordered: Sequence[Candle1m | MarkCandle1m],
     dataset_type: DatasetType,
 ) -> CanonicalCandleBatch:
-    """Validate and convert logical candle rows without filesystem mutation."""
 
     if dataset_type not in SUPPORTED_CANDLE_TYPES:
         raise PhysicalContractError("canonical batch requires a candle dataset type")
-    ordered = _ordered_unique_rows(rows, dataset_type)
     if any(
         isinstance(row.quality_flags, bool)
         or not isinstance(row.quality_flags, int)
@@ -362,6 +369,37 @@ def build_canonical_candle_batch(
         partition_path=next(iter(partitions)),
         table=table,
     )
+
+
+def build_canonical_candle_batch(
+    rows: Sequence[Candle1m | MarkCandle1m],
+    dataset_type: DatasetType,
+) -> CanonicalCandleBatch:
+    """Validate, sort, and convert logical candle rows without filesystem mutation."""
+
+    if dataset_type not in SUPPORTED_CANDLE_TYPES:
+        raise PhysicalContractError("canonical batch requires a candle dataset type")
+    return _build_canonical_candle_batch_from_ordered(
+        _ordered_unique_rows(rows, dataset_type),
+        dataset_type,
+    )
+
+
+def build_preordered_canonical_candle_batch(
+    rows: Sequence[Candle1m | MarkCandle1m],
+    dataset_type: DatasetType,
+) -> CanonicalCandleBatch:
+    """Validate and convert rows already ordered by the canonical candle key."""
+
+    if dataset_type not in SUPPORTED_CANDLE_TYPES:
+        raise PhysicalContractError("canonical batch requires a candle dataset type")
+    if not rows:
+        raise PhysicalContractError("cannot build a canonical batch from no rows")
+    expected_class = Candle1m if dataset_type is DatasetType.TRADE_KLINE_1M else MarkCandle1m
+    if any(not isinstance(row, expected_class) for row in rows):
+        raise PhysicalContractError("logical row class does not match dataset_type")
+    _assert_preordered_unique_rows(rows)
+    return _build_canonical_candle_batch_from_ordered(rows, dataset_type)
 
 
 def build_empty_canonical_candle_batch(

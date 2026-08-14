@@ -13,6 +13,7 @@ from grid_market_store.physical import (
     PhysicalContractError,
     build_canonical_candle_batch,
     build_canonical_funding_batch,
+    build_preordered_canonical_candle_batch,
     canonical_candle_schema,
     canonical_funding_partition_path,
     canonical_partition_path,
@@ -118,6 +119,29 @@ def test_trade_batch_sorts_rows_and_preserves_exact_physical_types() -> None:
     assert batch.table.schema.field("turnover").type == pa.decimal128(38, 12)
     assert batch.table.schema.metadata[b"grid.layout_contract"] == CANONICAL_LAYOUT_ID.encode()
     verify_canonical_candle_schema(batch.table.schema, DatasetType.TRADE_KLINE_1M)
+
+
+def test_preordered_trade_batch_is_exactly_equivalent_and_fails_closed_on_order() -> None:
+    first = trade_candle()
+    second = trade_candle(open_time_ms=first.open_time_ms + 60_000)
+    reference = build_canonical_candle_batch((second, first), DatasetType.TRADE_KLINE_1M)
+    preordered = build_preordered_canonical_candle_batch(
+        (first, second),
+        DatasetType.TRADE_KLINE_1M,
+    )
+
+    assert preordered.partition_path == reference.partition_path
+    assert preordered.table.equals(reference.table, check_metadata=True)
+    with pytest.raises(PhysicalContractError, match="not preordered"):
+        build_preordered_canonical_candle_batch(
+            (second, first),
+            DatasetType.TRADE_KLINE_1M,
+        )
+    with pytest.raises(PhysicalContractError, match="duplicate"):
+        build_preordered_canonical_candle_batch(
+            (first, first),
+            DatasetType.TRADE_KLINE_1M,
+        )
 
 
 def test_mark_batch_has_no_trade_only_columns() -> None:
