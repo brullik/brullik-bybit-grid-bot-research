@@ -253,6 +253,13 @@ descriptive component timings: no owner-reviewed full-history end-to-end envelop
 acquisition, publication, coverage, catalog selection, and repair at the required scale, so the
 Gate 2 performance criterion remains blocked.
 
+ADR-0091 adds the missing no-repeat current-universe catalog measurement boundary. After the
+ADR-0085 bundle completes, it verifies the exact receipt-bound selection inventory, runs the
+production batch selector twice with one catalog verification per pass, and requires catalog and
+selected-dataset metadata fingerprints to remain unchanged. The sanitized timing is descriptive
+component evidence; acquisition/publication/repair timing and the owner-reviewed Gate 2 envelope
+remain separate.
+
 ## Gate 1 benchmark matrix — completed
 
 The original 8/16/32-bucket and 128/256/512-MB matrix could not attain its per-file targets at

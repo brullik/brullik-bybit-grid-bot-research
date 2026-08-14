@@ -593,6 +593,13 @@ bounded interval. GitHub receives hashes, aggregate counts, quality, boundary to
 never identities, time bounds, rates, settlement timestamps, paths, or market data. Coverage and
 the performance envelope remain owner-reviewed Gate 2 inputs.
 
+ADR-0091 measures the completed ADR-0085 candle selection without rebuilding it. The read-only
+runner verifies every private bundle artifact against its sanitized projection, fingerprints the
+catalog and selected dataset metadata, and executes the production batch selector twice with one
+catalog snapshot verification per pass. Exact repeat equality and unchanged retained state are
+required. Only hashes, counts, timings, non-identifying environment facts, and limitations enter
+Git; the result does not define the owner-reviewed end-to-end envelope or change Gate 2.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

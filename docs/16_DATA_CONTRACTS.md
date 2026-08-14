@@ -527,6 +527,15 @@ Blocked cadence remains blocked, mixed-kind timing is not funding-only, the perf
 remains unqualified, and the contract has no Gate 2, Phase 3, research, or live authority. See
 ADR-0090.
 
+`grid.phase2-current-universe-catalog-performance/v1` is ADR-0091's receipt-last, read-only
+measurement of the completed ADR-0085 private bundle. It schema/hash/receipt verifies the plan,
+manifest, public projection, and every selection; executes two production batch-selection passes;
+and requires exact runtime/public fingerprints, deterministic equality, final catalog
+verification, and unchanged catalog/dataset metadata. The public result contains only chain and
+content hashes, aggregate inventory, timings, software versions, non-identifying environment
+facts, and cache-state disclosure. It excludes identities, time bounds, object keys, paths,
+values, accounts, and credentials, and does not qualify the owner-reviewed Gate 2 envelope.
+
 `grid.phase2-incremental-catalog-selection-performance/v1` is ADR-0066's receipt-last,
 GitHub-safe synthetic measurement of the ADR-0065 fallback. It binds immutable implementation
 identity, bounded fragment/instrument/minute counts, exact selector constants, two measured

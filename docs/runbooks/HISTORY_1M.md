@@ -1085,7 +1085,28 @@ count mismatch, or accepted/unknown reason. The public output contains no identi
 time bounds. Mixed-kind reused-campaign timing is not funding-only; coverage policy, performance
 qualification, Gate 2, and Phase 3 remain separate.
 
-## 22. Adaptive public REST pacing
+## 22. Measure current-universe catalog selection
+
+After the ADR-0085 bundle and its public evidence receipt exist, run the ADR-0091 benchmark from
+the merged implementation commit:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.current_universe_catalog_performance `
+  --implementation-identity git:<current-universe-performance-merge-sha> `
+  --repo-root . `
+  --bundle-root reports\private\m2-current-universe-catalog-selection-bundle-<date> `
+  --bundle-evidence data\evidence\m2-current-universe-catalog-selection-bundle-<date>.json `
+  --store-root data\market-store `
+  --catalog data\market-store\catalog\canonical.duckdb `
+  --output benchmarks\results\m2-current-universe-catalog-performance-<date>.json
+```
+
+Do not rebuild the bundle. The runner reuses its receipt-bound requests, executes two complete
+read-only production batch selections, and fails if any input, selection result, catalog byte, or
+selected-dataset metadata changes. Commit only the sanitized artifact and receipt. Its timing is
+an owner-review input, not automatic Gate 2 acceptance.
+
+## 23. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header

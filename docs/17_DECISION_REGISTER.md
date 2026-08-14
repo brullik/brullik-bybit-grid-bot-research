@@ -87,6 +87,7 @@
 | D-084 | Sequential history campaigns reserve the largest incomplete child rather than summing mutually exclusive Landing peaks | accepted | Unchanged 512 KiB page bounds, fresh before/after-child free-space checks, receipt-safe stop/resume, no request or Gate 2 change, and ADR-0084 |
 | D-085 | Reused and disjoint candle campaigns are selected through one receipt-resumable topology-derived bundle | accepted | Whole-month source clips, one catalog verification, unchanged v1 selectors, cross-source instrument/minute disjointness, sanitized aggregate, and ADR-0085 |
 | D-090 | Current-universe funding evidence must exactly equal the candle interval union without repeating retained July acquisition | accepted | Boundary-backed new sources, one disjoint reused bounded source, private identity comparison, sanitized receipt-linked aggregate, unchanged cadence/Gate 2 policy, and ADR-0090 |
+| D-091 | Current-universe catalog performance is measured by replaying the exact completed private bundle read-only | accepted | Two one-snapshot production batch passes, receipt/schema/hash binding, unchanged catalog/dataset fingerprints, sanitized timings, unchanged owner-reviewed Gate 2 envelope, and ADR-0091 |
 
 ## Decisions requiring benchmark or owner evidence
 
