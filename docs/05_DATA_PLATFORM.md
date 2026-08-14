@@ -103,6 +103,10 @@ child: preflight hashes and receipt-verifies it once, the executor reuses that v
 result, and no object survives the command. Partial children, initial completion, canonical
 admission, coverage audits, and explicit semantic campaign verification continue to decode every
 source row. The final aggregate campaign receipt is still independently verified before return.
+ADR-0059 projects the post-merge local measurement into strict receipt-last GitHub evidence bound
+to the exact campaign/input/implementation hashes. Its first pending failure is a local synthetic
+403, so the qualification measures integrity traversal and fail-closed handoff without network
+access or disclosure of runtime identities.
 
 ## Data layers
 

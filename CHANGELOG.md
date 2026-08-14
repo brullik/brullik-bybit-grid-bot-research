@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0059 sanitized campaign-resume performance evidence: exact scope/input/implementation
+  bindings, aggregate integrity/reuse timing, local one-call fail-closed stub, and no network,
+  instrument identity, market value, path, device, account, credential, or Gate 2 implication.
 - ADR-0058 post-publication funding repair coverage audit: receipt-verifies the complete repair
   lineage, proves exact source-union/canonical parity, re-runs fail-closed chronology checks, and
   keeps detailed identifier/time evidence private without mutable-host write gates.

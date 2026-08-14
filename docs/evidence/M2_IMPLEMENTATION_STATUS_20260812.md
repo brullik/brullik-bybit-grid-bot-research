@@ -803,6 +803,15 @@ acceptance evidence; a schema-bound post-merge measurement remains required. The
 regression proofs, and review are tracked in
 [PR #74](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/74).
 
+The post-merge run is now captured in the receipt-verified
+[`grid.phase2-history-campaign-resume-performance/v1` evidence](../../benchmarks/results/m2-history-campaign-resume-performance-5xfull-20260814.json),
+bound to merge identity `git:60363277432a2bdcfb8d2a23ea05060057eb3aaa`, the unchanged campaign
+plan/request, registry, and capacity hashes. It reverified 927 completed children across the
+978-job/43,328-page campaign, measured 72,762 ms for preflight, and reached a local synthetic
+fail-closed HTTP 403 at the first pending page in another 1,283 ms with exactly one client call and
+no network request. The remaining 51 jobs/2,271 pages are still pending; this qualifies the local
+resume handoff only and does not prove coverage or close Gate 2.
+
 ADR-0055 adds funding repair discovery planning without changing ADR-0034 acceptance. A planner
 re-verifies and recomputes a blocked audit, admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches with no other blocker, and embeds bounded ordinary public funding
