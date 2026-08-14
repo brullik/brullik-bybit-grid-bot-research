@@ -9,6 +9,16 @@ first-trade UTC dates match their post dates, and one begins two UTC dates earli
 contract retains only source/lineage hashes and aggregate comparisons; the discrepancy remains
 explicit, both metadata/announcement blockers remain owner-governed, and Gate 2 remains closed.
 
+The receipt-verified measured result is
+[`m2-legacy-listing-event-evidence-20260815.json`](../../benchmarks/results/m2-legacy-listing-event-evidence-20260815.json),
+bound to implementation identity `git:7e5708a47b18896c694eb239da26a68232d0f4d0`. It fully
+reverified the completed campaign, aggregate publication, registry binding, and every canonical
+dataset before three one-attempt official archive-window reads. The selected set matched the
+documents exactly once with cardinalities one/three/one; trade-date matches are four exact and one
+two-date lead, while mark observations include three pre-message dates. No instrument identity,
+observed market timestamp, market value, dataset identity, path, account data, or credential is
+published. This narrows the legacy source gap but does not itself remove either blocker.
+
 ADR-0076 adds a receipt-reverified, identifier-free public outcome for genuine candle-gap repair.
 It makes a blocked source observation durable in GitHub without repeating the request, accepting
 the missing candle, mutating the parent, or publishing an empty replacement.
