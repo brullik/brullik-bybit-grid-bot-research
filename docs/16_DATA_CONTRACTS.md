@@ -275,6 +275,13 @@ implementation identities, inventory counts, and aggregate outcomes only. It con
 partition, instrument, timestamp, rate, path, host, account, or credential identity. Neither
 contract performs compaction or replaces measured ADR-0054 evidence.
 
+`grid.phase2-stale-output-fault-injection/v1` binds a merged implementation identity to five
+offline production-preflight cases: candle/funding publication building directories, candle
+compaction building directory, catalog building file, and catalog write lock. Every case must be
+detected, preserve the injected marker, and leave its target uncreated. The artifact contains no
+market values, runtime paths, device/account identity, credentials, or private/live capability and
+does not itself accept Gate 2.
+
 `grid.bybit-funding-repair-plan/v1` is a receipt-last, no-network private discovery plan. It
 recomputes the exact blocked `grid.canonical-funding-coverage-audit/v1` and is valid only when
 `unexplained_interval_change` is the sole blocker and every changed edge belongs to an isolated

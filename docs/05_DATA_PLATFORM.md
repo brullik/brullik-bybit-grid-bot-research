@@ -382,6 +382,12 @@ receives only store/audit hashes and aggregate eligible/duplicate/interval/schem
 no-candidate result is store-state evidence, not a substitute for measured compaction when a real
 incremental or repair fragment later appears.
 
+ADR-0062 adds post-merge fault-injection evidence for stale write-state detection. An offline
+temporary store injects deterministic markers at candle publication, funding publication, candle
+compaction, catalog building, and catalog lock boundaries; the production preflights must reject
+each marker without deleting it or creating the target. Only sanitized case/count outcomes enter
+Git. This supports one unchanged Gate 2 criterion and does not automatically accept the gate.
+
 ADR-0055 adds the first funding-specific repair boundary as discovery-only planning. It
 recomputes a blocked ADR-0034 audit and admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches when no other blocker exists. Candidate timestamps are derived

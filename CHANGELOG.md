@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0062 offline stale-output fault injection: five named production preflight boundaries,
+  unchanged marker preservation, zero target mutation, temporary fixtures, and schema-bound
+  post-merge evidence without network, private/live capability, paths, or market values.
 - Receipt-verified current-store funding compaction candidate evidence: 37 canonical datasets,
   35 partitions, three duplicate/conflicting pairs, zero eligible pairs, and no published runtime
   identities, funding values, paths, private calls, mutation, or fabricated compaction input.
