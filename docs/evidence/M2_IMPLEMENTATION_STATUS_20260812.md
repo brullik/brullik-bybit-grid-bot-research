@@ -943,6 +943,18 @@ acceptance are false. This is a reproducible negative readiness result, not a Ga
 Publication and pinned contract assertions are tracked in
 [PR #82](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/82).
 
+## Canonical orphan and partial-write fault injection
+
+ADR-0064 adds a fully offline temporary-store runner for canonical integrity failure detection.
+It publishes minimal valid candle and funding fixtures, clones their immutable commits, then
+injects an orphan file, a missing manifest-bound Parquet file, and a missing completion receipt
+for each dataset type. All six cases invoke the real production verifier and must raise the exact
+fail-closed error. A canonical fingerprint of every injected directory, file, size, and SHA-256
+must remain identical before and after verification, proving that detection does not silently
+clean or mutate diagnostic state. The retained market store, network, private/live endpoints,
+credentials, account, order, bot, and transfer capabilities are absent. A post-merge measured
+artifact remains required; implementation alone is not data-quality acceptance or Gate 2 closure.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

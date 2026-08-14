@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0064 offline canonical integrity fault injection: six candle/funding orphan, missing-Parquet,
+  and missing-receipt cases against production verifiers, with complete injected tree preservation
+  and no retained-store, network, private, or live access.
 - Post-merge Gate 2 readiness evidence bound to merge `b58e039`: all eight fixed source chains
   verify, two of six criteria are evidence-ready, four remain blocked by seven explicit blockers,
   Gate 2 remains closed, and automatic Phase 3 authorization remains false.

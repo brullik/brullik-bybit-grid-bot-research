@@ -288,6 +288,12 @@ verification. It records two `evidence-ready` and four blocked criteria plus sev
 blockers. Evidence readiness is not acceptance: data-quality-owner review remains mandatory,
 Gate 2 remains closed, and automatic Phase 3 authorization is always false.
 
+`grid.phase2-canonical-integrity-fault-injection/v1` binds a merged implementation identity to
+six offline candle/funding verifier cases: orphan file, missing manifest-bound Parquet, and missing
+completion receipt for each dataset type. Every case must be detected and retain an identical
+filesystem fingerprint through verification. The artifact contains no market values, identities,
+paths, account data, credentials, or private/live capability and does not authorize cleanup.
+
 `grid.bybit-funding-repair-plan/v1` is a receipt-last, no-network private discovery plan. It
 recomputes the exact blocked `grid.canonical-funding-coverage-audit/v1` and is valid only when
 `unexplained_interval_change` is the sole blocker and every changed edge belongs to an isolated

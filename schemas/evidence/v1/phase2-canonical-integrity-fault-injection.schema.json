@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-canonical-integrity-fault-injection.schema.json",
+  "title": "Phase 2 canonical orphan and partial-write fault-injection evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "cases",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "measurement",
+    "scope",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "filesystem_state_preserved_during_verification": true,
+        "network_request_performed": false,
+        "private_or_live_capability_used": false,
+        "production_verifier_functions_exercised": true,
+        "retained_market_store_accessed": false,
+        "temporary_fixture_removed": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_identity"],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "cases": {
+      "const": [
+        {
+          "case_id": "canonical-candle-orphan-file",
+          "dataset_type": "candle",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "orphan-file"
+        },
+        {
+          "case_id": "canonical-candle-missing-parquet",
+          "dataset_type": "candle",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "missing-parquet"
+        },
+        {
+          "case_id": "canonical-candle-missing-completion-receipt",
+          "dataset_type": "candle",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "missing-completion-receipt"
+        },
+        {
+          "case_id": "canonical-funding-orphan-file",
+          "dataset_type": "funding",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "orphan-file"
+        },
+        {
+          "case_id": "canonical-funding-missing-parquet",
+          "dataset_type": "funding",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "missing-parquet"
+        },
+        {
+          "case_id": "canonical-funding-missing-completion-receipt",
+          "dataset_type": "funding",
+          "detected": true,
+          "error_class": "PublicationError",
+          "filesystem_state_preserved": true,
+          "injected_condition": "missing-completion-receipt"
+        }
+      ]
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-canonical-integrity-fault-injection/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "measurement": {
+      "const": {
+        "case_count": 6,
+        "detected_count": 6,
+        "filesystem_state_preserved_count": 6
+      }
+    },
+    "scope": {
+      "const": {
+        "canonical_candle_verifier": true,
+        "canonical_funding_verifier": true,
+        "missing_completion_receipt": true,
+        "missing_parquet": true,
+        "orphan_file": true
+      }
+    },
+    "status": {"const": "verified-canonical-integrity-fault-injection"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_or_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_fixture_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

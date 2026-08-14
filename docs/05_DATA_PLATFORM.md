@@ -393,6 +393,11 @@ artifacts. It rechecks their schemas, artifact/content hashes, receipts, scope, 
 lineage, then preserves two `evidence-ready` and four blocked criteria with explicit blocker codes.
 It performs no network or market-store mutation and cannot accept Gate 2 or authorize Phase 3.
 
+ADR-0064 adds post-merge orphan/partial-write detection evidence. Temporary cloned candle and
+funding commits receive an orphan file, missing Parquet, or missing completion receipt; the real
+production verifiers must reject all six cases while preserving the complete injected filesystem
+fingerprint. The retained store is not accessed or repaired.
+
 ADR-0055 adds the first funding-specific repair boundary as discovery-only planning. It
 recomputes a blocked ADR-0034 audit and admits only a complete set of isolated integer-multiple
 `C, N*C, C` interval sandwiches when no other blocker exists. Candidate timestamps are derived
