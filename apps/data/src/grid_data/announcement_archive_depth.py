@@ -67,6 +67,18 @@ def _integer_times(page: AnnouncementPage, field: str) -> tuple[int, ...]:
     return cast(tuple[int, ...], values)
 
 
+def _optional_integer_times(page: AnnouncementPage, field: str) -> tuple[int, ...]:
+    values = tuple(item.get(field) for item in page.items)
+    if any(
+        value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0)
+        for value in values
+    ):
+        raise AnnouncementArchiveDepthError(
+            f"validated announcement page has invalid optional {field} times"
+        )
+    return tuple(cast(int, value) for value in values if value is not None)
+
+
 def build_announcement_archive_depth_evidence(
     client: AnnouncementClient,
     *,
@@ -150,16 +162,13 @@ def build_announcement_archive_depth_evidence(
             )
         first_date_times = _integer_times(first, "dateTimestamp")
         last_date_times = _integer_times(last, "dateTimestamp")
-        first_publish_times = _integer_times(first, "publishTime")
-        last_publish_times = _integer_times(last, "publishTime")
+        first_publish_times = _optional_integer_times(first, "publishTime")
+        last_publish_times = _optional_integer_times(last, "publishTime")
         latest_date_timestamp_ms = max(first_date_times)
         oldest_date_timestamp_ms = min(last_date_times)
-        latest_publish_time_ms = max(first_publish_times)
-        oldest_publish_time_ms = min(last_publish_times)
-        if (
-            oldest_date_timestamp_ms > latest_date_timestamp_ms
-            or oldest_publish_time_ms > latest_publish_time_ms
-        ):
+        latest_publish_time_ms = max(first_publish_times) if first_publish_times else None
+        oldest_publish_time_ms = min(last_publish_times) if last_publish_times else None
+        if oldest_date_timestamp_ms > latest_date_timestamp_ms:
             raise AnnouncementArchiveDepthError(
                 f"announcement type {announcement_type} has inverted source bounds"
             )
@@ -167,9 +176,11 @@ def build_announcement_archive_depth_evidence(
             {
                 "announcement_type": announcement_type,
                 "first_page_item_count": len(first.items),
+                "first_page_publish_time_present_count": len(first_publish_times),
                 "first_page_result_sha256": _page_result_sha256(first),
                 "last_page_item_count": len(last.items),
                 "last_page_number": last_page_number,
+                "last_page_publish_time_present_count": len(last_publish_times),
                 "last_page_result_sha256": _page_result_sha256(last),
                 "latest_date_timestamp_ms": latest_date_timestamp_ms,
                 "latest_publish_time_ms": latest_publish_time_ms,
@@ -240,6 +251,7 @@ def build_announcement_archive_depth_evidence(
             "page_limit": PAGE_LIMIT,
             "private_endpoints_called": False,
             "query_policy": "first-and-declared-last-page-per-documented-type-v1",
+            "legacy_publish_time_may_be_absent": True,
             "raw_announcement_bodies_persisted": False,
             "transport_max_attempts": 1,
         },

@@ -208,7 +208,9 @@ credentials, and account data. A selected registry launch before the official `n
 archive start is an explicit blocker. Even a depth-compatible result still requires exact
 per-instrument record matching and cannot close Gate 2. ADR-0072 aligns ordering with the
 source's descending `dateTimestamp`, records separate date/publish bounds, and uses only the
-source-order date bound for archive-depth comparison. See ADR-0071 and ADR-0072.
+source-order date bound for archive-depth comparison. ADR-0073 requires that date field while
+allowing unbackfilled legacy `publishTime` to remain absent; per-page presence counts and nullable
+publish bounds expose the omission without synthesizing data. See ADR-0071 through ADR-0073.
 
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and

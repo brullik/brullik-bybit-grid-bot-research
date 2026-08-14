@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-08-14
 - Amends: ADR-0071 announcement ordering semantics
+- Legacy field semantics amended by: [ADR-0073](ADR-0073-optional-legacy-announcement-publish-time.md)
 
 ## Context
 

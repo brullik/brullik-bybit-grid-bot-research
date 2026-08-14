@@ -55,9 +55,14 @@ class AnnouncementPage:
                 or isinstance(date_timestamp, bool)
                 or not isinstance(date_timestamp, int)
                 or date_timestamp < 0
-                or isinstance(publish_time, bool)
-                or not isinstance(publish_time, int)
-                or publish_time < 0
+                or (
+                    publish_time is not None
+                    and (
+                        isinstance(publish_time, bool)
+                        or not isinstance(publish_time, int)
+                        or publish_time < 0
+                    )
+                )
             ):
                 raise BybitPublicError("announcement item lifecycle fields are invalid")
             date_timestamps.append(date_timestamp)

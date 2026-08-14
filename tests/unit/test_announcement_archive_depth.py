@@ -87,17 +87,19 @@ class FakeAnnouncementClient:
             total = 22 if self.mutate_last_total else 21
         else:
             raise AssertionError(f"unexpected page {page}")
-        items: tuple[Mapping[str, Any], ...] = tuple(
-            {
+        items_buffer: list[Mapping[str, Any]] = []
+        for value in times:
+            item: dict[str, Any] = {
                 "dateTimestamp": value,
                 "description": "must not escape",
-                "publishTime": value,
                 "title": "must not escape",
                 "type": {"key": announcement_type, "title": "type title"},
                 "url": "https://announcements.bybit.com/private-shape-only",
             }
-            for value in times
-        )
+            if page == 1:
+                item["publishTime"] = value
+            items_buffer.append(item)
+        items = tuple(items_buffer)
         return AnnouncementPage(
             announcement_type=announcement_type,
             page=page,
@@ -136,6 +138,10 @@ def test_bounded_archive_depth_is_schema_valid_hashed_and_redacted(tmp_path: Pat
         "selected_registry_launch_max_ms": 1_610_000_000_000,
         "selected_registry_launch_min_ms": 1_600_000_000_000,
     }
+    first_probe = payload["type_probes"][0]
+    assert first_probe["first_page_publish_time_present_count"] == 20
+    assert first_probe["last_page_publish_time_present_count"] == 0
+    assert first_probe["oldest_publish_time_ms"] is None
     rendered = json.dumps(payload).lower()
     for forbidden in (
         "aaausdt",
