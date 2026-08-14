@@ -215,6 +215,14 @@ the 978-object public catalog result, and checked for retained-state preservatio
 artifact is required before observed timings are cited. This remains a component measurement and
 does not qualify the owner-reviewed end-to-end envelope by itself.
 
+The receipt-verified 2026-08-14 post-merge run bound to
+`377830046cf51440ebbdd2caad0c2919f09b45f9` selected 978 datasets containing 30,832,334 rows
+and 529,794,759 bytes through four concurrent production selectors. The first pass took
+22,307,350,800 ns (1,382,160 rows/second); the immediate repeat took 22,576,478,100 ns
+(1,365,683 rows/second). Both passes returned the same result fingerprint and preserved the
+catalog and dataset metadata fingerprint. Cache state was uncontrolled-first followed by an
+immediate repeat, so the result is descriptive component evidence rather than a Gate 2 threshold.
+
 The 2026-08-14 post-merge run bound to `9b68150b740d9bd8988ed791c98dbd9bf4a90a72`
 selected 368,640 rows across 16 same-partition fragments and 32 instruments. The first pass took
 816,325,700 ns (451,584 rows/second); the immediate repeat took 804,938,400 ns (457,972
