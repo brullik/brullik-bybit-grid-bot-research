@@ -1002,10 +1002,17 @@ The schema exposes only aggregate configuration, durations, integer throughput, 
 facts, hashes, immutable implementation identity, software versions, non-identifying CPU/RAM
 facts, and explicit cache state. It excludes dataset/instrument identities, timestamps, paths,
 market values, host/device/account identity, credentials, private endpoints, and live capability.
-A post-merge measurement remains required. It will qualify this synthetic incremental boundary
-only; full-history end-to-end performance and Gate 2 remain blocked. The implementation and
-regression proofs are tracked in
-[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86).
+The receipt-bound 2026-08-14 post-merge artifact is bound to merge commit
+`9b68150b740d9bd8988ed791c98dbd9bf4a90a72`. It measured 368,640 rows across 16 fragments and
+32 instruments: 816,325,700 ns (451,584 rows/second) on the first pass and 804,938,400 ns
+(457,972 rows/second) on the immediate repeat. Both passes selected the same 16 objects, all 15
+ambiguous adjacent bounds exercised the exact-key fallback, and the complete store fingerprint
+remained unchanged. This qualifies only the synthetic incremental boundary; full-history
+end-to-end performance and Gate 2 remain blocked. The implementation and regression proofs are
+tracked in
+[PR #86](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/86); the immutable measured
+artifact and receipt are tracked in
+[PR #87](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/87).
 
 ## Still required before Gate 2
 
