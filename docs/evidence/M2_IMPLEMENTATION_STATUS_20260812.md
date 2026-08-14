@@ -810,7 +810,8 @@ plan/request, registry, and capacity hashes. It reverified 927 completed childre
 978-job/43,328-page campaign, measured 72,762 ms for preflight, and reached a local synthetic
 fail-closed HTTP 403 at the first pending page in another 1,283 ms with exactly one client call and
 no network request. The remaining 51 jobs/2,271 pages are still pending; this qualifies the local
-resume handoff only and does not prove coverage or close Gate 2.
+resume handoff only and does not prove coverage or close Gate 2. The evidence contract, ADR, and
+review are tracked in [PR #75](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/75).
 
 ADR-0055 adds funding repair discovery planning without changing ADR-0034 acceptance. A planner
 re-verifies and recomputes a blocked audit, admits only a complete set of isolated integer-multiple
