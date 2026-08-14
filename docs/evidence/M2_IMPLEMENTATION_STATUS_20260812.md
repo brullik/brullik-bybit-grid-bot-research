@@ -1155,6 +1155,21 @@ content SHA-256 is `306e7aadf51fa8591b62858a45c23152c117ddcdfb7d0990502e796393e8
 It is the current GitHub readiness result and remains a reproducible negative gate result, not a
 Gate 2 decision.
 
+## Genuine candle-gap repair outcome
+
+ADR-0076 was merged through
+[PR #101](https://github.com/brullik/brullik-bybit-grid-bot-research/pull/101) as
+`ad27ab26044a842059f8679d6ccaf9c078225d85`. The bounded private workflow isolated one genuine
+internal `rest_returned_no_data` minute, admitted one task with at most three attempts, and made
+one public request. Bybit returned zero rows, so the immutable execution is `blocked`; the parent
+was not mutated and replacement publication was not eligible.
+
+The receipt-verified
+[sanitized outcome](../../benchmarks/results/m2-candle-gap-repair-execution-20260814.json) contains
+no market identity, timestamp, value, path, account data, or credential. Its artifact SHA-256 is
+`f7d3efd6bab544c02ab63171040d99c364c94531c7e9fc08f31776f820d42cd5` and embedded content
+SHA-256 is `fb71a2e26afb3b209fda7d44d0d5e1de080e99eb998b8cc33491bf8d9811cea8`.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

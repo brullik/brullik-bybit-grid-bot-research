@@ -24,6 +24,54 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def test_candle_gap_repair_execution_public_evidence_matches_schema_and_redaction() -> None:
+    artifact = ROOT / "benchmarks/results/m2-candle-gap-repair-execution-20260814.json"
+    schema = load_json(
+        ROOT / "schemas/evidence/v1/bybit-1m-gap-repair-execution-public.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "fb71a2e26afb3b209fda7d44d0d5e1de080e99eb998b8cc33491bf8d9811cea8"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "f7d3efd6bab544c02ab63171040d99c364c94531c7e9fc08f31776f820d42cd5"
+    )
+    assert payload["status"] == "blocked"
+    assert payload["limits"] == {
+        "actual_http_requests": 1,
+        "missing_minute_count": 1,
+        "observed_row_count": 0,
+        "planned_max_http_requests": 3,
+        "task_count": 1,
+        "total_missing_minutes": 1,
+    }
+    assert payload["outcome"] == {
+        "classification": "source-gap-remains",
+        "parent_dataset_mutated": False,
+        "replacement_dataset_published": False,
+        "replacement_eligible": False,
+    }
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        '"authorization":',
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"runtime_path"',
+        '"open_time_ms"',
+        '"volume"',
+    ):
+        assert forbidden not in rendered
+
+
 def test_all_json_schemas_are_valid_draft_2020_12() -> None:
     for path in sorted((ROOT / "schemas").rglob("*.schema.json")):
         Draft202012Validator.check_schema(load_json(path))
