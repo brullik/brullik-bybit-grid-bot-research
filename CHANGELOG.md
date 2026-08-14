@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- Receipt-verified Gate 2 readiness v2 evidence bound to merge `847de3e`: all twelve source chains
+  verify offline, three criteria are evidence-ready, three remain blocked by seven current codes,
+  Gate 2 stays closed, and automatic Phase 3 authorization remains false.
 - ADR-0075 and `grid.gate2-readiness-pack/v2`: one offline pass verifies twelve existing
   receipt-bound artifacts, retires only the now-false incomplete-campaign/publication blockers,
   preserves seven current repair/lifecycle/cadence/absence/performance blockers, and keeps Gate 2

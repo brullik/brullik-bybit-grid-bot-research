@@ -224,6 +224,66 @@ def test_gate2_readiness_pack_matches_schema_receipt_and_remains_blocked() -> No
         assert forbidden not in rendered
 
 
+def test_gate2_readiness_pack_v2_matches_schema_receipt_and_remains_blocked() -> None:
+    artifact = ROOT / "benchmarks/results/m2-gate2-readiness-pack-v2-20260814.json"
+    schema = load_json(ROOT / "schemas/evidence/v2/gate2-readiness-pack.schema.json")
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "306e7aadf51fa8591b62858a45c23152c117ddcdfb7d0990502e796393e89e46"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert sha256_file(artifact) == (
+        "d28041effc793e2a5c7daf81b3a1f5ae5035804ca342a2efe21632383ffbcc52"
+    )
+    assert payload["bindings"] == {
+        "implementation_identity": "git:847de3e43c0c8411c609eca5f65a279adc42dcbe"
+    }
+    assert payload["readiness_counts"] == {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3,
+    }
+    assert payload["gate_2"] == {
+        "automatic_phase3_authorization": False,
+        "blocker_codes": [
+            "full-history-end-to-end-performance-envelope-unqualified",
+            "funding-cadence-policy-unresolved",
+            "genuine-candle-gap-repair-evidence-missing",
+            "historical-point-in-time-metadata-missing",
+            "measured-funding-repair-evidence-missing",
+            "official-announcement-history-insufficient",
+            "unaccepted-candle-absence-reasons",
+        ],
+        "data_quality_owner_decision_required": True,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner",
+    }
+    assert payload["assurances"]["network_request_performed"] is False
+    assert payload["assurances"]["automatic_gate_acceptance_performed"] is False
+    assert payload["assurances"]["phase3_authorized"] is False
+    assert len(payload["sources"]) == 12
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        '"authorization":',
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"dataset_id"',
+        '"runtime_path"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_canonical_integrity_fault_injection_matches_schema_receipt_and_redaction() -> None:
     artifact = ROOT / "benchmarks/results/m2-canonical-integrity-fault-injection-20260814.json"
     schema = load_json(

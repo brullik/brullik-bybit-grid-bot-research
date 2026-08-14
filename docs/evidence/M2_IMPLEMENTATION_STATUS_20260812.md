@@ -1140,9 +1140,16 @@ The successor removes only the obsolete claims that the representative candle ca
 canonical publication/audit are missing. Preflight-before-mutation, duplicate/conflicting-key
 freedom, and stale-output detection are evidence-ready. Deterministic repair, lifecycle coverage,
 and performance remain blocked by seven explicit current evidence/policy codes. Gate 2 remains
-closed, data-quality-owner review remains mandatory, and Phase 3 authorization remains false. A
-post-merge artifact bound to the merged implementation is still required before v2 becomes the
-current GitHub readiness result.
+closed, data-quality-owner review remains mandatory, and Phase 3 authorization remains false.
+
+The receipt-verified 2026-08-14
+[v2 readiness artifact](../../benchmarks/results/m2-gate2-readiness-pack-v2-20260814.json) is bound
+to implementation merge `847de3e43c0c8411c609eca5f65a279adc42dcbe`. Its twelve exact source
+chains verify, the artifact SHA-256 is
+`d28041effc793e2a5c7daf81b3a1f5ae5035804ca342a2efe21632383ffbcc52`, and the embedded canonical
+content SHA-256 is `306e7aadf51fa8591b62858a45c23152c117ddcdfb7d0990502e796393e89e46`.
+It is the current GitHub readiness result and remains a reproducible negative gate result, not a
+Gate 2 decision.
 
 ## Still required before Gate 2
 
