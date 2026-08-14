@@ -325,6 +325,14 @@ order. A dedicated physical adapter then rejects any non-increasing or duplicate
 the unchanged exact conversion. The general adapter still sorts arbitrary input, and publication
 still materializes one bounded child batch before the receipt-last immutable write.
 
+ADR-0088 adds a plan-bound execution-start checkpoint to the aggregate publication root. The
+publisher commits `execution-start.json` and its receipt after verifying/publishing the prepared
+plan and before the first child traversal or write. Every resume reuses that immutable timestamp;
+new manifests bind it to completion time and sanitized evidence derives exact wall-clock elapsed
+milliseconds. Legacy completed four-file roots remain valid and omit timing, while any mixed or
+orphaned checkpoint fails closed. This records publication performance without repeating Landing
+acquisition or canonical publication and does not claim coverage, Gate 2, or Phase 3 readiness.
+
 GitHub is the source of truth for implementation and sanitized evidence under ADR-0025. Runtime
 Landing and canonical market values remain outside Git, while a small receipt-last pilot artifact
 records their canonical hashes, requested ranges, exact 1m coverage, counts, immutable publisher

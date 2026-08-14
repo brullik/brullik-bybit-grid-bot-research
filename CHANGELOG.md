@@ -6,6 +6,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0088 receipt-bound canonical campaign publication timing: a plan-bound immutable execution
+  start survives resume, current manifests and sanitized evidence expose exact wall time, and
+  legacy completed publication roots remain valid without migration.
 - ADR-0087 and an opt-in bounded history-campaign supervisor that automatically receipt-resumes
   only classified DNS/socket/HTTP-5xx interruptions while preserving explicit rate-limit,
   regional-access, contract, capacity, and unknown-failure stop conditions.

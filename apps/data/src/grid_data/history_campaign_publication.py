@@ -59,6 +59,7 @@ from grid_data.history_request import load_verified_capacity_evidence
 from grid_data.instrument_registry import load_verified_instrument_registry
 
 CAMPAIGN_PUBLICATION_PLAN_CONTRACT: Final = "grid.history-campaign-publication-plan/v1"
+CAMPAIGN_PUBLICATION_START_CONTRACT: Final = "grid.history-campaign-publication-start/v1"
 CAMPAIGN_PUBLICATION_MANIFEST_CONTRACT: Final = "grid.history-campaign-publication-manifest/v1"
 CAMPAIGN_PUBLICATION_RECEIPT_CONTRACT: Final = "grid.history-campaign-publication-receipt/v1"
 MAX_CAMPAIGN_PUBLICATIONS: Final = 2_880
@@ -222,6 +223,8 @@ class HistoryCampaignPublicationPlan:
     publication_root: Path
     plan_path: Path
     plan_receipt_path: Path
+    start_path: Path
+    start_receipt_path: Path
     manifest_path: Path
     completion_receipt_path: Path
     publisher_software_identity: str
@@ -237,9 +240,13 @@ class HistoryCampaignPublicationPlan:
 class CompletedHistoryCampaignPublication:
     publication_root: Path
     plan_path: Path
+    start_path: Path
+    start_receipt_path: Path
     manifest_path: Path
     receipt_path: Path
     manifest_sha256: str
+    started_at_ms: int | None
+    completed_at_ms: int
     dataset_count: int
     row_count: int
     file_count: int
@@ -299,6 +306,60 @@ def _atomic_write_new(path: Path, payload: Mapping[str, object]) -> None:
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def _start_payload(plan_sha256: str, started_at_ms: int) -> dict[str, object]:
+    return {
+        "contract": CAMPAIGN_PUBLICATION_START_CONTRACT,
+        "publication_plan_sha256": plan_sha256,
+        "started_at_ms": started_at_ms,
+    }
+
+
+def _load_start_checkpoint(
+    publication_root: Path,
+    *,
+    expected_plan_sha256: str,
+) -> int | None:
+    start_path = publication_root / "execution-start.json"
+    receipt_path = publication_root / "execution-start.receipt.json"
+    if start_path.exists() != receipt_path.exists():
+        raise HistoryCampaignPublicationError(
+            "publication execution-start artifact/receipt pair is incomplete"
+        )
+    if not start_path.exists():
+        return None
+    payload, _digest = _verify_receipt(start_path, receipt_path)
+    if set(payload) != {"contract", "publication_plan_sha256", "started_at_ms"}:
+        raise HistoryCampaignPublicationError("publication execution-start fields differ from v1")
+    started_at_ms = _integer("publication start time", payload.get("started_at_ms"))
+    if (
+        payload.get("contract") != CAMPAIGN_PUBLICATION_START_CONTRACT
+        or payload.get("publication_plan_sha256") != expected_plan_sha256
+    ):
+        raise HistoryCampaignPublicationError(
+            "publication execution-start checkpoint does not bind the exact plan"
+        )
+    return started_at_ms
+
+
+def _ensure_start_checkpoint(
+    plan: HistoryCampaignPublicationPlan,
+    now_ms: Callable[[], int],
+) -> int:
+    existing = _load_start_checkpoint(
+        plan.publication_root,
+        expected_plan_sha256=plan.plan_sha256,
+    )
+    if existing is not None:
+        return existing
+    started_at_ms = _integer("publication start time", now_ms())
+    _atomic_write_new(plan.start_path, _start_payload(plan.plan_sha256, started_at_ms))
+    _atomic_write_new(
+        plan.start_receipt_path,
+        _receipt_payload(plan.start_path.name, sha256_file(plan.start_path)),
+    )
+    return started_at_ms
 
 
 def _text(name: str, value: object) -> str:
@@ -651,8 +712,10 @@ def _existing_state(
         )
     names = {path.name for path in publication_root.iterdir()}
     partial = {"plan.json", "plan.receipt.json"}
-    complete = partial | {"manifest.json", "completion-receipt.json"}
-    if names not in (partial, complete):
+    started = partial | {"execution-start.json", "execution-start.receipt.json"}
+    legacy_complete = partial | {"manifest.json", "completion-receipt.json"}
+    complete = started | {"manifest.json", "completion-receipt.json"}
+    if names not in (partial, started, legacy_complete, complete):
         raise HistoryCampaignPublicationError(
             "publication campaign root contains incomplete or orphan artifacts"
         )
@@ -664,7 +727,7 @@ def _existing_state(
         raise HistoryCampaignPublicationError(
             "existing publication campaign plan differs from deterministic preflight"
         )
-    if names == partial:
+    if names in (partial, started):
         return False
     verify_completed_history_campaign_publication(publication_root, source_campaign_root)
     return True
@@ -804,6 +867,8 @@ def preflight_history_campaign_publication(
         publication_root=publication_root,
         plan_path=publication_root / "plan.json",
         plan_receipt_path=publication_root / "plan.receipt.json",
+        start_path=publication_root / "execution-start.json",
+        start_receipt_path=publication_root / "execution-start.receipt.json",
         manifest_path=publication_root / "manifest.json",
         completion_receipt_path=publication_root / "completion-receipt.json",
         publisher_software_identity=software_identity,
@@ -1064,8 +1129,10 @@ def load_prepared_history_campaign_publication(
         )
     names = {path.name for path in root.iterdir()}
     partial = {"plan.json", "plan.receipt.json"}
-    complete = partial | {"manifest.json", "completion-receipt.json"}
-    if names not in (partial, complete):
+    started = partial | {"execution-start.json", "execution-start.receipt.json"}
+    legacy_complete = partial | {"manifest.json", "completion-receipt.json"}
+    complete = started | {"manifest.json", "completion-receipt.json"}
+    if names not in (partial, started, legacy_complete, complete):
         raise HistoryCampaignPublicationError(
             "prepared publication root contains incomplete or orphan artifacts"
         )
@@ -1137,7 +1204,7 @@ def load_prepared_history_campaign_publication(
         required_free_bytes=required_free,
         planned_peak_memory_bytes=planned_memory,
     )
-    existing_complete = names == complete
+    existing_complete = names in (legacy_complete, complete)
     if existing_complete:
         manifest, _manifest_sha = _verify_receipt(
             root / "manifest.json",
@@ -1163,6 +1230,8 @@ def load_prepared_history_campaign_publication(
         publication_root=root,
         plan_path=root / "plan.json",
         plan_receipt_path=root / "plan.receipt.json",
+        start_path=root / "execution-start.json",
+        start_receipt_path=root / "execution-start.receipt.json",
         manifest_path=root / "manifest.json",
         completion_receipt_path=root / "completion-receipt.json",
         publisher_software_identity=software_identity,
@@ -1324,6 +1393,7 @@ def execute_history_campaign_publication(
     if len(source_jobs) != len(plan.jobs):
         raise HistoryCampaignPublicationError("source campaign job count changed after preflight")
     _publish_plan_if_new(plan)
+    started_at_ms = _ensure_start_checkpoint(plan, now_ms)
     entries: list[dict[str, object]] = []
     for expected, source in zip(plan.jobs, source_jobs, strict=True):
         if expected.existing_commit:
@@ -1361,10 +1431,13 @@ def execute_history_campaign_publication(
         entries.append(_published_entry(current, published))
         if progress is not None:
             progress(current, published)
+    completed_at_ms = _integer("publication completion time", now_ms())
+    if completed_at_ms < started_at_ms:
+        raise HistoryCampaignPublicationError("publication completion time precedes its start")
     manifest: dict[str, object] = {
         "campaign_id": plan.plan_payload["campaign_id"],
         "capacity_evidence_sha256": plan.capacity_evidence_sha256,
-        "completed_at_ms": now_ms(),
+        "completed_at_ms": completed_at_ms,
         "contract": CAMPAIGN_PUBLICATION_MANIFEST_CONTRACT,
         "dataset_count": len(entries),
         "datasets": entries,
@@ -1376,6 +1449,7 @@ def execute_history_campaign_publication(
         "row_count": sum(cast(int, item["row_count"]) for item in entries),
         "source_campaign_manifest_sha256": plan.source_campaign_manifest_sha256,
         "source_campaign_plan_sha256": plan.source_campaign_plan_sha256,
+        "started_at_ms": started_at_ms,
         "status": "complete",
     }
     _atomic_write_new(plan.manifest_path, manifest)
@@ -1452,19 +1526,24 @@ def verify_completed_history_campaign_publication(
     root = supplied.resolve()
     if not root.is_dir():
         raise HistoryCampaignPublicationError("publication campaign root is missing")
-    expected_names = {
+    legacy_names = {
         "plan.json",
         "plan.receipt.json",
         "manifest.json",
         "completion-receipt.json",
     }
-    if {path.name for path in root.iterdir()} != expected_names:
+    current_names = legacy_names | {
+        "execution-start.json",
+        "execution-start.receipt.json",
+    }
+    actual_names = {path.name for path in root.iterdir()}
+    if actual_names not in (legacy_names, current_names):
         raise HistoryCampaignPublicationError("publication campaign allowlist does not match v1")
     plan, plan_artifact_sha = _verify_receipt(root / "plan.json", root / "plan.receipt.json")
     manifest, manifest_sha = _verify_receipt(
         root / "manifest.json", root / "completion-receipt.json"
     )
-    expected_manifest_keys = {
+    legacy_manifest_keys = {
         "campaign_id",
         "capacity_evidence_sha256",
         "completed_at_ms",
@@ -1481,6 +1560,9 @@ def verify_completed_history_campaign_publication(
         "source_campaign_plan_sha256",
         "status",
     }
+    current_manifest_keys = legacy_manifest_keys | {"started_at_ms"}
+    has_start_checkpoint = actual_names == current_names
+    expected_manifest_keys = current_manifest_keys if has_start_checkpoint else legacy_manifest_keys
     if set(plan) != _PLAN_KEYS or set(manifest) != expected_manifest_keys:
         raise HistoryCampaignPublicationError("publication plan or manifest fields differ from v1")
     if plan.get("contract") != CAMPAIGN_PUBLICATION_PLAN_CONTRACT:
@@ -1688,13 +1770,28 @@ def verify_completed_history_campaign_publication(
     ):
         if manifest.get(field) != plan.get(field):
             raise HistoryCampaignPublicationError(f"publication manifest changed {field}")
-    _integer("publication completion time", manifest.get("completed_at_ms"))
+    completed_at_ms = _integer("publication completion time", manifest.get("completed_at_ms"))
+    started_at_ms = _load_start_checkpoint(
+        root,
+        expected_plan_sha256=plan_artifact_sha,
+    )
+    if has_start_checkpoint:
+        if started_at_ms is None or manifest.get("started_at_ms") != started_at_ms:
+            raise HistoryCampaignPublicationError(
+                "publication manifest does not bind its execution-start checkpoint"
+            )
+        if completed_at_ms < started_at_ms:
+            raise HistoryCampaignPublicationError("publication completion time precedes its start")
     return CompletedHistoryCampaignPublication(
         publication_root=root,
         plan_path=root / "plan.json",
+        start_path=root / "execution-start.json",
+        start_receipt_path=root / "execution-start.receipt.json",
         manifest_path=root / "manifest.json",
         receipt_path=root / "completion-receipt.json",
         manifest_sha256=manifest_sha,
+        started_at_ms=started_at_ms,
+        completed_at_ms=completed_at_ms,
         dataset_count=len(source_jobs),
         row_count=total_rows,
         file_count=total_files,

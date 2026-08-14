@@ -9,7 +9,7 @@ import grid_data.history_campaign as history_campaign
 import grid_data.history_campaign_coverage_audit as campaign_coverage
 import grid_data.history_campaign_publication as campaign_publication
 import pytest
-from grid_contracts.canonical import canonical_sha256, sha256_file
+from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha256_file
 from grid_data.cli import parser as command_parser
 from grid_data.evidence import publish_evidence, verify_evidence
 from grid_data.funding_coverage_audit import FundingCoverageAudit
@@ -127,14 +127,19 @@ def preflight_publication(
     )
 
 
-def execute_publication(plan, *, progress=None):  # type: ignore[no-untyped-def]
+def execute_publication(
+    plan,
+    *,
+    progress=None,
+    now_ms_value: int = 2_003,
+):  # type: ignore[no-untyped-def]
     return execute_history_campaign_publication(
         plan,
         snapshot_provider=lambda: snapshot(
             plan.store_root.parent,
             observed_at_ms=2_002,
         ),
-        now_ms=lambda: 2_003,
+        now_ms=lambda: now_ms_value,
         progress=progress,
     )
 
@@ -407,6 +412,8 @@ def test_publication_campaign_executes_verifies_schemas_and_is_idempotent(
     assert completed.parquet_bytes > 0
     assert {path.name for path in completed.publication_root.iterdir()} == {
         "completion-receipt.json",
+        "execution-start.json",
+        "execution-start.receipt.json",
         "manifest.json",
         "plan.json",
         "plan.receipt.json",
@@ -414,10 +421,15 @@ def test_publication_campaign_executes_verifies_schemas_and_is_idempotent(
     schema_root = ROOT / "schemas/market/v1"
     for schema_name, artifact in (
         ("history-campaign-publication-plan.schema.json", completed.plan_path),
+        ("history-campaign-publication-start.schema.json", completed.start_path),
         ("history-campaign-publication-manifest.schema.json", completed.manifest_path),
         (
             "history-campaign-publication-receipt.schema.json",
             completed.publication_root / "plan.receipt.json",
+        ),
+        (
+            "history-campaign-publication-receipt.schema.json",
+            completed.start_receipt_path,
         ),
         ("history-campaign-publication-receipt.schema.json", completed.receipt_path),
     ):
@@ -584,7 +596,10 @@ def test_interrupted_publication_resumes_from_canonical_receipts(tmp_path: Path)
         execute_publication(plan, progress=interrupt_after_first)
     assert plan.plan_path.is_file()
     assert plan.plan_receipt_path.is_file()
+    assert plan.start_path.is_file()
+    assert plan.start_receipt_path.is_file()
     assert not plan.manifest_path.exists()
+    start_bytes = plan.start_path.read_bytes()
     first_dataset = plan.store_root / plan.jobs[0].dataset_root
     assert (first_dataset / "completion-receipt.json").is_file()
     first_manifest_sha = sha256_file(first_dataset / "manifest.json")
@@ -595,9 +610,67 @@ def test_interrupted_publication_resumes_from_canonical_receipts(tmp_path: Path)
         observed_at_ms=3_000,
     )
     assert [job.existing_commit for job in resumed.jobs] == [True, False]
-    completed = execute_publication(resumed)
+    completed = execute_publication(resumed, now_ms_value=5_000)
     assert completed.dataset_count == 2
+    assert completed.started_at_ms == 2_003
+    assert completed.completed_at_ms == 5_000
+    assert plan.start_path.read_bytes() == start_bytes
     assert sha256_file(first_dataset / "manifest.json") == first_manifest_sha
+
+
+def test_publication_rejects_orphan_execution_start_checkpoint(tmp_path: Path) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = prepare_history_campaign_publication_plan(
+        preflight_publication(tmp_path, source.campaign_root)
+    )
+    plan.start_path.write_bytes(
+        canonical_json_bytes(
+            {
+                "contract": "grid.history-campaign-publication-start/v1",
+                "publication_plan_sha256": plan.plan_sha256,
+                "started_at_ms": 2_003,
+            }
+        )
+    )
+
+    with pytest.raises(HistoryCampaignPublicationError, match=r"execution-start.*incomplete"):
+        execute_publication(plan)
+
+
+def test_legacy_completed_publication_without_start_checkpoint_still_verifies(
+    tmp_path: Path,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    completed = execute_publication(preflight_publication(tmp_path, source.campaign_root))
+    manifest = json.loads(completed.manifest_path.read_text(encoding="utf-8"))
+    manifest.pop("started_at_ms")
+    completed.manifest_path.write_bytes(canonical_json_bytes(manifest))
+    completed.receipt_path.write_bytes(
+        canonical_json_bytes(
+            {
+                "artifact": "manifest.json",
+                "artifact_sha256": sha256_file(completed.manifest_path),
+                "contract": "grid.history-campaign-publication-receipt/v1",
+                "status": "complete",
+            }
+        )
+    )
+    completed.start_path.unlink()
+    completed.start_receipt_path.unlink()
+
+    verified = verify_completed_history_campaign_publication(
+        completed.publication_root,
+        source.campaign_root,
+    )
+    assert verified.started_at_ms is None
+    assert verified.completed_at_ms == 2_003
+    evidence = build_history_campaign_publication_evidence(
+        completed.publication_root,
+        source.campaign_root,
+        generated_at_utc="2026-08-14T12:00:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    assert "timing" not in evidence
 
 
 def test_prepared_resume_semantically_rechecks_only_pending_children(
@@ -758,6 +831,11 @@ def test_publication_campaign_evidence_is_schema_valid_aggregate_only_and_redact
     assert payload["canonical"]["dataset_count"] == 2  # type: ignore[index]
     assert payload["canonical"]["row_count"] == 2  # type: ignore[index]
     assert payload["canonical"]["file_count"] == 2  # type: ignore[index]
+    assert payload["timing"] == {  # type: ignore[index]
+        "completed_at_ms": 2_003,
+        "elapsed_ms": 0,
+        "started_at_ms": 2_003,
+    }
     by_kind = payload["canonical"]["by_kind"]  # type: ignore[index]
     assert [item["kind"] for item in by_kind] == ["trade", "funding"]
     assert [item["dataset_count"] for item in by_kind] == [1, 1]

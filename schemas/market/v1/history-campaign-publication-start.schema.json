@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-campaign-publication-start.schema.json",
+  "title": "Receipt-bound canonical history campaign publication execution start v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "publication_plan_sha256", "started_at_ms"],
+  "properties": {
+    "contract": {"const": "grid.history-campaign-publication-start/v1"},
+    "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "started_at_ms": {"type": "integer", "minimum": 0}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
