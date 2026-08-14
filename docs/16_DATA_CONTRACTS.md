@@ -227,6 +227,21 @@ source-order inversions for every type, requires consistent date order only from
 `delistings`, and names aggregate coordinates as declared-last-page observations rather than
 global archive minima. See ADR-0071 through ADR-0074.
 
+`grid.phase2-legacy-listing-event-evidence/v1` fills a bounded part of that legacy source-depth
+gap without changing the archive API result. It fixes three exact public posts from Bybit's
+official announcement channel, one transport attempt per fixed 20-post archive window, exact post
+identities/timestamps, visible-text markers, and selected-match cardinalities of one/three/one. The
+builder fully re-verifies the receipt-bound oldest-five source campaign, aggregate publication,
+every canonical dataset, and the exact registry binding before comparing private first trade/mark
+dates. Association accepts a normalized full pair or a strict alphanumeric-boundary registry base
+token, then requires exact-once selected-set coverage. Public
+output retains only official URL/timestamp and response/text hashes, lineage hashes, a selected-set
+hash, and aggregate day/month counts; symbols, instrument IDs, observed market timestamps, market
+values, dataset identities, paths, credentials, and account data are excluded. Four exact trade
+UTC-date matches plus one two-date lead are bounded source evidence, not exact activation metadata.
+The contract cannot accept absence, rewrite the registry, remove blockers, close Gate 2, or
+authorize Phase 3. See ADR-0095.
+
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and
 plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate

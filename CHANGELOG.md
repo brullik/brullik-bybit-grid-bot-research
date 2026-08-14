@@ -6,6 +6,13 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0095 and `grid.phase2-legacy-listing-event-evidence/v1`: three exact official legacy posts
+  are reconciled with a fully verified oldest-five canonical publication, publishing only
+  source/lineage hashes and aggregate date counts while preserving one two-date ambiguity,
+  unchanged metadata/announcement blockers, Gate 2 owner authority, and Phase 3 isolation.
+- Receipt-verified ADR-0095 evidence bound to `7e5708a`: three fixed official posts cover the five
+  selected instruments exactly once; four first-trade UTC dates match and one leads by two dates,
+  while no blocker is removed and Gate 2 remains closed.
 - ADR-0094 and `grid.phase2-funding-cadence-policy-evidence/v1`: one exact official announcement
   response and paired receipt-verified funding audit/Landing chains are replayed with Decimal
   threshold and schedule-alignment semantics, producing only sanitized aggregates and leaving the
