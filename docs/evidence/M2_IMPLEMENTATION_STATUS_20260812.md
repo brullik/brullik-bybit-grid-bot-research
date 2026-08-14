@@ -1043,6 +1043,21 @@ lineage, and reports the missing minutes as unaccepted
 remaining independent children to proceed but does not accept the 74 minutes, close Gate 2, or
 authorize Phase 3. Post-merge full-campaign publication and coverage evidence remain required.
 
+## Receipt-bound publication startup and resume
+
+The first full-history no-mutation publication preflight verified 978 jobs and 30,832,408 source
+rows in about 30 minutes. The original `--execute` path then began repeating the same aggregate
+semantic scan before any canonical mutation. It was stopped before plan or dataset publication.
+
+ADR-0069 makes the complete semantic aggregate result an explicit receipt-bound checkpoint.
+`--prepare-plan` writes only the deterministic plan/receipt after all children pass; a subsequent
+`--execute --publication-root` verifies that frozen plan and starts per-child work without another
+whole-campaign decode. Every pending child still undergoes the unchanged current semantic
+preflight immediately before mutation; committed children are receipt/hash/audit-verified without
+row decoding. All resource, receipt-last, immutable lineage, final source-integrity verification,
+coverage, and Gate 2 constraints remain unchanged. Post-merge full-history prepared-plan and
+execution measurements remain required.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

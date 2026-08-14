@@ -108,7 +108,9 @@ from grid_data.history_campaign_coverage_audit import build_history_campaign_cov
 from grid_data.history_campaign_evidence import build_history_campaign_evidence
 from grid_data.history_campaign_publication import (
     execute_history_campaign_publication,
+    load_prepared_history_campaign_publication,
     preflight_history_campaign_publication,
+    prepare_history_campaign_publication_plan,
     verify_completed_history_campaign_publication,
 )
 from grid_data.history_campaign_publication_evidence import (
@@ -365,10 +367,27 @@ def parser() -> argparse.ArgumentParser:
     campaign_publish.add_argument("--capacity-evidence", type=Path, required=True)
     campaign_publish.add_argument("--store-root", type=Path, required=True)
     campaign_publish.add_argument("--software-identity", required=True)
-    campaign_publish.add_argument(
+    campaign_publish_mode = campaign_publish.add_mutually_exclusive_group()
+    campaign_publish_mode.add_argument(
+        "--prepare-plan",
+        action="store_true",
+        help=(
+            "persist only the receipt-bound aggregate plan after semantic preflight; "
+            "write no canonical datasets"
+        ),
+    )
+    campaign_publish_mode.add_argument(
         "--execute",
         action="store_true",
-        help="write canonical datasets and aggregate receipts; omitted means preflight",
+        help=(
+            "write canonical datasets and aggregate receipts; with --publication-root, "
+            "resume from its receipt-bound prepared plan"
+        ),
+    )
+    campaign_publish.add_argument(
+        "--publication-root",
+        type=Path,
+        help="prepared publication root; valid only together with --execute",
     )
     campaign_publish.set_defaults(handler=_publish_history_campaign)
 
@@ -1169,17 +1188,33 @@ def _history_campaign_evidence(args: argparse.Namespace) -> int:
 
 
 def _publish_history_campaign(args: argparse.Namespace) -> int:
+    if args.publication_root is not None and not args.execute:
+        raise ValueError("--publication-root requires --execute")
     snapshot = probe_host_snapshot(args.store_root)
     observed_at_ms = time.time_ns() // 1_000_000
-    plan = preflight_history_campaign_publication(
-        args.campaign_root,
-        instrument_registry_path=args.instrument_registry,
-        capacity_evidence_path=args.capacity_evidence,
-        store_root=args.store_root,
-        snapshot=snapshot,
-        now_ms=observed_at_ms,
-        software_identity=args.software_identity,
-    )
+    if args.publication_root is None:
+        plan = preflight_history_campaign_publication(
+            args.campaign_root,
+            instrument_registry_path=args.instrument_registry,
+            capacity_evidence_path=args.capacity_evidence,
+            store_root=args.store_root,
+            snapshot=snapshot,
+            now_ms=observed_at_ms,
+            software_identity=args.software_identity,
+        )
+        verification_mode = "whole-campaign-semantic-preflight-v1"
+    else:
+        plan = load_prepared_history_campaign_publication(
+            args.campaign_root,
+            args.publication_root,
+            instrument_registry_path=args.instrument_registry,
+            capacity_evidence_path=args.capacity_evidence,
+            store_root=args.store_root,
+            snapshot=snapshot,
+            now_ms=observed_at_ms,
+            software_identity=args.software_identity,
+        )
+        verification_mode = "prepared-plan-receipt-resume-v1"
     summary = {
         "dataset_count": len(plan.jobs),
         "execute": bool(args.execute),
@@ -1192,7 +1227,13 @@ def _publish_history_campaign(args: argparse.Namespace) -> int:
         "row_count": sum(job.row_count for job in plan.jobs),
         "source_campaign_manifest_sha256": plan.source_campaign_manifest_sha256,
         "status": "preflight-passed",
+        "verification_mode": verification_mode,
     }
+    if args.prepare_plan:
+        prepare_history_campaign_publication_plan(plan)
+        summary.update({"prepared_plan": True, "status": "plan-prepared"})
+        print(json.dumps(summary))
+        return 0
     if not args.execute:
         print(json.dumps(summary))
         return 0

@@ -766,9 +766,9 @@ For a campaign executed entirely by an ADR-0044 implementation, qualify it expli
 
 ## 19. Publish a completed campaign as canonical datasets
 
-Use the exact publisher merge commit containing ADR-0039. First run the aggregate no-mutation
-preflight; it verifies the acquisition campaign and every child Landing input while retaining only
-one Arrow batch at a time:
+Use the exact publisher merge commit containing ADR-0069. For a large campaign, run the complete
+semantic preflight once and persist only its receipt-bound aggregate plan. This retains one Arrow
+batch at a time and writes no canonical dataset:
 
 ```powershell
 .venv\Scripts\grid-data.exe publish-history-campaign `
@@ -776,24 +776,45 @@ one Arrow batch at a time:
   --instrument-registry data\evidence\instrument-registry-20260813.json `
   --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
   --store-root data\market-store `
-  --software-identity git:<full-merge-commit-sha>
+  --software-identity git:<full-merge-commit-sha> `
+  --prepare-plan
 ```
 
 Review the source manifest hash, dataset/pending counts, maximum single-writer free-space and
-memory bounds, and deterministic publication root. Repeat the exact command with `--execute` only
-after preflight passes. Writers run sequentially; each emits progress JSON only after its own
-canonical completion receipt verifies. If interrupted, rerun the same command: already committed
-datasets are hash-verified and reused, never rewritten.
+memory bounds, and deterministic publication root. Start or resume from that exact root:
+
+```powershell
+.venv\Scripts\grid-data.exe publish-history-campaign `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<source-plan-prefix> `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --software-identity git:<full-merge-commit-sha> `
+  --execute `
+  --publication-root data\market-store\.publication-campaigns\<prepared-root>
+```
+
+The prepared root is verified from its receipt and immutable source/evidence/software bindings;
+the whole campaign is not decoded again at startup. Writers run sequentially and still perform a
+fresh complete semantic preflight of each pending child immediately before its write. A committed
+child is hash/receipt/audit-verified against the frozen plan without row decoding. Each emits
+progress JSON only after its canonical completion receipt verifies. If interrupted, rerun this
+same prepared-root command: already committed datasets are verified and reused, never rewritten,
+and unrelated pending children are not scanned during aggregate startup.
+
+The command without `--prepare-plan`, `--execute`, or `--publication-root` remains the strictly
+no-mutation preflight. Legacy `--execute` without `--publication-root` remains supported but
+recomputes the full aggregate plan in memory, so do not use it for a large reviewed/resumable run.
 
 A verified candle child with zero admitted rows is not skipped. ADR-0067 publishes a receipt-bound
 schema-only Parquet child so the subsequent coverage audit can report the complete missing range
 and any quarantined-source reason without inventing market data. A zero-row canonical child is not
 coverage acceptance and must not be registered for research unless its separate audit passes.
 
-Aggregate preflight decodes each verified Landing page once through the typed child handoff and
-releases that child's Arrow batch before moving to the next child. It is still intentionally a
-full exact verification and can take several minutes for multi-million-row campaigns. A long
-runtime with active CPU is not permission to skip the preflight or lower its digest/receipt checks.
+Prepared-plan creation decodes each verified Landing page once through the typed child handoff and
+releases that child's Arrow batch before moving to the next child. It is intentionally a full
+exact admission pass and can take several minutes for multi-million-row campaigns. The resulting
+receipt is the restart checkpoint; do not delete it, bypass it, or lower its digest/receipt checks.
 
 Verify the aggregate receipt and every source/canonical relationship independently:
 

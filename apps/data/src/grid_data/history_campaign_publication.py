@@ -62,7 +62,9 @@ CAMPAIGN_PUBLICATION_PLAN_CONTRACT: Final = "grid.history-campaign-publication-p
 CAMPAIGN_PUBLICATION_MANIFEST_CONTRACT: Final = "grid.history-campaign-publication-manifest/v1"
 CAMPAIGN_PUBLICATION_RECEIPT_CONTRACT: Final = "grid.history-campaign-publication-receipt/v1"
 MAX_CAMPAIGN_PUBLICATIONS: Final = 2_880
+MAX_PREPARED_PLAN_SNAPSHOT_AGE_MS: Final = 60_000
 SOFTWARE_IDENTITY_RE: Final = re.compile(r"^git:[0-9a-f]{40}$")
+SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
 CampaignKind = Literal["trade", "mark", "funding"]
 ResolvedChildPublication = ResolvedHistoryPublication | ResolvedFundingPublication
 
@@ -132,6 +134,19 @@ _CANONICAL_ADMISSION_KEYS: Final = {
     "policy",
     "reason_counts",
     "source_row_count",
+}
+_PLAN_KEYS: Final = {
+    "campaign_id",
+    "capacity_evidence_sha256",
+    "contract",
+    "dataset_count",
+    "instrument_evidence_sha256",
+    "jobs",
+    "publication_policy",
+    "publisher_software_identity",
+    "row_count",
+    "source_campaign_manifest_sha256",
+    "source_campaign_plan_sha256",
 }
 
 
@@ -295,6 +310,13 @@ def _integer(name: str, value: object, *, minimum: int = 0) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise HistoryCampaignPublicationError(f"{name} must be an integer >= {minimum}")
     return value
+
+
+def _sha256(name: str, value: object) -> str:
+    text = _text(name, value)
+    if SHA256_RE.fullmatch(text) is None:
+        raise HistoryCampaignPublicationError(f"{name} must be a lowercase SHA-256 digest")
+    return text
 
 
 def _canonical_admission(
@@ -803,6 +825,355 @@ def _publish_plan_if_new(plan: HistoryCampaignPublicationPlan) -> None:
     )
 
 
+def prepare_history_campaign_publication_plan(
+    plan: HistoryCampaignPublicationPlan,
+) -> HistoryCampaignPublicationPlan:
+    """Persist only the fully semantic-preflighted aggregate plan and its receipt."""
+
+    if plan.existing_complete:
+        raise HistoryCampaignPublicationError(
+            "completed publication does not need a prepared-plan checkpoint"
+        )
+    _assert_source_campaign_envelope_unchanged(plan)
+    _publish_plan_if_new(plan)
+    persisted, digest = _verify_receipt(plan.plan_path, plan.plan_receipt_path)
+    if persisted != plan.plan_payload or digest != plan.plan_sha256:
+        raise HistoryCampaignPublicationError("prepared publication plan does not verify")
+    return plan
+
+
+def _load_bound_source_campaign(
+    source_campaign_root: Path,
+    *,
+    expected_plan_sha256: str,
+    expected_manifest_sha256: str,
+) -> CompletedHistoryCampaign:
+    """Load the frozen aggregate envelope without re-reading every Landing page."""
+
+    supplied = source_campaign_root.absolute()
+    if supplied.is_symlink() or supplied.parent.is_symlink():
+        raise HistoryCampaignPublicationError(
+            "source campaign root and namespace cannot be symlinks"
+        )
+    root = supplied.resolve()
+    if not root.is_dir():
+        raise HistoryCampaignPublicationError("source campaign root is missing")
+    if {path.name for path in root.iterdir()} != {
+        "completion-receipt.json",
+        "manifest.json",
+        "plan.json",
+        "plan.receipt.json",
+    }:
+        raise HistoryCampaignPublicationError("source campaign envelope allowlist changed")
+    plan_path = root / "plan.json"
+    manifest_path = root / "manifest.json"
+    plan = _load_canonical_object(plan_path)
+    manifest = _load_canonical_object(manifest_path)
+    plan_sha = sha256_file(plan_path)
+    manifest_sha = sha256_file(manifest_path)
+    plan_receipt = _load_canonical_object(root / "plan.receipt.json")
+    completion_receipt = _load_canonical_object(root / "completion-receipt.json")
+    if (
+        plan_sha != expected_plan_sha256
+        or manifest_sha != expected_manifest_sha256
+        or plan_receipt
+        != {
+            "artifact": "plan.json",
+            "artifact_sha256": plan_sha,
+            "contract": CAMPAIGN_RECEIPT_CONTRACT,
+            "status": "complete",
+        }
+        or completion_receipt
+        != {
+            "artifact": "manifest.json",
+            "artifact_sha256": manifest_sha,
+            "contract": CAMPAIGN_RECEIPT_CONTRACT,
+            "status": "complete",
+        }
+        or manifest.get("campaign_plan_sha256") != canonical_sha256(plan)
+        or manifest.get("status") != "complete"
+    ):
+        raise HistoryCampaignPublicationError("prepared plan source campaign binding changed")
+    job_count = _integer("source campaign job count", manifest.get("job_count"), minimum=1)
+    if plan.get("job_count") != job_count:
+        raise HistoryCampaignPublicationError("source campaign job count changed")
+    return CompletedHistoryCampaign(
+        campaign_root=root,
+        plan_path=plan_path,
+        manifest_path=manifest_path,
+        receipt_path=root / "completion-receipt.json",
+        manifest_sha256=manifest_sha,
+        job_count=job_count,
+        page_count=_integer("source campaign page count", manifest.get("page_count")),
+        row_count=_integer("source campaign row count", manifest.get("row_count")),
+        http_request_count=_integer(
+            "source campaign HTTP request count",
+            manifest.get("http_request_count"),
+        ),
+    )
+
+
+def _prepared_child_from_payload(
+    raw: object,
+    source: SourceCampaignJob,
+    *,
+    store_root: Path,
+) -> PreparedCampaignPublication:
+    if not isinstance(raw, dict) or set(raw) not in (_PLAN_JOB_KEYS, _PLAN_JOB_ADMISSION_KEYS):
+        raise HistoryCampaignPublicationError("prepared publication child fields differ from v1")
+    expected_source = {
+        "job_id": source.job_id,
+        "kind": source.kind,
+        "sequence": source.sequence,
+        "source_job_manifest_sha256": source.job_manifest_sha256,
+        "source_job_plan_sha256": source.job_plan_sha256,
+        "source_job_root": source.job_root_relative,
+    }
+    if any(raw.get(name) != value for name, value in expected_source.items()):
+        raise HistoryCampaignPublicationError("prepared publication source lineage differs")
+    canonical_admission = _canonical_admission(
+        raw.get("canonical_admission"),
+        source_row_count=source.row_count,
+    )
+    if canonical_admission is not None and source.kind == "funding":
+        raise HistoryCampaignPublicationError(
+            "funding publication cannot carry candle canonical admission"
+        )
+    row_count = (
+        cast(int, canonical_admission["admitted_row_count"])
+        if canonical_admission is not None
+        else source.row_count
+    )
+    if canonical_admission is not None and raw.get("source_row_count") != source.row_count:
+        raise HistoryCampaignPublicationError("prepared canonical admission source count changed")
+    dataset_id = _text("prepared canonical dataset id", raw.get("dataset_id"))
+    dataset_type = _dataset_type(source.kind)
+    dataset_root = (PurePosixPath("datasets") / dataset_id).as_posix()
+    if (
+        dataset_id != _dataset_id(source.kind, source.job_manifest_sha256)
+        or raw.get("dataset_type") != dataset_type
+        or raw.get("dataset_root") != dataset_root
+        or raw.get("row_count") != row_count
+    ):
+        raise HistoryCampaignPublicationError("prepared canonical dataset identity changed")
+    dataset_path = store_root.joinpath(*PurePosixPath(dataset_root).parts)
+    if dataset_path.is_symlink() or dataset_path.parent.is_symlink():
+        raise HistoryCampaignPublicationError(
+            "prepared canonical dataset and namespace cannot be symlinks"
+        )
+    existing_commit = dataset_path.exists()
+    if existing_commit and (
+        not dataset_path.is_dir() or not (dataset_path / "completion-receipt.json").is_file()
+    ):
+        raise HistoryCampaignPublicationError("existing canonical dataset has no commit receipt")
+    return PreparedCampaignPublication(
+        sequence=source.sequence,
+        kind=source.kind,
+        job_id=source.job_id,
+        source_job_root=source.job_root_relative,
+        source_job_plan_sha256=source.job_plan_sha256,
+        source_job_manifest_sha256=source.job_manifest_sha256,
+        dataset_id=dataset_id,
+        dataset_type=dataset_type,
+        dataset_root=dataset_root,
+        input_table_sha256=_sha256(
+            "prepared canonical input table hash",
+            raw.get("input_table_sha256"),
+        ),
+        publication_request_sha256=_sha256(
+            "prepared publication request hash",
+            raw.get("publication_request_sha256"),
+        ),
+        row_count=row_count,
+        source_row_count=source.row_count,
+        canonical_admission=canonical_admission,
+        required_free_bytes=_integer(
+            "prepared required free bytes",
+            raw.get("required_free_bytes"),
+            minimum=1,
+        ),
+        planned_peak_memory_bytes=_integer(
+            "prepared peak memory bytes",
+            raw.get("planned_peak_memory_bytes"),
+            minimum=1,
+        ),
+        existing_commit=existing_commit,
+    )
+
+
+def _assert_prepared_plan_resources(
+    store_root: Path,
+    snapshot: HostSnapshot,
+    *,
+    now_ms: int,
+    required_free_bytes: int,
+    planned_peak_memory_bytes: int,
+) -> None:
+    age = now_ms - snapshot.observed_at_ms
+    if age < 0 or age > MAX_PREPARED_PLAN_SNAPSHOT_AGE_MS:
+        raise HistoryCampaignPublicationError("host snapshot must be fresh and not future-dated")
+    if not store_root.is_relative_to(snapshot.volume_root.resolve()):
+        raise HistoryCampaignPublicationError("market store is not on the observed storage volume")
+    current = store_root
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    if not current.is_dir() or current.is_symlink():
+        raise HistoryCampaignPublicationError(
+            "market-store ancestor must be an existing non-symlink directory"
+        )
+    if snapshot.volume_free_bytes < required_free_bytes:
+        raise HistoryCampaignPublicationError(
+            "insufficient free space for one sequential canonical writer and full reserve"
+        )
+    if planned_peak_memory_bytes > snapshot.memory_available_bytes:
+        raise HistoryCampaignPublicationError("insufficient available memory for canonical writer")
+    if planned_peak_memory_bytes * 100 > snapshot.memory_total_bytes * MAX_MEMORY_PERCENT:
+        raise HistoryCampaignPublicationError("publication campaign exceeds the 70% memory gate")
+
+
+def load_prepared_history_campaign_publication(
+    source_campaign_root: Path,
+    publication_root: Path,
+    *,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+    snapshot: HostSnapshot,
+    now_ms: int,
+    software_identity: str,
+) -> HistoryCampaignPublicationPlan:
+    """Load a receipt-bound semantic plan without repeating whole-campaign row decoding."""
+
+    if SOFTWARE_IDENTITY_RE.fullmatch(software_identity) is None:
+        raise HistoryCampaignPublicationError(
+            "software identity must be git:<40-character-lowercase-commit-sha>"
+        )
+    supplied_store = store_root.absolute()
+    if supplied_store.is_symlink():
+        raise HistoryCampaignPublicationError("market store cannot be a symlink")
+    resolved_store = supplied_store.resolve()
+    namespace = resolved_store / ".publication-campaigns"
+    supplied_root = publication_root.absolute()
+    if supplied_root.is_symlink() or supplied_root.parent.is_symlink():
+        raise HistoryCampaignPublicationError("publication root and namespace cannot be symlinks")
+    root = supplied_root.resolve()
+    if root.parent != namespace or not root.is_dir():
+        raise HistoryCampaignPublicationError(
+            "prepared publication root must be an existing direct campaign namespace child"
+        )
+    names = {path.name for path in root.iterdir()}
+    partial = {"plan.json", "plan.receipt.json"}
+    complete = partial | {"manifest.json", "completion-receipt.json"}
+    if names not in (partial, complete):
+        raise HistoryCampaignPublicationError(
+            "prepared publication root contains incomplete or orphan artifacts"
+        )
+    plan_payload, plan_sha = _verify_receipt(root / "plan.json", root / "plan.receipt.json")
+    if (
+        set(plan_payload) != _PLAN_KEYS
+        or plan_payload.get("contract") != CAMPAIGN_PUBLICATION_PLAN_CONTRACT
+        or plan_payload.get("publication_policy") != _PUBLICATION_POLICY
+        or plan_payload.get("publisher_software_identity") != software_identity
+        or plan_sha != canonical_sha256(plan_payload)
+    ):
+        raise HistoryCampaignPublicationError("prepared publication plan contract does not verify")
+    campaign_id = _text("prepared source campaign id", plan_payload.get("campaign_id"))
+    if root.name != f"{campaign_id}--{plan_sha[:16]}":
+        raise HistoryCampaignPublicationError("prepared publication root is not plan-derived")
+    source_plan_sha = _sha256(
+        "prepared source campaign plan hash",
+        plan_payload.get("source_campaign_plan_sha256"),
+    )
+    source_manifest_sha = _sha256(
+        "prepared source campaign manifest hash",
+        plan_payload.get("source_campaign_manifest_sha256"),
+    )
+    source_campaign = _load_bound_source_campaign(
+        source_campaign_root,
+        expected_plan_sha256=source_plan_sha,
+        expected_manifest_sha256=source_manifest_sha,
+    )
+    source_plan = _load_canonical_object(source_campaign.plan_path)
+    try:
+        registry = load_verified_instrument_registry(instrument_registry_path)
+        capacity_path, _capacity, capacity_sha = load_verified_capacity_evidence(
+            capacity_evidence_path
+        )
+    except (HistoryCampaignError, HistoryAcquisitionError) as error:
+        raise HistoryCampaignPublicationError(str(error)) from error
+    if (
+        source_plan.get("campaign_id") != campaign_id
+        or source_plan.get("instrument_evidence_sha256") != registry.artifact_sha256
+        or source_plan.get("capacity_evidence_sha256") != capacity_sha
+        or plan_payload.get("instrument_evidence_sha256") != registry.artifact_sha256
+        or plan_payload.get("capacity_evidence_sha256") != capacity_sha
+    ):
+        raise HistoryCampaignPublicationError("prepared publication evidence binding changed")
+    source_jobs = _source_jobs(source_campaign)
+    raw_jobs = plan_payload.get("jobs")
+    if (
+        not isinstance(raw_jobs, list)
+        or not raw_jobs
+        or len(raw_jobs) > MAX_CAMPAIGN_PUBLICATIONS
+        or len(raw_jobs) != len(source_jobs)
+        or plan_payload.get("dataset_count") != len(raw_jobs)
+    ):
+        raise HistoryCampaignPublicationError("prepared publication inventory does not verify")
+    jobs = tuple(
+        _prepared_child_from_payload(raw, source, store_root=resolved_store)
+        for raw, source in zip(raw_jobs, source_jobs, strict=True)
+    )
+    if len({job.dataset_id for job in jobs}) != len(jobs):
+        raise HistoryCampaignPublicationError("prepared publication dataset ids are not unique")
+    if plan_payload.get("row_count") != sum(job.row_count for job in jobs):
+        raise HistoryCampaignPublicationError("prepared publication row total does not verify")
+    required_free = max(job.required_free_bytes for job in jobs)
+    planned_memory = max(job.planned_peak_memory_bytes for job in jobs)
+    _assert_prepared_plan_resources(
+        resolved_store,
+        snapshot,
+        now_ms=now_ms,
+        required_free_bytes=required_free,
+        planned_peak_memory_bytes=planned_memory,
+    )
+    existing_complete = names == complete
+    if existing_complete:
+        manifest, _manifest_sha = _verify_receipt(
+            root / "manifest.json",
+            root / "completion-receipt.json",
+        )
+        if (
+            manifest.get("contract") != CAMPAIGN_PUBLICATION_MANIFEST_CONTRACT
+            or manifest.get("status") != "complete"
+            or manifest.get("publication_plan_sha256") != plan_sha
+        ):
+            raise HistoryCampaignPublicationError(
+                "completed prepared publication does not bind its plan"
+            )
+    return HistoryCampaignPublicationPlan(
+        source_campaign=source_campaign,
+        source_campaign_plan_sha256=source_plan_sha,
+        source_campaign_manifest_sha256=source_manifest_sha,
+        instrument_registry_path=instrument_registry_path.resolve(),
+        instrument_evidence_sha256=registry.artifact_sha256,
+        capacity_evidence_path=capacity_path,
+        capacity_evidence_sha256=capacity_sha,
+        store_root=resolved_store,
+        publication_root=root,
+        plan_path=root / "plan.json",
+        plan_receipt_path=root / "plan.receipt.json",
+        manifest_path=root / "manifest.json",
+        completion_receipt_path=root / "completion-receipt.json",
+        publisher_software_identity=software_identity,
+        jobs=jobs,
+        plan_payload=plan_payload,
+        plan_sha256=plan_sha,
+        required_free_bytes=required_free,
+        planned_peak_memory_bytes=planned_memory,
+        existing_complete=existing_complete,
+    )
+
+
 def _assert_current_child(
     expected: PreparedCampaignPublication,
     current: PreparedCampaignPublication,
@@ -884,6 +1255,54 @@ def _assert_source_campaign_envelope_unchanged(
         raise HistoryCampaignPublicationError("source campaign envelope changed after preflight")
 
 
+def _verify_existing_child_against_plan(
+    child: PreparedCampaignPublication,
+    source: SourceCampaignJob,
+    plan: HistoryCampaignPublicationPlan,
+) -> PublishedDataset:
+    dataset_root = plan.store_root.joinpath(*PurePosixPath(child.dataset_root).parts)
+    try:
+        published = (
+            verify_committed_funding_dataset(dataset_root)
+            if child.kind == "funding"
+            else verify_committed_candle_dataset(dataset_root)
+        )
+    except PublicationError as error:
+        raise HistoryCampaignPublicationError(
+            f"existing canonical child {child.sequence} does not verify: {error}"
+        ) from error
+    expected_source_evidence = _expected_source_evidence(
+        source,
+        plan.instrument_evidence_sha256,
+        child.canonical_admission,
+    )
+    expected_build_config = _expected_build_config(
+        child.kind,
+        dataset_id=child.dataset_id,
+        source_manifest_sha256=child.source_job_manifest_sha256,
+        software_identity=plan.publisher_software_identity,
+        canonical_admission=child.canonical_admission,
+    )
+    audit = _load_canonical_object(published.audit_path)
+    if (
+        published.manifest.dataset_id != child.dataset_id
+        or published.manifest.dataset_type.value != child.dataset_type
+        or published.manifest.row_count != child.row_count
+        or published.manifest.parent_dataset_ids
+        or published.manifest.source_evidence_sha256 != expected_source_evidence
+        or published.manifest.build_config_sha256 != expected_build_config
+        or published.manifest.software_identity != plan.publisher_software_identity
+        or audit.get("request_sha256") != child.publication_request_sha256
+        or audit.get("input_table_sha256") != child.input_table_sha256
+        or audit.get("coverage_evidence_sha256") != child.source_job_manifest_sha256
+        or audit.get("capacity_evidence_sha256") != plan.capacity_evidence_sha256
+    ):
+        raise HistoryCampaignPublicationError(
+            f"existing canonical child {child.sequence} differs from prepared plan"
+        )
+    return published
+
+
 def execute_history_campaign_publication(
     plan: HistoryCampaignPublicationPlan,
     *,
@@ -906,6 +1325,12 @@ def execute_history_campaign_publication(
     _publish_plan_if_new(plan)
     entries: list[dict[str, object]] = []
     for expected, source in zip(plan.jobs, source_jobs, strict=True):
+        if expected.existing_commit:
+            published = _verify_existing_child_against_plan(expected, source, plan)
+            entries.append(_published_entry(expected, published))
+            if progress is not None:
+                progress(expected, published)
+            continue
         current_snapshot = snapshot_provider()
         current_time = now_ms()
         current, resolved = _resolve_child(
@@ -1038,19 +1463,6 @@ def verify_completed_history_campaign_publication(
     manifest, manifest_sha = _verify_receipt(
         root / "manifest.json", root / "completion-receipt.json"
     )
-    expected_plan_keys = {
-        "campaign_id",
-        "capacity_evidence_sha256",
-        "contract",
-        "dataset_count",
-        "instrument_evidence_sha256",
-        "jobs",
-        "publication_policy",
-        "publisher_software_identity",
-        "row_count",
-        "source_campaign_manifest_sha256",
-        "source_campaign_plan_sha256",
-    }
     expected_manifest_keys = {
         "campaign_id",
         "capacity_evidence_sha256",
@@ -1068,7 +1480,7 @@ def verify_completed_history_campaign_publication(
         "source_campaign_plan_sha256",
         "status",
     }
-    if set(plan) != expected_plan_keys or set(manifest) != expected_manifest_keys:
+    if set(plan) != _PLAN_KEYS or set(manifest) != expected_manifest_keys:
         raise HistoryCampaignPublicationError("publication plan or manifest fields differ from v1")
     if plan.get("contract") != CAMPAIGN_PUBLICATION_PLAN_CONTRACT:
         raise HistoryCampaignPublicationError("unsupported publication campaign plan")

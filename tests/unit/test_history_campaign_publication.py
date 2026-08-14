@@ -7,15 +7,19 @@ import grid_data.funding_acquisition as funding_acquisition
 import grid_data.history_acquisition as history_acquisition
 import grid_data.history_campaign as history_campaign
 import grid_data.history_campaign_coverage_audit as campaign_coverage
+import grid_data.history_campaign_publication as campaign_publication
 import pytest
 from grid_contracts.canonical import canonical_sha256, sha256_file
+from grid_data.cli import parser as command_parser
 from grid_data.funding_coverage_audit import FundingCoverageAudit
 from grid_data.history_campaign import HistoryCampaignError
 from grid_data.history_campaign_coverage_audit import build_history_campaign_coverage_audit
 from grid_data.history_campaign_publication import (
     HistoryCampaignPublicationError,
     execute_history_campaign_publication,
+    load_prepared_history_campaign_publication,
     preflight_history_campaign_publication,
+    prepare_history_campaign_publication_plan,
     verify_completed_history_campaign_publication,
 )
 from grid_data.history_campaign_publication_evidence import (
@@ -123,6 +127,31 @@ def execute_publication(plan, *, progress=None):  # type: ignore[no-untyped-def]
     )
 
 
+def load_prepared_publication(
+    tmp_path: Path,
+    source_campaign_root: Path,
+    publication_root: Path,
+    *,
+    observed_at_ms: int = 3_000,
+    free_bytes: int = 140 * 1024**3,
+    software_identity: str = SOFTWARE_IDENTITY,
+):  # type: ignore[no-untyped-def]
+    return load_prepared_history_campaign_publication(
+        source_campaign_root,
+        publication_root,
+        instrument_registry_path=tmp_path / "registry.json",
+        capacity_evidence_path=tmp_path / "capacity.json",
+        store_root=tmp_path / "market-store",
+        snapshot=snapshot(
+            tmp_path,
+            observed_at_ms=observed_at_ms,
+            free_bytes=free_bytes,
+        ),
+        now_ms=observed_at_ms + 1,
+        software_identity=software_identity,
+    )
+
+
 def test_publication_campaign_preflight_is_aggregate_bounded_and_no_mutation(
     tmp_path: Path,
 ) -> None:
@@ -144,6 +173,33 @@ def test_publication_campaign_preflight_is_aggregate_bounded_and_no_mutation(
         "receipt_resume": True,
         "tick_rows_requested": False,
     }
+
+
+def test_publication_campaign_cli_exposes_exclusive_prepare_and_fast_resume_modes() -> None:
+    common = [
+        "publish-history-campaign",
+        "--campaign-root",
+        "source",
+        "--instrument-registry",
+        "registry.json",
+        "--capacity-evidence",
+        "capacity.json",
+        "--store-root",
+        "store",
+        "--software-identity",
+        SOFTWARE_IDENTITY,
+    ]
+    prepared = command_parser().parse_args([*common, "--prepare-plan"])
+    resumed = command_parser().parse_args(
+        [*common, "--execute", "--publication-root", "store/.publication-campaigns/prepared"]
+    )
+
+    assert prepared.prepare_plan is True
+    assert prepared.execute is False
+    assert resumed.execute is True
+    assert resumed.publication_root == Path("store/.publication-campaigns/prepared")
+    with pytest.raises(SystemExit):
+        command_parser().parse_args([*common, "--prepare-plan", "--execute"])
 
 
 def test_publication_preflight_uses_one_verified_page_read_per_child(
@@ -188,6 +244,88 @@ def test_publication_preflight_uses_one_verified_page_read_per_child(
     assert len(plan.jobs) == 2
     assert history_page_reads and set(history_page_reads.values()) == {1}
     assert funding_page_reads and set(funding_page_reads.values()) == {1}
+
+
+def test_prepared_plan_removes_repeated_aggregate_semantic_preflight(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    plan = preflight_publication(tmp_path, source.campaign_root)
+
+    prepared = prepare_history_campaign_publication_plan(plan)
+    assert {path.name for path in prepared.publication_root.iterdir()} == {
+        "plan.json",
+        "plan.receipt.json",
+    }
+    assert not (plan.store_root / "datasets").exists()
+
+    with monkeypatch.context() as context:
+        context.setattr(
+            campaign_publication,
+            "_preflight_child_publication",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("prepared-plan load repeated semantic preflight")
+            ),
+        )
+        loaded = load_prepared_publication(
+            tmp_path,
+            source.campaign_root,
+            prepared.publication_root,
+        )
+
+    assert loaded.plan_sha256 == plan.plan_sha256
+    assert [job.existing_commit for job in loaded.jobs] == [False, False]
+    child_preflights: list[int] = []
+    original = campaign_publication._preflight_child_publication
+
+    def count_child_preflight(*args, **kwargs):  # type: ignore[no-untyped-def]
+        child_preflights.append(kwargs["sequence"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        campaign_publication,
+        "_preflight_child_publication",
+        count_child_preflight,
+    )
+    completed = execute_publication(loaded)
+
+    assert child_preflights == [0, 1]
+    assert completed.dataset_count == 2
+
+
+def test_prepared_plan_resume_fails_closed_on_identity_resource_and_source_change(
+    tmp_path: Path,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    prepared = prepare_history_campaign_publication_plan(
+        preflight_publication(tmp_path, source.campaign_root)
+    )
+
+    with pytest.raises(HistoryCampaignPublicationError, match="contract"):
+        load_prepared_publication(
+            tmp_path,
+            source.campaign_root,
+            prepared.publication_root,
+            software_identity="git:" + "8" * 40,
+        )
+    with pytest.raises(HistoryCampaignPublicationError, match="free space"):
+        load_prepared_publication(
+            tmp_path,
+            source.campaign_root,
+            prepared.publication_root,
+            free_bytes=1,
+        )
+    source.manifest_path.write_bytes(source.manifest_path.read_bytes() + b" ")
+    with pytest.raises(
+        HistoryCampaignPublicationError,
+        match=r"canonical JSON|source campaign binding",
+    ):
+        load_prepared_publication(
+            tmp_path,
+            source.campaign_root,
+            prepared.publication_root,
+        )
 
 
 def test_publication_campaign_executes_verifies_schemas_and_is_idempotent(
@@ -394,6 +532,53 @@ def test_interrupted_publication_resumes_from_canonical_receipts(tmp_path: Path)
     completed = execute_publication(resumed)
     assert completed.dataset_count == 2
     assert sha256_file(first_dataset / "manifest.json") == first_manifest_sha
+
+
+def test_prepared_resume_semantically_rechecks_only_pending_children(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = completed_source_campaign(tmp_path)
+    prepared = prepare_history_campaign_publication_plan(
+        preflight_publication(tmp_path, source.campaign_root)
+    )
+    initial = load_prepared_publication(
+        tmp_path,
+        source.campaign_root,
+        prepared.publication_root,
+    )
+
+    def interrupt_after_first(child, published):  # type: ignore[no-untyped-def]
+        del published
+        if child.sequence == 0:
+            raise RuntimeError("injected prepared publication interruption")
+
+    with pytest.raises(RuntimeError, match="prepared publication interruption"):
+        execute_publication(initial, progress=interrupt_after_first)
+
+    resumed = load_prepared_publication(
+        tmp_path,
+        source.campaign_root,
+        prepared.publication_root,
+        observed_at_ms=4_000,
+    )
+    assert [job.existing_commit for job in resumed.jobs] == [True, False]
+    child_preflights: list[int] = []
+    original = campaign_publication._preflight_child_publication
+
+    def count_child_preflight(*args, **kwargs):  # type: ignore[no-untyped-def]
+        child_preflights.append(kwargs["sequence"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        campaign_publication,
+        "_preflight_child_publication",
+        count_child_preflight,
+    )
+    completed = execute_publication(resumed)
+
+    assert child_preflights == [1]
+    assert completed.dataset_count == 2
 
 
 def test_publication_campaign_detects_outer_and_canonical_tampering(tmp_path: Path) -> None:
