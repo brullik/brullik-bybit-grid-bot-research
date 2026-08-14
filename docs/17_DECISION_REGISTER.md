@@ -62,6 +62,7 @@
 | D-056 | Funding repair discovery executes only after whole-plan admission and passes only on exact source confirmation | accepted | Standard receipt-resumable funding jobs, strict candidate equality, private execution evidence, unchanged parent/audit, and ADR-0056 |
 | D-057 | A passed funding repair publishes only as an immutable parent-to-child replacement with sanitized public lineage evidence | accepted | Exact source-confirmed union, recomputed adjacent intervals, receipt-last child, unchanged parent/audit, and ADR-0057 |
 | D-058 | A committed funding repair child requires a separate private post-publication source-parity and chronology audit | accepted | Complete lineage reverification, shared fail-closed chronology rules, no mutable-host write gates, and ADR-0058 |
+| D-059 | Campaign-resume performance enters GitHub only as scope-bound aggregate evidence with a local fail-closed first-pending stub | accepted | Exact request/plan/input/implementation hashes, no network, no identities/values/paths, and ADR-0059 |
 
 ## Decisions requiring benchmark or owner evidence
 

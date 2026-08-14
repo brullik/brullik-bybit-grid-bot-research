@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-history-campaign-resume-performance.schema.json",
+  "title": "Sanitized Phase 2 history-campaign resume performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "limitations",
+    "measurement",
+    "scope",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "completed_children_integrity_verified": true,
+        "completed_results_reused_in_process_only": true,
+        "explicit_campaign_verifier_remains_semantic": true,
+        "first_pending_failure_fail_closed": true,
+        "network_request_performed": false,
+        "partial_children_remain_semantic": true,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_plan_sha256",
+        "campaign_request_sha256",
+        "capacity_evidence_sha256",
+        "implementation_identity",
+        "instrument_registry_sha256"
+      ],
+      "properties": {
+        "campaign_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "campaign_request_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-history-campaign-resume-performance/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed_child_verification_mode",
+        "completed_jobs_reused",
+        "execute_to_first_pending_failure_ms",
+        "first_pending_client_calls",
+        "first_pending_failure_class",
+        "job_count",
+        "page_count",
+        "pending_job_count",
+        "pending_page_count",
+        "planned_peak_memory_bytes",
+        "preflight_elapsed_ms",
+        "required_free_bytes",
+        "resume_to_first_pending_failure_elapsed_ms"
+      ],
+      "properties": {
+        "completed_child_verification_mode": {
+          "const": "receipt-integrity-without-row-decode-v1"
+        },
+        "completed_jobs_reused": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "execute_to_first_pending_failure_ms": {"type": "integer", "minimum": 1},
+        "first_pending_client_calls": {"const": 1},
+        "first_pending_failure_class": {"const": "synthetic-http-403-fail-closed"},
+        "job_count": {"type": "integer", "minimum": 2, "maximum": 2880},
+        "page_count": {"type": "integer", "minimum": 1},
+        "pending_job_count": {"type": "integer", "minimum": 1, "maximum": 2879},
+        "pending_page_count": {"type": "integer", "minimum": 1},
+        "planned_peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "preflight_elapsed_ms": {"type": "integer", "minimum": 1},
+        "required_free_bytes": {"type": "integer", "minimum": 1},
+        "resume_to_first_pending_failure_elapsed_ms": {"type": "integer", "minimum": 2}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "end_ms",
+        "kind_count",
+        "month_count",
+        "start_ms",
+        "symbol_count",
+        "tick_rows_requested"
+      ],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "kind_count": {"const": 2},
+        "month_count": {"type": "integer", "minimum": 1, "maximum": 120},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "tick_rows_requested": {"const": false}
+      }
+    },
+    "status": {"const": "verified-post-merge-history-campaign-resume-performance"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_device_identity": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

@@ -761,6 +761,59 @@ def test_full_history_campaign_preflight_performance_is_bound_and_sanitized() ->
         assert forbidden not in rendered
 
 
+def test_full_history_campaign_resume_performance_is_bound_and_sanitized() -> None:
+    artifact = (
+        ROOT / "benchmarks/results/m2-history-campaign-resume-performance-5xfull-20260814.json"
+    )
+    schema = load_json(
+        ROOT / "schemas/evidence/v1/phase2-history-campaign-resume-performance.schema.json"
+    )
+    payload = load_json(artifact)
+
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256")
+    assert embedded_hash == "ba23ddf0e0663d9c569235e989322b28241a9ff2667e2535d46224be535c2c88"
+    assert embedded_hash == canonical_sha256(hash_input)
+    assert verify_evidence(artifact)
+    assert payload["bindings"]["implementation_identity"] == (
+        "git:60363277432a2bdcfb8d2a23ea05060057eb3aaa"
+    )
+    assert payload["measurement"] == {
+        "completed_child_verification_mode": "receipt-integrity-without-row-decode-v1",
+        "completed_jobs_reused": 927,
+        "execute_to_first_pending_failure_ms": 1_283,
+        "first_pending_client_calls": 1,
+        "first_pending_failure_class": "synthetic-http-403-fail-closed",
+        "job_count": 978,
+        "page_count": 43_328,
+        "pending_job_count": 51,
+        "pending_page_count": 2_271,
+        "planned_peak_memory_bytes": 146_800_640,
+        "preflight_elapsed_ms": 72_762,
+        "required_free_bytes": 103_198_759_642,
+        "resume_to_first_pending_failure_elapsed_ms": 74_045,
+    }
+    assert payload["assurances"]["network_request_performed"] is False
+    rendered = artifact.read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "c:\\",
+        "/home/",
+        "api_key",
+        "api_secret",
+        "authorization",
+        "device_identity_sha256",
+        '"symbol"',
+        '"instrument_id"',
+        '"job_id"',
+        '"runtime_path"',
+        '"open"',
+        '"volume"',
+        "funding_rate",
+    ):
+        assert forbidden not in rendered
+
+
 def test_representative_campaign_coverage_audit_is_bound_and_sanitized() -> None:
     artifact = ROOT / "benchmarks/results/m2-history-campaign-coverage-audit-20260813.json"
     schema = load_json(ROOT / "schemas/evidence/v1/history-campaign-coverage-audit.schema.json")

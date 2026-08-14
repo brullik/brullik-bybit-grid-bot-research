@@ -181,6 +181,15 @@ excluding symbols, instrument/dataset IDs, market values, event timestamps, runt
 data, and credentials. The aggregate passes only when every child passes; it never changes gap or
 funding-cadence acceptance policy. See ADR-0041.
 
+`grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
+qualification of a partially completed campaign resume. It binds the exact campaign request and
+plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate
+job/page/resource counts and local elapsed times; and requires a single synthetic fail-closed
+first-pending client call with `network_request_performed=false`. It contains no instrument
+identity, market value, runtime path, device/account data, or credential. The result measures
+local resume traversal only and does not prove source coverage, endpoint performance, Gate 2, or
+live/private readiness. See ADR-0059.
+
 `grid.history-to-canonical-publication/v1` maps exactly one completed Landing manifest to one
 immutable ADR-0022 candle dataset. It requires the same receipt-verified registry and capacity
 artifact hashes bound by acquisition, re-derives the capacity budget, validates registry lifecycle
