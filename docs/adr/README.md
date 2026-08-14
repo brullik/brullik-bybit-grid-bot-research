@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0090 - Receipt-linked current-universe funding evidence](ADR-0090-receipt-linked-current-universe-funding-evidence.md)
 - [ADR-0089 - Receipt-linked current-universe candle evidence](ADR-0089-receipt-linked-current-universe-candle-evidence.md)
 - [ADR-0088 - Receipt-bound history-campaign publication timing](ADR-0088-receipt-bound-history-campaign-publication-timing.md)
 - [ADR-0087 - Bounded transient history-campaign supervisor](ADR-0087-bounded-transient-history-campaign-supervisor.md)

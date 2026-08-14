@@ -584,6 +584,15 @@ Only hashes, aggregate trade/mark counts, quality reasons, and receipt-bound tim
 funding is reported separately as excluded. The output records incomplete legacy publication
 timing explicitly and cannot qualify the owner-reviewed performance envelope or change Gate 2.
 
+ADR-0090 adds the corresponding funding evidence boundary without repeating the retained July
+campaign. A private safe-relative manifest names the ordered candle chain and each funding source;
+the offline builder reconstructs exact per-symbol minute intervals and requires the normalized
+funding union to equal the ADR-0085 candle union. New funding-only sources retain their discovered
+predecessor bindings, while the retained mixed-kind July source is admitted only as a disjoint
+bounded interval. GitHub receives hashes, aggregate counts, quality, boundary totals, and timing,
+never identities, time bounds, rates, settlement timestamps, paths, or market data. Coverage and
+the performance envelope remain owner-reviewed Gate 2 inputs.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

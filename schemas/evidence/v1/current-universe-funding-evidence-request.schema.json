@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/current-universe-funding-evidence-request.schema.json",
+  "title": "Private current-universe funding evidence source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candle_bundle_evidence",
+    "candle_bundle_request",
+    "candle_evidence",
+    "candle_sources",
+    "contract",
+    "funding_sources"
+  ],
+  "properties": {
+    "candle_bundle_evidence": {"$ref": "#/$defs/path"},
+    "candle_bundle_request": {"$ref": "#/$defs/path"},
+    "candle_evidence": {"$ref": "#/$defs/path"},
+    "candle_sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/candleSource"}
+    },
+    "contract": {"const": "grid.current-universe-funding-evidence-request/v1"},
+    "funding_sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/boundaryFundingSource"},
+          {"$ref": "#/$defs/reusedFundingSource"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    },
+    "candleSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_evidence", "landing_evidence", "publication_evidence", "request"],
+      "properties": {
+        "coverage_evidence": {"$ref": "#/$defs/path"},
+        "landing_evidence": {"$ref": "#/$defs/path"},
+        "publication_evidence": {"$ref": "#/$defs/path"},
+        "request": {"$ref": "#/$defs/path"}
+      }
+    },
+    "fundingSourceBase": {
+      "type": "object",
+      "required": ["coverage_evidence", "landing_evidence", "publication_evidence", "request"],
+      "properties": {
+        "coverage_evidence": {"$ref": "#/$defs/path"},
+        "landing_evidence": {"$ref": "#/$defs/path"},
+        "publication_evidence": {"$ref": "#/$defs/path"},
+        "request": {"$ref": "#/$defs/path"}
+      }
+    },
+    "boundaryFundingSource": {
+      "allOf": [
+        {"$ref": "#/$defs/fundingSourceBase"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "boundary_evidence",
+            "boundary_request",
+            "coverage_evidence",
+            "landing_evidence",
+            "mode",
+            "publication_evidence",
+            "request"
+          ],
+          "properties": {
+            "boundary_evidence": {"$ref": "#/$defs/path"},
+            "boundary_request": {"$ref": "#/$defs/path"},
+            "coverage_evidence": {"$ref": "#/$defs/path"},
+            "landing_evidence": {"$ref": "#/$defs/path"},
+            "mode": {"const": "boundary-backed"},
+            "publication_evidence": {"$ref": "#/$defs/path"},
+            "request": {"$ref": "#/$defs/path"}
+          }
+        }
+      ]
+    },
+    "reusedFundingSource": {
+      "allOf": [
+        {"$ref": "#/$defs/fundingSourceBase"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "coverage_evidence",
+            "landing_evidence",
+            "mode",
+            "publication_evidence",
+            "request"
+          ],
+          "properties": {
+            "coverage_evidence": {"$ref": "#/$defs/path"},
+            "landing_evidence": {"$ref": "#/$defs/path"},
+            "mode": {"const": "reused-bounded"},
+            "publication_evidence": {"$ref": "#/$defs/path"},
+            "request": {"$ref": "#/$defs/path"}
+          }
+        }
+      ]
+    }
+  }
+}

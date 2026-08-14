@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-current-universe-funding-evidence.schema.json",
+  "title": "Sanitized current-universe funding evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances",
+    "bindings",
+    "content_sha256",
+    "evidence_schema",
+    "generated_at_utc",
+    "inventory",
+    "limitations",
+    "performance",
+    "quality",
+    "source_boundary",
+    "status",
+    "storage_policy",
+    "universe"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "candle_and_funding_scope_exactly_equal": true,
+        "funding_source_intervals_non_overlapping": true,
+        "market_store_read": false,
+        "network_request_performed": false,
+        "phase3_authorized": false,
+        "private_request_artifacts_read": true,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candle_bundle_artifact_sha256",
+        "candle_bundle_request_sha256",
+        "candle_evidence_artifact_sha256",
+        "capacity_evidence_sha256",
+        "evidence_builder_software_identity",
+        "funding_source_chain_sha256",
+        "instrument_registry_sha256",
+        "source_manifest_sha256"
+      ],
+      "properties": {
+        "candle_bundle_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "candle_bundle_request_sha256": {"$ref": "#/$defs/sha256"},
+        "candle_evidence_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_builder_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "funding_source_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "source_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-current-universe-funding-evidence/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_dataset_count",
+        "canonical_file_count",
+        "canonical_parquet_bytes",
+        "canonical_row_count",
+        "coverage_blocked_count",
+        "coverage_passed_count",
+        "landing_http_request_count",
+        "landing_job_count",
+        "landing_page_count",
+        "landing_row_count",
+        "source_count",
+        "symbol_count"
+      ],
+      "properties": {
+        "canonical_dataset_count": {"type": "integer", "minimum": 1},
+        "canonical_file_count": {"type": "integer", "minimum": 1},
+        "canonical_parquet_bytes": {"type": "integer", "minimum": 1},
+        "canonical_row_count": {"type": "integer", "minimum": 1},
+        "coverage_blocked_count": {"type": "integer", "minimum": 0},
+        "coverage_passed_count": {"type": "integer", "minimum": 0},
+        "landing_http_request_count": {"type": "integer", "minimum": 1},
+        "landing_job_count": {"type": "integer", "minimum": 1},
+        "landing_page_count": {"type": "integer", "minimum": 1},
+        "landing_row_count": {"type": "integer", "minimum": 1},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 2000}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acquisition", "envelope", "publication"],
+      "properties": {
+        "acquisition": {"$ref": "#/$defs/acquisitionTiming"},
+        "envelope": {
+          "const": {"owner_review_required": true, "qualified": false}
+        },
+        "publication": {"$ref": "#/$defs/publicationTiming"}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_reason_count", "coverage_status", "funding", "reason_counts"],
+      "properties": {
+        "accepted_reason_count": {"const": 0},
+        "coverage_status": {"enum": ["passed", "blocked"]},
+        "funding": {"$ref": "#/$defs/fundingQuality"},
+        "reason_counts": {"$ref": "#/$defs/reasonCounts"}
+      }
+    },
+    "source_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_start_proven_count",
+        "event_count",
+        "http_attempt_count",
+        "page_count",
+        "predecessor_proven_count",
+        "retry_count",
+        "source_count"
+      ],
+      "properties": {
+        "canonical_start_proven_count": {"type": "integer", "minimum": 1},
+        "event_count": {"type": "integer", "minimum": 2},
+        "http_attempt_count": {"type": "integer", "minimum": 1},
+        "page_count": {"type": "integer", "minimum": 1},
+        "predecessor_proven_count": {"type": "integer", "minimum": 1},
+        "retry_count": {"type": "integer", "minimum": 0},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16}
+      }
+    },
+    "status": {"const": "verified-current-universe-funding-evidence"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_dataset_identities": false,
+        "evidence_contains_funding_rates": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_time_bounds": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_observed_settlement_timestamps": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    },
+    "universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candle_source_count",
+        "funding_source_count",
+        "interval_partition_exact",
+        "symbol_count"
+      ],
+      "properties": {
+        "candle_source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "funding_source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "interval_partition_exact": {"const": true},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 2000}
+      }
+    }
+  },
+  "$defs": {
+    "acquisitionTiming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_count",
+        "earliest_started_at_ms",
+        "latest_completed_at_ms",
+        "observed_wall_span_ms",
+        "summed_campaign_elapsed_ms",
+        "summed_child_elapsed_ms"
+      ],
+      "properties": {
+        "campaign_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "earliest_started_at_ms": {"type": "integer", "minimum": 0},
+        "latest_completed_at_ms": {"type": "integer", "minimum": 0},
+        "observed_wall_span_ms": {"type": "integer", "minimum": 0},
+        "summed_campaign_elapsed_ms": {"type": "integer", "minimum": 0},
+        "summed_child_elapsed_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "publicationTiming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete_source_timing",
+        "earliest_started_at_ms",
+        "latest_completed_at_ms",
+        "source_count",
+        "summed_elapsed_ms",
+        "timed_source_count"
+      ],
+      "properties": {
+        "complete_source_timing": {"type": "boolean"},
+        "earliest_started_at_ms": {"type": ["integer", "null"], "minimum": 0},
+        "latest_completed_at_ms": {"type": ["integer", "null"], "minimum": 0},
+        "source_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "summed_elapsed_ms": {"type": "integer", "minimum": 0},
+        "timed_source_count": {"type": "integer", "minimum": 0, "maximum": 16}
+      }
+    },
+    "fundingQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_page_count",
+        "duplicate_key_count",
+        "empty_range_page_count",
+        "internal_interval_mismatch_count",
+        "interval_change_count",
+        "lifecycle_failure_count",
+        "observed_event_count",
+        "predecessor_interval_mismatch_count",
+        "range_page_count",
+        "unexpected_timestamp_count",
+        "unrequested_row_count"
+      ],
+      "properties": {
+        "boundary_page_count": {"type": "integer", "minimum": 0},
+        "duplicate_key_count": {"type": "integer", "minimum": 0},
+        "empty_range_page_count": {"type": "integer", "minimum": 0},
+        "internal_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "interval_change_count": {"type": "integer", "minimum": 0},
+        "lifecycle_failure_count": {"type": "integer", "minimum": 0},
+        "observed_event_count": {"type": "integer", "minimum": 1},
+        "predecessor_interval_mismatch_count": {"type": "integer", "minimum": 0},
+        "range_page_count": {"type": "integer", "minimum": 0},
+        "unexpected_timestamp_count": {"type": "integer", "minimum": 0},
+        "unrequested_row_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "reasonCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_representation_overflow",
+        "canonical_source_mismatch",
+        "duplicate_canonical_key",
+        "internal_interval_mismatch",
+        "predecessor_interval_mismatch",
+        "quarantined_source_row",
+        "registry_lifecycle_failure",
+        "rest_returned_no_data",
+        "source_window_returned_no_event",
+        "unexpected_settlement_timestamp",
+        "unrequested_instrument_row",
+        "unexplained_interval_change"
+      ],
+      "properties": {
+        "canonical_representation_overflow": {"type": "integer", "minimum": 0},
+        "canonical_source_mismatch": {"type": "integer", "minimum": 0},
+        "duplicate_canonical_key": {"type": "integer", "minimum": 0},
+        "internal_interval_mismatch": {"type": "integer", "minimum": 0},
+        "predecessor_interval_mismatch": {"type": "integer", "minimum": 0},
+        "quarantined_source_row": {"type": "integer", "minimum": 0},
+        "registry_lifecycle_failure": {"type": "integer", "minimum": 0},
+        "rest_returned_no_data": {"type": "integer", "minimum": 0},
+        "source_window_returned_no_event": {"type": "integer", "minimum": 0},
+        "unexpected_settlement_timestamp": {"type": "integer", "minimum": 0},
+        "unrequested_instrument_row": {"type": "integer", "minimum": 0},
+        "unexplained_interval_change": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
