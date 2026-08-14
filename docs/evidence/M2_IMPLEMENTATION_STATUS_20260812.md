@@ -1399,11 +1399,18 @@ fully re-verifies every paired Landing page/receipt and audit binding, and uses 
 inside a strict default-to-one-hour-to-aligned-default state machine. A simple missing settlement,
 pre-policy observation, unstable default, or threshold failure remains unexplained.
 
+The receipt-verified measured artifact is
+[`m2-funding-cadence-policy-20260815.json`](../../benchmarks/results/m2-funding-cadence-policy-20260815.json).
+It binds implementation commit `41c48c0`, four blocked audit/Landing chains and one official
+announcement response. Across 86 audited series, all eleven changes in the five affected series
+match the dated policy: four completed hourly episodes have qualifying-count distribution
+`16:3, 17:1`, while one open episode remains nonqualifying at its retained boundary. The result
+contains zero unexplained changes.
+
 The sanitized v1 artifact exposes only source hashes and aggregate episode/change counts; article
 body, rates, instrument identities, observed settlement timestamps, and runtime paths remain out
-of Git. Post-merge measured evidence is still required. Even a verified result is input to a
-separate owner/governance decision: it cannot rewrite the immutable audits, remove the current
-blocker, open Gate 2, or authorize Phase 3.
+of Git. Even this verified result is input to a separate owner/governance decision: it cannot
+rewrite the immutable audits, remove the current blocker, open Gate 2, or authorize Phase 3.
 
 ## Still required before Gate 2
 
@@ -1415,8 +1422,8 @@ blocker, open Gate 2, or authorize Phase 3.
   minutes across the current-universe bootstrap; ADR-0070 now proves aggregate topology but does
   not turn first returned data into listing metadata, and 74 canonical representation overflows
   plus one quarantined source row remain unaccepted;
-- post-merge ADR-0094 evidence and a separate owner/governance decision for the blocked April and
-  July funding cadence transitions; implementation alone does not remove the blocker;
+- a separate owner/governance decision over the verified ADR-0094 evidence for the blocked April
+  and July funding cadence transitions; evidence publication alone does not remove the blocker;
 - measured repair execution/replacement evidence when a genuine gap is observed;
 - further controlled scale-up after the same funding-cadence owner review; and
 - measured funding repair publication/execution evidence when a genuine candidate exists,
