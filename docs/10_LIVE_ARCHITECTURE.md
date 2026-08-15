@@ -36,6 +36,13 @@ generic private-request method. Public/read-only reconciliation and explicitly a
 validate-only capabilities are separate ports; a `dry_run` flag on a mutating adapter is not an
 accepted safety boundary.
 
+ADR-0104 freezes the later design-only Phase 8 boundary: mutating create/close capability lives in a
+separate `bybit-execution` package absent from shadow, and every real request requires exact
+proposal, fresh validation, single-use owner approval, a durable one-attempt ledger, and
+uncertain-result reconciliation. See the
+[M8 implementation/drill plan](../planning/M8_MANUAL_MAINNET_IMPLEMENTATION_PLAN.md). Gate 7 and
+separate real-action approvals remain mandatory.
+
 ## Component model
 
 ```mermaid
@@ -164,6 +171,11 @@ Initial real execution is manual. A signal transitions to `awaiting_approval` an
 
 Changing any payload field invalidates the approval. Expired approvals cannot be reused.
 
+ADR-0104 additionally binds environment/account fingerprint, promotion/epoch/signal, exact
+post-quantization payload bytes, validation receipt, intended loss, one-global-bot ceiling, and
+expiry. Create approval grants one precommitted request attempt only and cannot approve close,
+retry, a different account/environment/payload, or a later mode.
+
 ## Native-grid execution adapter
 
 The adapter is responsible for:
@@ -179,6 +191,10 @@ The adapter is responsible for:
 
 No binary float may be used at the exchange payload boundary. Values are represented as decimal or scaled integers, quantized according to the instrument contract, then serialized canonically.
 
+Phase 8 installs this mutating capability only through the separate manual-mainnet
+`bybit-execution` artifact. The proven validate-only package remains non-mutating, and neither
+transport exposes a generic request method, origin fallback, redirect, or automatic mutation retry.
+
 ## Uncertain-result protocol
 
 A timeout, disconnect, or HTTP error after a mutating request creates an **uncertain state**, not permission to retry blindly.
@@ -193,6 +209,9 @@ Protocol:
 6. require manual intervention if evidence remains contradictory.
 
 This protects against duplicate bot creation and accidental double exposure.
+
+Phase 8 treats zero, multiple, stale, or conflicting reconciliation matches as unresolved. An empty
+first read is never proof that create/close failed and never permits resending the request.
 
 ## Runtime state machines
 

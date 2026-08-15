@@ -41,6 +41,7 @@ brullik-bybit-grid-bot-research/
 │   ├── contracts/      # stable cross-application schemas and identities
 │   ├── bybit-public/   # public API/archive adapters
 │   ├── bybit-private/  # private API; live-only dependency
+│   ├── bybit-execution/ # separately gated manual-mainnet create/detail/close capability
 │   ├── market-store/   # Parquet manifests, audit, catalog, compaction
 │   ├── feature-kernel/ # deterministic batch/live feature semantics
 │   ├── strategy-core/  # candidate/ranking/parameter lookup semantics
@@ -97,6 +98,9 @@ Owns bounded current market data, signal evaluation from one promoted release, r
 - Network side effects are isolated behind explicit adapters.
 - Pure domain logic remains deterministic and testable.
 - `bybit-private` is not an allowed dependency of data, research, or release.
+- ADR-0104 keeps `bybit-private` validate-only and places mutation in separately installed
+  `bybit-execution`. Shadow cannot import/register that package; it has no generic request, transfer,
+  withdrawal, environment-fallback, or automatic mutation-retry capability.
 - `simulator` is not an allowed dependency of live.
 - `market-store` is not an allowed dependency of live.
 - `market-store` owns the exact Arrow/Parquet layout contract and has no network dependency;

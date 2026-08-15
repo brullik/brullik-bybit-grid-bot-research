@@ -47,6 +47,11 @@ ADR-0103 shadow evidence distinguishes filtered, blocked, evidence-incomplete, v
 fully feasible live-like signals. It records no create/close outcome because Phase 7 has no mutation
 capability; attempts to invoke an unsupported mutation are security audit events.
 
+ADR-0104 Phase 8 evidence hash-links the exact private proposal, validation, approval, one-attempt
+request ledger, exchange result/detail, reconciliation, and close/emergency/restart states. Public
+reports expose sanitized aggregate classes only; private identities, values, payloads, and responses
+remain outside Git.
+
 ## Structured event envelope
 
 Every durable audit event includes:

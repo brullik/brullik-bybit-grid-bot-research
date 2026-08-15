@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0104 - Manual minimal-mainnet execution and uncertainty boundary](ADR-0104-manual-mainnet-execution-boundary.md)
 - [ADR-0103 - Shadow-live runtime and exactly-once decision boundary](ADR-0103-shadow-live-runtime-boundary.md)
 - [ADR-0102 - Deterministic release, verification, and registry boundary](ADR-0102-deterministic-release-verification-registry-boundary.md)
 - [ADR-0101 - Leakage-safe experiment registry and selection boundary](ADR-0101-leakage-safe-experiment-selection-boundary.md)
