@@ -102,6 +102,7 @@
 | D-103 | Phase 7 shadow uses a mutation-free capability graph and transactional exactly-once live-like decisions after Gate 6 | accepted | Explicit release epoch, multi-source closed-candle watermark, bounded kernel replay, read-only reconciliation/control, full parity/soak evidence, and ADR-0103; implementation remains gated by Gate 6 |
 | D-104 | Phase 8 manual mainnet uses a separate mutation package, exact single-use approval, and one-attempt uncertainty ledger after Gate 7 | accepted | Environment/account/release/payload binding, fresh validate-before-create, no blind retry, global one active-or-uncertain bot, separate close/emergency authority, and ADR-0104; implementation and every real action remain separately gated |
 | D-105 | Phase 9 controlled scale uses immutable one-axis envelopes and atomic account-capacity reservations after Gate 8 | accepted | Complete live/shadow/model cohorts, aggregate/concentration risk, realized cash-flow-adjusted equity highs, separately approved semi-automation, unresolved P-010, non-promoting Gate 9 evidence, and ADR-0105 |
+| D-106 | Phase 10 production uses a signed deployment trust chain and externally fenced single-writer active-passive recovery after Gate 9 | accepted | Dedicated live-only host/key, immutable provenance/deployment/epoch, secret-free encrypted backup/clean restore, protected update/rollback, runbook/game-day evidence, no Gate 10 or autonomous-entry capability, and ADR-0106 |
 
 ## Decisions requiring benchmark or owner evidence
 

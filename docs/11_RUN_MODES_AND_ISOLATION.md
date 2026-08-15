@@ -245,6 +245,11 @@ may activate only a receipt-bound owner-approved scale envelope; local configura
 concurrency, universe, size/risk, or automation. The effective ceiling remains one and P-010 stays
 unresolved until a separate evidence-bound owner decision.
 
+ADR-0106 requires the post-Gate-9 production profile to be a signed/content-addressed live-only
+distribution on a dedicated host/subaccount identity. Active-passive standby is read-only/paused and
+has no usable mutation credential or autonomous-entry artifact; failover cannot become entry-capable
+through configuration or heartbeat election.
+
 ## Dependency isolation
 
 The planned packaging uses separate dependency groups or independently built artifacts:
@@ -402,6 +407,11 @@ Planned artifacts:
 - immutable strategy release archive;
 - schema/contract package;
 - SBOM and dependency lock for each deployable.
+
+For Phase 10, the live artifact, SBOM, provenance/signature, promoted release, scale envelope,
+redacted configuration, host/account/deployment binding, execution epoch, state/backup lineage, and
+owner deployment approval form one immutable verified deployment bundle. A mutable branch/tag or
+container name cannot identify production, and build completion cannot promote or deploy itself.
 
 An all-in-one developer installation may exist for convenience, but it is never the production reference deployment.
 

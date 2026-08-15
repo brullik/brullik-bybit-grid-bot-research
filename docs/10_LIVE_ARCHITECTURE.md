@@ -50,6 +50,13 @@ an exact evidence-bound owner decision; see the
 [M9 implementation plan](../planning/M9_CONTROLLED_SCALE_IMPLEMENTATION_PLAN.md). Gate 8 and separate
 scale/action authority remain mandatory.
 
+ADR-0106 freezes the later design-only Phase 10 production boundary: content-addressed signed
+runtime/deployment bundles, a dedicated live-only host/key, externally fenced single-writer
+active-passive recovery, secret-free encrypted backups, and explicit operational authority. See the
+[M10 implementation plan](../planning/M10_PRODUCTION_HARDENING_IMPLEMENTATION_PLAN.md). Gate 9 and
+owner-signed production activation remain mandatory; no Gate 10 or autonomous-entry capability is
+introduced.
+
 ## Component model
 
 ```mermaid
@@ -233,6 +240,11 @@ first read is never proof that create/close failed and never permits resending t
 At controlled scale, uncertainty or an orphan reservation consumes account capacity until durable
 resolution. Restart restores the exact envelope and all reservations before account-wide
 reconciliation; it never creates a replacement slot or request.
+
+In production, recovery may automatically provision/restore/verify only to `ready_paused`. A
+standby cannot possess usable mutation authority until the old writer is externally fenced, a new
+execution epoch is committed, complete account reconciliation passes, and the owner explicitly
+resumes. Host heartbeat, PID/lock file, DNS, or clock lease alone cannot elect a mutation writer.
 
 ## Runtime state machines
 

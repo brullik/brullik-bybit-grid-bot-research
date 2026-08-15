@@ -84,6 +84,19 @@ This backlog describes future work; it does not authorize implementation or live
 41. Bounded semi-automation proposal plus paired live/shadow/model and incident evidence.
 42. Non-promoting Gate 9 owner-review pack; Phase 10 remains a later decision.
 
+## P6 — Fenced production hardening
+
+43. Signed/content-addressed build/SBOM/provenance and immutable deployment bundle. Design authority:
+    ADR-0106 and [M10 implementation plan](M10_PRODUCTION_HARDENING_IMPLEMENTATION_PLAN.md);
+    implementation remains gated by Gate 9 and cannot activate production.
+44. Dedicated live-only host/subaccount/key, IP allowlist, secret injection/rotation, and drift checks.
+45. Externally fenced single-writer active-passive execution epochs; no automatic mutation/resume.
+46. Encrypted immutable off-host secret-free backups, clean restore, migration, and RPO/RTO drills.
+47. Protected promotion/deployment/update/rollback with revocation and compatibility enforcement.
+48. Versioned runbooks, roles/channels, external alerts, incident/game-day, and legal/account evidence.
+49. Non-activating production-readiness pack and owner-signed final approval input; autonomous entry
+    remains a separate future governance decision and absent capability.
+
 ## Deferred until evidence
 
 - Rust/C++ optimization;

@@ -41,6 +41,9 @@ The design addresses:
 - Phase 9 scale uses the same restricted capability boundary and gains no new key permission.
   Concurrency, universe, size/risk, and automation remain one-axis, evidence-bound owner decisions;
   account-wide atomic reservations and strictest-wins aggregate/concentration risk fail closed.
+- Phase 10 production requires a dedicated live-only host/subaccount/key, stable IP allowlisting,
+  signed/content-addressed deployment evidence, and externally fenced single-writer authority.
+  Backups exclude credentials; standby remains paused/read-only, and autonomous entry is absent.
 
 ## Least privilege and network policy
 
@@ -65,6 +68,11 @@ A strategy release is trusted only if:
 - the live binary/dependency versions satisfy the compatibility contract.
 
 Live never accepts a mutable research folder or manually edited parameter file.
+
+ADR-0106 extends trust to the running process: source commit/manifest, required checks, dependency
+locks, SBOM/scans, artifact members/digests, provenance/signature, release/promotion/scale envelope,
+host/account/key/deployment/epoch, backup lineage, and owner approval must reconcile exactly before
+secrets are unsealed. Signature alone never grants promotion, deployment, scale, or trade authority.
 
 ## Baseline trading-risk controls
 
@@ -168,6 +176,11 @@ Planned controls:
 - protected default branch and pull-request review;
 - PM-owned acceptance tests that implementation PRs cannot weaken;
 - reproducible build metadata;
+
+ADR-0106 makes these production inputs fail-closed after Gate 9 and separates signing, promotion,
+deployment/fencing, and mutation credentials. Mutable tags, in-place updates, active-active mutation,
+secret-bearing backups, automatic failover resume, and autonomous-entry-by-configuration are
+forbidden.
 - no binary artifacts committed unless explicitly governed;
 - release hashes and independent verifier.
 
