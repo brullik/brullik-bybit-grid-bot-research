@@ -888,6 +888,12 @@ ADR-0104 adds immutable mainnet proposal and validation identities before approv
 environment/account fingerprint, release epoch/signal, exact post-quantization canonical payload,
 intended loss, global one-bot ceiling, and expiry; it grants one create request attempt only.
 
+ADR-0105 adds a predecessor-linked immutable scale envelope and scale-change decision. They bind
+Gate 8/environment/account/release authority, exact concurrency/aggregate risk/concentration,
+universe/size/automation axes, observation denominator, model tolerances, incident budget,
+effective/expiry times, and owner approval. The effective ceiling remains one and P-010 remains
+unresolved unless that exact axis is separately accepted; configuration cannot expand the envelope.
+
 ## Live bot state
 
 Required concepts:
@@ -907,6 +913,12 @@ For Phase 8, create/close request ledgers are separate append-only identities co
 dispatch. Any ambiguous transport/response/persistence outcome becomes `*_uncertain`; zero or
 multiple read-side matches never authorize retry, and one active or uncertain bot blocks the whole
 admitted account.
+
+For Phase 9, an account-level capacity reservation is committed atomically before awaiting create
+approval. Reserved/awaiting/requested/uncertain/active/closing states consume exact bot, capital,
+intended-loss, reserve, and concentration capacity. Capacity is released only by durable
+non-creating rejection or independently reconciled close evidence; orphan/external/conflicting
+exposure fails closed across the account.
 
 ## Audit event
 

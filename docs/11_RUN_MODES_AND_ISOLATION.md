@@ -240,6 +240,11 @@ ADR-0104 requires the later manual-mainnet profile to install a separate `bybit-
 only after Gate 7. Its presence still grants no real action: every credential admission and exact
 validate/create/close/emergency request remains separately owner-authorized and audit-bound.
 
+ADR-0105 adds no broader transport or key permission. After Gate 8, a controlled-scale composition
+may activate only a receipt-bound owner-approved scale envelope; local configuration cannot expand
+concurrency, universe, size/risk, or automation. The effective ceiling remains one and P-010 stays
+unresolved until a separate evidence-bound owner decision.
+
 ## Dependency isolation
 
 The planned packaging uses separate dependency groups or independently built artifacts:

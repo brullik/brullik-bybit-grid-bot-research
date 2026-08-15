@@ -73,6 +73,17 @@ This backlog describes future work; it does not authorize implementation or live
 35. Separately approved close/emergency/restart/backup/reconciliation drills.
 36. Non-promoting Gate 8 owner-review pack; controlled scale remains a later decision.
 
+## P5 — Evidence-bound controlled scale
+
+37. Gate-8-bound immutable scale envelope and exact P-010 owner proposal. Design authority:
+    ADR-0105 and [M9 implementation plan](M9_CONTROLLED_SCALE_IMPLEMENTATION_PLAN.md);
+    implementation remains gated by Gate 8 and the effective concurrency ceiling stays one.
+38. Atomic account-capacity/capital/concentration reservation and multi-object reconciliation.
+39. Separately approved one-axis concurrency, liquid-universe, or size/risk stages.
+40. Cash-flow-adjusted realized equity high-water and predeclared complete manual-sample evidence.
+41. Bounded semi-automation proposal plus paired live/shadow/model and incident evidence.
+42. Non-promoting Gate 9 owner-review pack; Phase 10 remains a later decision.
+
 ## Deferred until evidence
 
 - Rust/C++ optimization;

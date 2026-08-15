@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0105 and the M9 implementation handoff freeze the design-only controlled-scale envelope,
+  atomic account-capacity reservation, one-axis evidence stages, equity high-water proof, complete
+  live/shadow/model cohorts, and separately approved semi-automation without selecting P-010,
+  increasing any limit, authorizing real actions, accepting Gate 9, or opening Phase 10.
 - ADR-0104 and the M8 implementation/drill handoff freeze the design-only separate mutation package,
   mainnet/account binding, exact proposal/validate/approval identities, durable one-attempt
   create/close ledger, uncertain-result reconciliation, and one-global-bot Phase 8 ceiling without

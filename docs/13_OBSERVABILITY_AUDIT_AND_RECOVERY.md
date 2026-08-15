@@ -52,6 +52,12 @@ request ledger, exchange result/detail, reconciliation, and close/emergency/rest
 reports expose sanitized aggregate classes only; private identities, values, payloads, and responses
 remain outside Git.
 
+ADR-0105 Phase 9 evidence additionally hash-links every scale envelope/change decision, capacity
+reservation, complete eligible-decision cohort, equity high-water proof, paired live/shadow/model
+comparison, tolerance/incident class, breach, pause, and rollback. Public reports retain complete
+aggregate denominators and normalized classes but no symbol, raw market/account value, identity,
+path, payload, or response.
+
 ## Structured event envelope
 
 Every durable audit event includes:

@@ -38,6 +38,9 @@ The design addresses:
 - A future Phase 8 mainnet key/account is admitted only after Gate 7, P-009 resolution, and a
   separate owner decision. Withdrawal/transfer permission remains forbidden; each create/close is
   exact, manually approved, one-attempt, and blocked globally by any active or uncertain bot.
+- Phase 9 scale uses the same restricted capability boundary and gains no new key permission.
+  Concurrency, universe, size/risk, and automation remain one-axis, evidence-bound owner decisions;
+  account-wide atomic reservations and strictest-wins aggregate/concentration risk fail closed.
 
 ## Least privilege and network policy
 
