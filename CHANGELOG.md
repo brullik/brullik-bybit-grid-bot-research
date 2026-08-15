@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0102 and the M6 implementation handoff freeze the design-only non-self-referential release
+  identity, deterministic payload, dependency-light independent verifier, append-only
+  promotion/revocation/rollback registry, and post-Gate-5 delivery order without authorizing Phase
+  6, changing risk/gate criteria, or granting shadow/live permission.
 - ADR-0101 and the M5 implementation handoff freeze the design-only immutable experiment registry,
   information-interval splits, deterministic trial/selection identity, append-only final-test
   access, complete trial retention, and post-Gate-4 delivery order without resolving P-007/P-008,

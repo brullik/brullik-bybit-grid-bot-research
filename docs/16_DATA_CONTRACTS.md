@@ -848,6 +848,12 @@ Fields include:
 
 Defined in [Strategy Release Contract](09_STRATEGY_RELEASE_CONTRACT.md). It is immutable and is the only research-to-live interface.
 
+ADR-0102 separates the content-addressed payload/build receipt, immutable independent verification
+report, and append-only promotion/revocation/rollback registry. The release ID hashes a canonical
+self-excluding manifest preimage; artifact/manifest byte hashes are bound externally so no member
+hashes itself. Exact v1 member, archive, verifier, registry-event, compatibility, and authority
+schemas remain a post-Gate-5 append-only implementation contract.
+
 ## Live signal
 
 Primary identity:
