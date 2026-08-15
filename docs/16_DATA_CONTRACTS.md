@@ -884,6 +884,10 @@ Fields include:
 - status and state-transition sequence;
 - approval identity/expiry/payload hash where applicable.
 
+ADR-0104 adds immutable mainnet proposal and validation identities before approval. Approval binds
+environment/account fingerprint, release epoch/signal, exact post-quantization canonical payload,
+intended loss, global one-bot ceiling, and expiry; it grants one create request attempt only.
+
 ## Live bot state
 
 Required concepts:
@@ -898,6 +902,11 @@ Required concepts:
 - last reconciliation evidence/time;
 - position, PnL, fees, funding, liquidation/SL fields where available;
 - state transition version.
+
+For Phase 8, create/close request ledgers are separate append-only identities committed before
+dispatch. Any ambiguous transport/response/persistence outcome becomes `*_uncertain`; zero or
+multiple read-side matches never authorize retry, and one active or uncertain bot blocks the whole
+admitted account.
 
 ## Audit event
 

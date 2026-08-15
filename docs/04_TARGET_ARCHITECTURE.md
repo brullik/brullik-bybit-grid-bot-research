@@ -80,7 +80,10 @@ market-store   ──> contracts
 research       ──> contracts + feature-kernel + market-store
 release        ──> contracts + research-artifact readers + release-verifier
 release-verifier ──> contracts
-live           ──> contracts + feature-kernel + release-verifier + Bybit adapters
+bybit-private  ──> contracts
+bybit-execution ──> contracts
+live           ──> contracts + feature-kernel + strategy-core + risk-core + release-verifier
+                 + mode-specific Bybit adapters
 ```
 
 Forbidden dependencies:

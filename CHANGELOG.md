@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0104 and the M8 implementation/drill handoff freeze the design-only separate mutation package,
+  mainnet/account binding, exact proposal/validate/approval identities, durable one-attempt
+  create/close ledger, uncertain-result reconciliation, and one-global-bot Phase 8 ceiling without
+  authorizing implementation, credentials, private calls, real funds, Gate 8, or Phase 9 scaling.
 - ADR-0103 and the M7 implementation handoff freeze the design-only mutation-free shadow
   capability graph, multi-source closed-candle watermark, bounded rolling replay, transactional
   exactly-once signals, read-only reconciliation/control, and post-Gate-6 delivery order without

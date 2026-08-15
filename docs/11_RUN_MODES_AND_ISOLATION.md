@@ -236,6 +236,10 @@ ADR-0103 requires the Phase 7 shadow build/profile to expose only public, read-o
 explicit validate-only capabilities. It cannot import/register create/close/transfer methods or a
 generic private request escape hatch; manual-mainnet remains a later separately gated composition.
 
+ADR-0104 requires the later manual-mainnet profile to install a separate `bybit-execution` artifact
+only after Gate 7. Its presence still grants no real action: every credential admission and exact
+validate/create/close/emergency request remains separately owner-authorized and audit-bound.
+
 ## Dependency isolation
 
 The planned packaging uses separate dependency groups or independently built artifacts:

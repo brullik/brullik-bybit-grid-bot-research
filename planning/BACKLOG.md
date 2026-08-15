@@ -64,12 +64,14 @@ This backlog describes future work; it does not authorize implementation or live
 
 ## P4 — Manual mainnet and operations
 
-31. Dedicated subaccount/key/host decision.
-32. Validate/create/detail/close adapter.
-33. Exact approval and uncertain-result handling.
-34. Minimal one-bot mainnet drill.
-35. Emergency/restart/backup recovery drill.
-36. Controlled scale decision pack.
+31. Dedicated subaccount/key/host decision (P-009) before any credential admission.
+32. Validate/create/detail/close adapter. Design authority: ADR-0104 and
+    [M8 implementation/drill plan](M8_MANUAL_MAINNET_IMPLEMENTATION_PLAN.md); implementation remains
+    gated by Gate 7 and real actions require separate exact owner approvals.
+33. Exact proposal/validate/single-use approval and one-attempt uncertain-result ledger.
+34. Smallest-feasible promoted-signal drill with one global active or uncertain bot maximum.
+35. Separately approved close/emergency/restart/backup/reconciliation drills.
+36. Non-promoting Gate 8 owner-review pack; controlled scale remains a later decision.
 
 ## Deferred until evidence
 

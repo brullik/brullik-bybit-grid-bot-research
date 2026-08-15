@@ -35,6 +35,9 @@ The design addresses:
 - A future Phase 7 shadow credential, if separately authorized, is read-only/least-privileged with
   no withdrawal permission; the shadow executable has no exchange-mutation method even when a key
   is misconfigured with broader permissions.
+- A future Phase 8 mainnet key/account is admitted only after Gate 7, P-009 resolution, and a
+  separate owner decision. Withdrawal/transfer permission remains forbidden; each create/close is
+  exact, manually approved, one-attempt, and blocked globally by any active or uncertain bot.
 
 ## Least privilege and network policy
 
