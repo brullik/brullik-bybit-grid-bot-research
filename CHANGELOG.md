@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0101 and the M5 implementation handoff freeze the design-only immutable experiment registry,
+  information-interval splits, deterministic trial/selection identity, append-only final-test
+  access, complete trial retention, and post-Gate-4 delivery order without resolving P-007/P-008,
+  authorizing Phase 5, or changing Gate 2/Gate 3/Gate 4/Gate 5 criteria.
 - ADR-0100 and the M4 implementation handoff freeze the design-only exact grid/risk/simulator
   boundary, future-path authority, deterministic outcome identity, explicit 1m ambiguity,
   receipt-last outcomes, and portfolio replay order without resolving P-007/P-008, authorizing

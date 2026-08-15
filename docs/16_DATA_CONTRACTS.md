@@ -824,6 +824,13 @@ Fields include:
 
 ## Experiment record
 
+ADR-0101 defines separate immutable identities and receipt-last lifecycles for the semantic
+experiment specification, execution run, planned trials, selection freeze, final-test access/result,
+and review evidence. A specification binds explicit source, split/information-interval, search,
+selection, robustness, simulation/risk, and seed-policy hashes; software/environment identity is
+bound by each run. Exact v1 persisted schemas, state/reason codes, split formulas, metrics, and
+comparison rules remain a post-Gate-4 append-only implementation contract.
+
 Fields include:
 
 - experiment ID and lifecycle status;

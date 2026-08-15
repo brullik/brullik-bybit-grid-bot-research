@@ -26,6 +26,11 @@ remain owner-controlled and no primary Gate 4 qualification is permitted until t
 
 ## Required splits
 
+ADR-0101 requires split compilation to bind both decision time and the complete future-information
+interval used by each outcome. Boundary-crossing labels are purged rather than assigned by decision
+time alone; out-of-symbol stable IDs and the logical final-test lifecycle are frozen before
+selection. P-007/P-008 and all qualifying thresholds remain owner-controlled.
+
 ### Time split
 
 Use chronological train, validation, and final test periods. No random row split for time-dependent strategy selection.

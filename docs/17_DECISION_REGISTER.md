@@ -97,6 +97,7 @@
 | D-098 | A newly committed acquisition child is semantically admitted once and then receipt-integrity reverified | accepted | Unchanged pre-commit page semantics, receipt-last commit, post-commit page hashes/receipts/allowlist, preserved quarantine keys, no active restart, and ADR-0098 |
 | D-099 | Phase 3 features and candidates use one closed-candle decision-time and shared semantic-kernel boundary after Gate 2 | accepted | Explicit catalog/timeline inputs, exact availability time, derived halos, deterministic IDs, batch/kernel parity, immutable lineage, and ADR-0099; implementation remains gated by Gate 2 |
 | D-100 | Phase 4 outcomes use exact shared grid/risk authorities and a research-only deterministic simulator after Gate 3 | accepted | Explicit future-path/policy inputs, activation boundary, ambiguity cases, exact accounting, immutable outcome/portfolio lineage, and ADR-0100; P-007/P-008 remain unresolved and implementation gated by Gate 3 |
+| D-101 | Phase 5 selection uses an immutable experiment registry, information-interval splits, and append-only final-test lifecycle after Gate 4 | accepted | Registered complete search authority, deterministic trials, purged chronological/out-of-symbol roles, full failure retention, separate Gate 5 decision, and ADR-0101; implementation remains gated by Gate 4 |
 
 ## Decisions requiring benchmark or owner evidence
 

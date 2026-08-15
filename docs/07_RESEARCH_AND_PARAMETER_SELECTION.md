@@ -100,6 +100,13 @@ Each later stage operates on outputs that survived earlier gates.
 
 ## Search methodology
 
+ADR-0101 freezes the design-only Phase 5 registry and selection boundary while Gate 4 remains
+closed. Experiments register immutable sources, splits, complete search space, metrics, seeds, and
+stopping rules before affected holdout access; every planned trial and final-test outcome remains
+append-only. See the
+[M5 implementation plan](../planning/M5_EXPERIMENT_SELECTION_IMPLEMENTATION_PLAN.md). A complete
+experiment cannot accept Gate 5 or build/promote its own strategy release.
+
 - Start with explicit candidate grids and interpretable rules.
 - Use coarse-to-fine search around stable plateaus, not isolated maxima.
 - Use walk-forward folds; select parameters using train/validation only.
