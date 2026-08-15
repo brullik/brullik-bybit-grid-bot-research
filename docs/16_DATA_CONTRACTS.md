@@ -799,6 +799,13 @@ Primary key:
 (outcome_dataset_id, candidate_id, parameter_id, ambiguity_case)
 ```
 
+ADR-0100 additionally defines a deterministic `outcome_id` from the outcome contract, candidate,
+registered parameter, simulation configuration hash, exact source-bundle hash, and ambiguity case.
+The source bundle binds explicit candidate/market/funding/catalog/timeline/constraint/fee-policy
+lineage plus simulator/software identity; no implicit latest input is allowed. Exact v1 persisted
+fields, event priorities, policy enumerations, accounting equation, and terminal reason codes remain
+a post-Gate-3 append-only implementation contract. P-007/P-008 remain unresolved owner decisions.
+
 Fields include:
 
 - exact grid geometry and constraints;

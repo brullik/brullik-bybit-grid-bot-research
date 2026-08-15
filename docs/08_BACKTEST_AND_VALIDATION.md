@@ -4,6 +4,13 @@
 
 The backtest must estimate how the complete decision, selection, risk, and execution policy would have behaved using only information available at each historical timestamp.
 
+ADR-0100 freezes the design-only Phase 4 boundary while Gate 3 remains closed. Outcome builds bind
+explicit immutable candidate/future-path/policy sources, admit no simulated action before declared
+activation, share exact grid/risk primitives with later live payload preparation, and expose rather
+than guess one-minute event-order ambiguity. See the
+[M4 implementation plan](../planning/M4_OUTCOME_SIMULATOR_IMPLEMENTATION_PLAN.md). P-007 and P-008
+remain owner-controlled and no primary Gate 4 qualification is permitted until they are resolved.
+
 ## Validation hierarchy
 
 1. Unit and synthetic invariants.

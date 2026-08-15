@@ -105,6 +105,10 @@ Owns bounded current market data, signal evaluation from one promoted release, r
 - ADR-0099 makes `feature-kernel` the dependency-light semantic authority: it also cannot depend
   on Polars, DuckDB, market-store, application packages, simulator, release, or private/live
   adapters. `grid-research` may accelerate batches, but must prove parity with that kernel.
+- ADR-0100 makes `strategy-core` and `risk-core` the dependency-light exact authorities shared by
+  research and later live payload preparation. The research-only `simulator` may depend on those
+  cores and stable contracts, but not on storage, network, application, private-Bybit, release, or
+  live adapters; `grid-live` may never depend on `simulator` or outcome stores.
 - Contracts are backward-compatible within a declared support window.
 
 ## Test ownership
