@@ -875,7 +875,9 @@ def execute_funding_job(
         )
     finally:
         plan.paths.run_lock.rmdir()
-    return verify_completed_funding_job(plan.paths.job_root)
+    # Every page was semantically admitted immediately above before the receipt-last commit.
+    # Reverify the immutable chain and allowlist here without decoding the same funding rows twice.
+    return verify_completed_funding_job_integrity(plan.paths.job_root)
 
 
 def _verified_spec(raw_spec: Mapping[str, object]) -> FundingJobSpec:

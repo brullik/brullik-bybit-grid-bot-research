@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0098 single-admission acquisition completion: candle and funding children retain exact
+  pre-commit source validation and post-commit hash/receipt/allowlist verification without
+  decoding the same rows twice. Quarantine semantics, immutable artifacts, request bounds, Gate 2,
+  and already-running campaign processes remain unchanged.
 - ADR-0097 and `grid.gate2-readiness-pack/v5`: the future current-universe v4 result and exact
   ADR-0094/0095/0096 evidence are consolidated offline into one receipt-bound owner-review input.
   The builder verifies cross-bindings and aggregate arithmetic while preserving all seven blockers,

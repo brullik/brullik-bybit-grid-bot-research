@@ -1471,8 +1471,22 @@ ambiguous/pre-archive counts plus eleven explained and zero unexplained funding 
 The output contains only hashes and sanitized aggregate owner-review facts. Funding-cadence,
 lifecycle, and performance dispositions remain explicitly pending; no blocker removal or gate
 promotion is possible. The existing v4 watcher is unchanged. A single post-v4 v5 invocation will
-be installed only from the merged v5 implementation and will reuse the committed later evidence
-without any Bybit request or retained-store scan.
+run from the pinned merged v5 implementation and reuse the committed later evidence without any
+Bybit request or retained-store scan. That watcher was installed from merge
+`06489b5e348cc482957994b5d002c5ea19c58a96` and emitted its waiting marker.
+
+## Single-admission acquisition completion implementation
+
+ADR-0098 removes the second semantic row decode performed after a new candle or funding child had
+already validated every page and committed its receipt-last manifest. The post-commit return path
+now uses the existing page-hashing integrity verifier, while preserving candle quarantine keys
+from the already admitted payloads. Unit regression tests require exactly one semantic admission
+per new page and then independently verify the completed integrity chain.
+
+This changes no immutable artifact or request contract, and explicit semantic verification,
+canonical publication, and coverage audits remain unchanged. The healthy active campaign
+processes are not restarted; future process invocations and incremental acquisition receive the
+optimization after merge without duplicating current work.
 
 ## Still required before Gate 2
 

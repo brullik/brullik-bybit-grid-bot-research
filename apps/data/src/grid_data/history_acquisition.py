@@ -9,7 +9,7 @@ import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from itertools import pairwise
 from pathlib import Path
@@ -1016,6 +1016,7 @@ def execute_history_job(
         _assert_execute_snapshot(plan, finish_snapshot, now_ms=finish_now)
         page_inventory: list[dict[str, object]] = []
         quarantine_bindings: list[dict[str, object]] = []
+        quarantined_source_keys: list[tuple[int, int]] = []
         quarantine_reason_counts = {reason: 0 for reason in QUARANTINE_REASONS}
         total_rows = 0
         total_source_rows = 0
@@ -1033,6 +1034,16 @@ def execute_history_job(
                 quarantine_reason_counts[reason] += count
             empty_pages += row_count == 0
             if quality.quarantined_row_count:
+                raw_quarantined_rows = payload.get("quarantined_rows")
+                if not isinstance(raw_quarantined_rows, list):  # pragma: no cover - validated
+                    raise HistoryAcquisitionError("staged page quarantine rows are invalid")
+                for raw_entry in raw_quarantined_rows:
+                    if not isinstance(raw_entry, dict):  # pragma: no cover - validated
+                        raise HistoryAcquisitionError("staged page quarantine entry is invalid")
+                    raw_row = raw_entry.get("row")
+                    if not isinstance(raw_row, list):  # pragma: no cover - validated
+                        raise HistoryAcquisitionError("staged quarantined source row is invalid")
+                    quarantined_source_keys.append((task.instrument_id, int(cast(str, raw_row[0]))))
                 quarantine_bindings.append(
                     {
                         "page_artifact_sha256": digest,
@@ -1121,7 +1132,12 @@ def execute_history_job(
         )
     finally:
         plan.paths.run_lock.rmdir()
-    return verify_completed_history_job(plan.paths.job_root)
+    # Every page was semantically admitted immediately above before the receipt-last commit.
+    # Reverify the immutable chain and allowlist here without decoding the same market rows twice.
+    completed = verify_completed_history_job_integrity(plan.paths.job_root)
+    if len(quarantined_source_keys) != completed.quarantined_row_count:
+        raise HistoryAcquisitionError("completed quarantine key inventory changed after admission")
+    return replace(completed, quarantined_source_keys=tuple(quarantined_source_keys))
 
 
 def _verify_completed_history_job(
