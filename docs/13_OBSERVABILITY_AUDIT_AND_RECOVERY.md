@@ -43,6 +43,10 @@ Tracks:
 - Telegram control commands;
 - incidents and emergency actions.
 
+ADR-0103 shadow evidence distinguishes filtered, blocked, evidence-incomplete, validate-failed, and
+fully feasible live-like signals. It records no create/close outcome because Phase 7 has no mutation
+capability; attempts to invoke an unsupported mutation are security audit events.
+
 ## Structured event envelope
 
 Every durable audit event includes:

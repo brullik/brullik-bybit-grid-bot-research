@@ -32,6 +32,9 @@ The design addresses:
 - Public data and research applications do not receive private exchange credentials.
 - Key rotation, revocation, and incident procedures are documented and rehearsed.
 - IP allowlisting is enabled when the stable live host is known.
+- A future Phase 7 shadow credential, if separately authorized, is read-only/least-privileged with
+  no withdrawal permission; the shadow executable has no exchange-mutation method even when a key
+  is misconfigured with broader permissions.
 
 ## Least privilege and network policy
 

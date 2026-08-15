@@ -859,8 +859,19 @@ schemas remain a post-Gate-5 append-only implementation contract.
 Primary identity:
 
 ```text
-signal_id = deterministic(release_id, category, instrument_id, decision_time, rule_id)
+signal_id = sha256(canonical_json({
+  signal_contract,
+  release_epoch_id,
+  category,
+  instrument_id,
+  decision_time_ns,
+  candidate_rule_id
+}))
 ```
+
+ADR-0103 defines `release_epoch_id` from the explicit release/promotion, deployment configuration,
+live contract, and feature/strategy/risk core versions. The same fields form a transactional unique
+semantic key so message duplication, restart, or output order cannot emit a second decision.
 
 Fields include:
 

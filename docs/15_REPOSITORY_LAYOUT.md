@@ -114,6 +114,9 @@ Owns bounded current market data, signal evaluation from one promoted release, r
   shared by the release CLI and later live startup. It cannot depend on builder internals,
   research, market-store, simulator, DuckDB, Polars, network, private adapters, or live
   orchestration; build and registry mutation remain in `grid-release`.
+- ADR-0103 requires a distinct Phase 7 shadow composition whose private ports are read/validate
+  only and whose dependency graph contains no exchange mutation or generic request capability.
+  Later manual-mainnet adapters cannot become reachable through configuration alone.
 - Contracts are backward-compatible within a declared support window.
 
 ## Test ownership

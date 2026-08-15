@@ -6,6 +6,12 @@
 
 Live is intentionally a different operational product from research. It optimizes for correctness, bounded latency, reconciliation, and fail-closed safety—not for maximum batch throughput.
 
+ADR-0103 freezes the design-only Phase 7 shadow boundary while Gate 6 remains closed. Shadow uses a
+mutation-free capability graph, deterministic cross-source watermark, bounded shared-kernel replay,
+and transactional exactly-once decisions. See the
+[M7 implementation plan](../planning/M7_SHADOW_LIVE_IMPLEMENTATION_PLAN.md). No Phase 7 network,
+credential, deployment, or exchange action is authorized by that design.
+
 ## Non-negotiable boundary
 
 `grid-live` may read only:
@@ -24,6 +30,11 @@ It must not:
 - mutate a strategy release;
 - silently weaken limits carried by the release;
 - assume that an HTTP timeout means an order or bot was not created.
+
+Phase 7 shadow additionally has no create/amend/cancel/close/transfer/withdrawal/leverage-mutation or
+generic private-request method. Public/read-only reconciliation and explicitly allowlisted
+validate-only capabilities are separate ports; a `dry_run` flag on a mutating adapter is not an
+accepted safety boundary.
 
 ## Component model
 
@@ -52,6 +63,9 @@ flowchart TB
     RC --> AJ
     TG --> AJ
 ```
+
+The execution/approval path in this full target diagram belongs to later authorized modes. The
+Phase 7 shadow composition stops at durable shadow intent and cannot register the mutating adapter.
 
 ## Market-data gateway
 
@@ -106,6 +120,10 @@ The signal engine:
 - prevents duplicate signal emission across restart;
 - records all hard-filter outcomes, including why a candidate was rejected;
 - never performs parameter search.
+
+ADR-0103 binds signal identity to the exact release epoch, category, stable instrument ID,
+closed-candle `decision_time_ns`, and rule ID. Transactional uniqueness plus an audit outbox prevents
+duplicate decisions/intents across repeated messages, crashes, and restarts.
 
 ## Risk manager
 
@@ -264,6 +282,10 @@ Planned commands:
 - `/incident <id>` — concise incident evidence.
 
 Telegram is an operator interface, not the source of truth. Commands are authorized, rate-limited, replay-protected, and fully audited.
+
+Phase 7 exposes only status, pause, reconciled resume, and persistent shadow-emergency operations.
+Approve/create/close/close-all/transfer commands are structurally unavailable until a later gate and
+are rejected/audited if requested.
 
 ## Live data footprint
 
