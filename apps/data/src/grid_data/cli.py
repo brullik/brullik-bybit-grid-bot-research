@@ -147,6 +147,10 @@ from grid_data.history_campaign_publication import (
 from grid_data.history_campaign_publication_evidence import (
     build_history_campaign_publication_evidence,
 )
+from grid_data.history_campaign_repair_preparation import (
+    prepare_history_campaign_repairs,
+    verify_completed_history_campaign_repair_preparation,
+)
 from grid_data.history_compaction import (
     build_compaction_evidence,
     preflight_history_compaction,
@@ -593,6 +597,33 @@ def parser() -> argparse.ArgumentParser:
     campaign_coverage_audit.add_argument("--audit-software-identity", required=True)
     campaign_coverage_audit.add_argument("--output", type=Path, required=True)
     campaign_coverage_audit.set_defaults(handler=_audit_history_campaign)
+
+    campaign_repair_preparation = commands.add_parser(
+        "prepare-history-campaign-repairs",
+        help=("persist exact audits and bounded plans only for aggregate-blocked candle children"),
+    )
+    campaign_repair_preparation.add_argument("--publication-root", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--campaign-root", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--coverage-audit", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--instrument-registry", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--capacity-evidence", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--store-root", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--preparation-root", type=Path, required=True)
+    campaign_repair_preparation.add_argument("--planner-software-identity", required=True)
+    campaign_repair_preparation.set_defaults(handler=_prepare_history_campaign_repairs)
+
+    campaign_repair_verify = commands.add_parser(
+        "verify-history-campaign-repairs",
+        help="verify a completed repair-preparation checkpoint without repeating semantic audits",
+    )
+    campaign_repair_verify.add_argument("--publication-root", type=Path, required=True)
+    campaign_repair_verify.add_argument("--campaign-root", type=Path, required=True)
+    campaign_repair_verify.add_argument("--coverage-audit", type=Path, required=True)
+    campaign_repair_verify.add_argument("--instrument-registry", type=Path, required=True)
+    campaign_repair_verify.add_argument("--capacity-evidence", type=Path, required=True)
+    campaign_repair_verify.add_argument("--store-root", type=Path, required=True)
+    campaign_repair_verify.add_argument("--preparation-root", type=Path, required=True)
+    campaign_repair_verify.set_defaults(handler=_verify_history_campaign_repairs)
 
     campaign_boundary_diagnostic = commands.add_parser(
         "diagnose-history-campaign-boundaries",
@@ -1814,6 +1845,65 @@ def _audit_history_campaign(args: argparse.Namespace) -> int:
         )
     )
     return 0 if audit.passed else 2
+
+
+def _prepare_history_campaign_repairs(args: argparse.Namespace) -> int:
+    completed = prepare_history_campaign_repairs(
+        args.publication_root,
+        args.campaign_root,
+        args.coverage_audit,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.preparation_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        planner_software_identity=args.planner_software_identity,
+    )
+    print(
+        json.dumps(
+            {
+                "blocked_candle_count": completed.blocked_candle_count,
+                "eligible_candle_count": completed.eligible_candle_count,
+                "existing_complete": completed.existing_complete,
+                "ineligible_candle_count": completed.ineligible_candle_count,
+                "manifest": str(completed.manifest_path),
+                "manifest_sha256": completed.manifest_sha256,
+                "planned_max_http_requests": completed.planned_max_http_requests,
+                "repair_plan_count": completed.repair_plan_count,
+                "status": completed.status,
+                "task_count": completed.task_count,
+            }
+        )
+    )
+    return 0
+
+
+def _verify_history_campaign_repairs(args: argparse.Namespace) -> int:
+    completed = verify_completed_history_campaign_repair_preparation(
+        args.publication_root,
+        args.campaign_root,
+        args.coverage_audit,
+        args.instrument_registry,
+        args.capacity_evidence,
+        args.store_root,
+        args.preparation_root,
+    )
+    print(
+        json.dumps(
+            {
+                "blocked_candle_count": completed.blocked_candle_count,
+                "eligible_candle_count": completed.eligible_candle_count,
+                "ineligible_candle_count": completed.ineligible_candle_count,
+                "manifest": str(completed.manifest_path),
+                "manifest_sha256": completed.manifest_sha256,
+                "repair_plan_count": completed.repair_plan_count,
+                "status": completed.status,
+                "task_count": completed.task_count,
+                "valid": True,
+            }
+        )
+    )
+    return 0
 
 
 def _diagnose_history_campaign_boundaries(args: argparse.Namespace) -> int:

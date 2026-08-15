@@ -1506,3 +1506,19 @@ optimization after merge without duplicating current work.
   measured ADR-0054 funding-compaction execution when a genuine eligible pair appears (the current
   receipt-bound store has none), and the remaining PM-owned Gate 2 acceptance checklist;
   implementation alone is not measured acceptance.
+
+## Receipt-resumable campaign candle repair preparation
+
+ADR-0107 closes the manual handoff between the sanitized aggregate campaign audit and the existing
+single-child repair planner. The offline coordinator receipt-verifies the completed publication,
+source campaign, aggregate audit, registry, capacity evidence, and store; it then recomputes only
+aggregate-blocked candle children. Each exact private audit must reproduce the aggregate child
+content hash before an unchanged ADR-0027 plan can be written. Passed children are not repeated,
+and blocked funding remains in its separate pipeline.
+
+Request, child audit/plan/result, and final manifest checkpoints are atomic and receipt-last.
+Completed work resumes without semantic re-audit; ineligible reason policy, non-gap blockers, or
+existing plan bounds are preserved without a plan. Tests cover the one-blocked/one-passed path,
+receipt-only idempotent verification, tamper failure, ineligible source reasons, funding
+delegation, CLI parsing, and all three schemas. The implementation performs no market request,
+repair execution, canonical mutation, catalog update, Gate 2 change, or Phase 3 authorization.

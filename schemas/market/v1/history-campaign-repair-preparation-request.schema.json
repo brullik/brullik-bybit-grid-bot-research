@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-campaign-repair-preparation-request.schema.json",
+  "title": "History campaign repair preparation request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audit_software_identity",
+    "bindings",
+    "blocked_candle_count",
+    "content_sha256",
+    "contract",
+    "dataset_count",
+    "generated_at_utc",
+    "planner_software_identity",
+    "policy",
+    "publisher_software_identity"
+  ],
+  "properties": {
+    "audit_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "bindings": {"$ref": "#/$defs/bindings"},
+    "blocked_candle_count": {"type": "integer", "minimum": 0},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.history-campaign-repair-preparation-request/v1"},
+    "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "planner_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+    "policy": {"$ref": "#/$defs/policy"},
+    "publisher_software_identity": {"$ref": "#/$defs/softwareIdentity"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_coverage_audit_artifact_sha256",
+        "aggregate_coverage_audit_content_sha256",
+        "capacity_evidence_artifact_sha256",
+        "instrument_registry_artifact_sha256",
+        "publication_manifest_sha256",
+        "publication_plan_sha256",
+        "source_campaign_manifest_sha256",
+        "source_campaign_plan_sha256"
+      ],
+      "properties": {
+        "aggregate_coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "aggregate_coverage_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_passed_children_recomputed",
+        "blocked_candle_children_recomputed",
+        "canonical_dataset_mutated",
+        "funding_repair_delegated_to_separate_pipeline",
+        "market_requests_executed",
+        "repair_execution_performed"
+      ],
+      "properties": {
+        "aggregate_passed_children_recomputed": {"const": false},
+        "blocked_candle_children_recomputed": {"const": true},
+        "canonical_dataset_mutated": {"const": false},
+        "funding_repair_delegated_to_separate_pipeline": {"const": true},
+        "market_requests_executed": {"const": false},
+        "repair_execution_performed": {"const": false}
+      }
+    }
+  }
+}

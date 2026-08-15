@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0107 - Receipt-resumable campaign repair preparation](ADR-0107-receipt-resumable-campaign-repair-preparation.md)
 - [ADR-0106 - Fenced production runtime and recovery boundary](ADR-0106-fenced-production-runtime-and-recovery-boundary.md)
 - [ADR-0105 - Evidence-bound controlled-scale boundary](ADR-0105-evidence-bound-controlled-scale-boundary.md)
 - [ADR-0104 - Manual minimal-mainnet execution and uncertainty boundary](ADR-0104-manual-mainnet-execution-boundary.md)
