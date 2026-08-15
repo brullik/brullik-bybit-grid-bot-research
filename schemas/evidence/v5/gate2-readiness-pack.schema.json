@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v5/gate2-readiness-pack.schema.json",
+  "title": "Gate 2 consolidated non-promoting owner-review pack v5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "content_sha256", "criteria", "criteria_source",
+    "evidence_schema", "gate_2", "generated_at_utc", "observations", "readiness_counts",
+    "sources", "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_source_content_hashes_verified": true,
+        "all_source_receipts_verified": true,
+        "all_source_schemas_verified": true,
+        "automatic_gate_acceptance_performed": false,
+        "cross_source_bindings_verified": true,
+        "current_universe_v4_verified": true,
+        "market_data_or_policy_network_request_performed": false,
+        "phase3_authorized": false,
+        "prior_readiness_decision_preserved": true,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_identity", "prior_readiness_artifact_sha256",
+        "prior_readiness_content_sha256", "source_chain_sha256"
+      ],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "prior_readiness_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "prior_readiness_content_sha256": {"$ref": "#/$defs/sha256"},
+        "source_chain_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "criteria": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/criterion"}
+    },
+    "criteria_source": {
+      "const": {
+        "artifact": "14_ROADMAP_AND_GATES.md",
+        "artifact_sha256": "492458c7126bb6768dbc1b328ec5959095e67e0cdbf865b7de54b05ecc94f534",
+        "criteria_count": 6
+      }
+    },
+    "evidence_schema": {"const": "grid.gate2-readiness-pack/v5"},
+    "gate_2": {
+      "const": {
+        "automatic_phase3_authorization": false,
+        "blocker_codes": [
+          "candle-repair-source-gap-remains",
+          "eligible-funding-repair-candidate-unavailable",
+          "full-history-end-to-end-performance-envelope-unqualified",
+          "funding-cadence-policy-unresolved",
+          "historical-point-in-time-metadata-missing",
+          "official-announcement-history-insufficient",
+          "unaccepted-candle-absence-reasons"
+        ],
+        "data_quality_owner_decision_required": true,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner"
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_universe", "funding_cadence_policy", "legacy_listing_events",
+        "official_lifecycle_coverage", "owner_review"
+      ],
+      "properties": {
+        "current_universe": {"$ref": "#/$defs/currentUniverseObservation"},
+        "funding_cadence_policy": {"$ref": "#/$defs/fundingPolicyObservation"},
+        "legacy_listing_events": {"$ref": "#/$defs/legacyObservation"},
+        "official_lifecycle_coverage": {"$ref": "#/$defs/lifecycleObservation"},
+        "owner_review": {"$ref": "#/$defs/ownerReview"}
+      }
+    },
+    "readiness_counts": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "funding-cadence-policy", "legacy-listing-events", "official-lifecycle-coverage",
+        "prior-readiness-v4"
+      ],
+      "properties": {
+        "funding-cadence-policy": {"$ref": "#/$defs/sourceRecord"},
+        "legacy-listing-events": {"$ref": "#/$defs/sourceRecord"},
+        "official-lifecycle-coverage": {"$ref": "#/$defs/sourceRecord"},
+        "prior-readiness-v4": {"$ref": "#/$defs/sourceRecord"}
+      }
+    },
+    "status": {"const": "blocked-consolidated-evidence-awaiting-owner-decision"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0, "maximum": 20000000000},
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_codes", "criterion_id", "criterion_text", "evidence_roles", "readiness"
+      ],
+      "properties": {
+        "blocker_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "criterion_id": {"type": "string", "minLength": 1},
+        "criterion_text": {"type": "string", "minLength": 1},
+        "evidence_roles": {
+          "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}
+        },
+        "readiness": {"enum": ["blocked", "evidence-ready"]}
+      }
+    },
+    "currentUniverseObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candle_catalog_dataset_count", "candle_instrument_count", "candle_missing_minute_count",
+        "catalog_deterministic_repeat_equal", "catalog_first_pass_rows_per_second",
+        "catalog_repeat_pass_rows_per_second", "funding_canonical_dataset_count",
+        "funding_interval_change_count"
+      ],
+      "properties": {
+        "candle_catalog_dataset_count": {"type": "integer", "minimum": 2, "maximum": 50000},
+        "candle_instrument_count": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "candle_missing_minute_count": {"$ref": "#/$defs/count"},
+        "catalog_deterministic_repeat_equal": {"const": true},
+        "catalog_first_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "catalog_repeat_pass_rows_per_second": {"type": "integer", "minimum": 1},
+        "funding_canonical_dataset_count": {"type": "integer", "minimum": 1, "maximum": 50000},
+        "funding_interval_change_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "fundingPolicyObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "affected_series_count", "completed_hourly_episode_count", "coverage_audit_count",
+        "explained_interval_change_count", "open_hourly_episode_count", "series_count",
+        "unexplained_interval_change_count"
+      ],
+      "properties": {
+        "affected_series_count": {"const": 5},
+        "completed_hourly_episode_count": {"const": 4},
+        "coverage_audit_count": {"const": 4},
+        "explained_interval_change_count": {"const": 11},
+        "open_hourly_episode_count": {"const": 1},
+        "series_count": {"const": 86},
+        "unexplained_interval_change_count": {"const": 0}
+      }
+    },
+    "legacyObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "official_document_count", "official_document_selected_match_count",
+        "selected_instrument_count", "trade_event_day_match_count",
+        "trade_first_candle_before_event_day_count"
+      ],
+      "properties": {
+        "official_document_count": {"const": 3},
+        "official_document_selected_match_count": {"const": 5},
+        "selected_instrument_count": {"const": 5},
+        "trade_event_day_match_count": {"const": 4},
+        "trade_first_candle_before_event_day_count": {"const": 1}
+      }
+    },
+    "lifecycleObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archive_delisting_count", "archive_listing_count",
+        "delisting_ambiguous_instrument_count", "delisting_unique_match_instrument_count",
+        "delisting_unmatched_instrument_count", "listing_ambiguous_instrument_count",
+        "listing_unique_match_instrument_count", "listing_unmatched_instrument_count",
+        "record_matching_complete", "remaining_pre_archive_listing_instrument_count",
+        "selected_instrument_count"
+      ],
+      "properties": {
+        "archive_delisting_count": {"const": 460},
+        "archive_listing_count": {"const": 1692},
+        "delisting_ambiguous_instrument_count": {"const": 2},
+        "delisting_unique_match_instrument_count": {"const": 255},
+        "delisting_unmatched_instrument_count": {"const": 40},
+        "listing_ambiguous_instrument_count": {"const": 91},
+        "listing_unique_match_instrument_count": {"const": 633},
+        "listing_unmatched_instrument_count": {"const": 84},
+        "record_matching_complete": {"const": false},
+        "remaining_pre_archive_listing_instrument_count": {"const": 168},
+        "selected_instrument_count": {"const": 981}
+      }
+    },
+    "ownerReview": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "blocker_removal_performed": false,
+        "funding_cadence_owner_disposition": "pending",
+        "lifecycle_owner_disposition": "pending",
+        "owner_decision_required": true,
+        "performance_envelope_qualified": false,
+        "unique_blocker_count": 7
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "sourceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "content_sha256", "contract", "status"],
+      "properties": {
+        "artifact": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.json$"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

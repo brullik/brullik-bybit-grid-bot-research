@@ -1207,6 +1207,29 @@ reconstructs historical point-in-time metadata, removes a blocker, closes Gate 2
 Phase 3. Commit only the canonical JSON, receipt, schema, ADR, and tests; article text, URLs,
 identities, private request files, and runtime logs remain outside Git.
 
+## 24.1 Consolidate the Gate 2 owner-review inputs
+
+After the v4 artifact/receipt exists, run the merged ADR-0097 implementation exactly once. Reuse
+the three already committed later-evidence artifacts; do not repeat announcement or market-data
+requests:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_readiness_pack_v5 `
+  --implementation-identity git:<merged-v5-implementation-sha> `
+  --prior-readiness-v4 data\evidence\m2-gate2-readiness-pack-v4-<date>.json `
+  --funding-cadence-policy benchmarks\results\m2-funding-cadence-policy-20260815.json `
+  --legacy-listing-evidence benchmarks\results\m2-legacy-listing-event-evidence-20260815.json `
+  --lifecycle-coverage benchmarks\results\m2-announcement-lifecycle-coverage-20260815.json `
+  --output data\evidence\m2-gate2-readiness-pack-v5-<date>.json
+```
+
+The output target must not exist. Exit code 2 is required after the canonical artifact and receipt
+are published. The command reads no retained market dataset, makes no network request, and does not
+alter v4. It rejects a changed v4 decision or implementation, any substituted fixed artifact,
+registry/legacy binding drift, non-reconciling lifecycle counts, or an unexplained funding cadence
+change. V5 is an owner-review input only: all seven blockers, pending dispositions, closed Gate 2,
+and false Phase 3 authorization remain exact constants.
+
 ## 25. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never

@@ -73,3 +73,24 @@ four receipt/schema/canonical/content-hash chains, and reconciles current-univer
 candle/funding lineage, bundle/catalog bindings, and catalog inventory. Exit code 2 remains
 required: v3's same three blocked criteria and seven blockers are preserved, owner review remains
 required, Gate 2 stays closed, and Phase 3 stays unauthorized.
+
+## Consolidated owner-review successor (v5)
+
+After v4 is receipt-published, consolidate it with the already merged funding-policy and lifecycle
+evidence without repeating their source work:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_readiness_pack_v5 `
+  --implementation-identity git:<merged-v5-implementation-sha> `
+  --prior-readiness-v4 data\evidence\m2-gate2-readiness-pack-v4-<date>.json `
+  --funding-cadence-policy benchmarks\results\m2-funding-cadence-policy-20260815.json `
+  --legacy-listing-evidence benchmarks\results\m2-legacy-listing-event-evidence-20260815.json `
+  --lifecycle-coverage benchmarks\results\m2-announcement-lifecycle-coverage-20260815.json `
+  --output data\evidence\m2-gate2-readiness-pack-v5-<date>.json
+```
+
+Exit code 2 remains required after atomic artifact/receipt publication. V5 pins the v4
+implementation, verifies the three fixed later artifacts, reconciles registry/legacy bindings and
+aggregate evidence arithmetic, and keeps funding-cadence, lifecycle, and performance dispositions
+pending. It changes no criterion or blocker, performs no network/store action, keeps Gate 2
+closed, and cannot authorize Phase 3.
