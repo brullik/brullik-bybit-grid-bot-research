@@ -50,6 +50,7 @@ MAX_ATTEMPTS: Final = 5
 MAX_HTTP_REQUESTS: Final = 100_000
 MAX_SERIES: Final = 700
 MAX_PAGE_ARTIFACT_BYTES: Final = 512 * 1024
+MAX_INTEGRITY_HASH_WORKERS: Final = 24
 STAGING_METADATA_BYTES: Final = 64 * 1024**2
 MAX_PREFLIGHT_AGE_MS: Final = 60_000
 UINT32_MAX: Final = (1 << 32) - 1
@@ -1238,6 +1239,26 @@ def _verify_completed_history_job(
     raw_pages = manifest.get("pages")
     if not isinstance(raw_pages, list) or len(raw_pages) != len(raw_tasks):
         raise HistoryAcquisitionError("history manifest page inventory is incomplete")
+    verified_tasks: list[HistoryPageTask] = []
+    page_paths: list[Path] = []
+    for sequence, (raw_task, raw_page) in enumerate(zip(raw_tasks, raw_pages, strict=True)):
+        if not isinstance(raw_task, dict) or not isinstance(raw_page, dict):
+            raise HistoryAcquisitionError("history task/page inventory entries must be objects")
+        try:
+            task = HistoryPageTask(**raw_task)
+        except TypeError as error:
+            raise HistoryAcquisitionError("history task inventory is invalid") from error
+        if task.sequence != sequence or raw_page.get("sequence") != sequence:
+            raise HistoryAcquisitionError("history task/page sequence is not canonical")
+        verified_tasks.append(task)
+        page_paths.append(root / "pages" / task.artifact_name)
+    integrity_page_digests: list[str] | None = None
+    if not verify_page_semantics:
+        integrity_page_digests = []
+        if page_paths:
+            integrity_workers = min(MAX_INTEGRITY_HASH_WORKERS, len(page_paths))
+            with ThreadPoolExecutor(max_workers=integrity_workers) as executor:
+                integrity_page_digests = list(executor.map(_verify_artifact_digest, page_paths))
     total_rows = 0
     total_source_rows = 0
     total_quarantined_rows = 0
@@ -1265,16 +1286,10 @@ def _verify_completed_history_job(
     }
     manifest_source_quality = manifest.get("source_quality")
     has_source_quality = manifest_source_quality is not None
-    for sequence, (raw_task, raw_page) in enumerate(zip(raw_tasks, raw_pages, strict=True)):
-        if not isinstance(raw_task, dict) or not isinstance(raw_page, dict):
-            raise HistoryAcquisitionError("history task/page inventory entries must be objects")
-        try:
-            task = HistoryPageTask(**raw_task)
-        except TypeError as error:
-            raise HistoryAcquisitionError("history task inventory is invalid") from error
-        if task.sequence != sequence or raw_page.get("sequence") != sequence:
-            raise HistoryAcquisitionError("history task/page sequence is not canonical")
-        page = root / "pages" / task.artifact_name
+    for sequence, (task, raw_page, page) in enumerate(
+        zip(verified_tasks, raw_pages, page_paths, strict=True)
+    ):
+        assert isinstance(raw_page, dict)
         payload: dict[str, object] | None
         page_logical_rows: tuple[Candle1m | MarkCandle1m, ...] = ()
         if verify_page_semantics:
@@ -1292,7 +1307,8 @@ def _verify_completed_history_job(
             attempt_count = cast(int, payload["attempt_count"])
         else:
             payload = None
-            digest = _verify_artifact_digest(page)
+            assert integrity_page_digests is not None
+            digest = integrity_page_digests[sequence]
             raw_row_count = raw_page.get("row_count")
             raw_attempt_count = raw_page.get("attempt_count")
             if (

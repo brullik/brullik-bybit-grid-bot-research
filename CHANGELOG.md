@@ -324,6 +324,9 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Fixed
 
+- Completed-history integrity reverification now uses at most 24 parallel page-hash workers,
+  preserving every receipt/hash check while reducing the measured small-file bottleneck before
+  campaign resume.
 - Current-universe funding evidence now compares the boundary's required sorted symbol list with
   the campaign's unique source-order list by exact membership, preventing a false scope mismatch
   without weakening range or identity checks.

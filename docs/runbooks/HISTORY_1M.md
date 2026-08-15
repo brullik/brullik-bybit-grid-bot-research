@@ -914,6 +914,11 @@ is insufficient. The rate and ETA are descriptive operating estimates only; neve
 this command for `verify-history-campaign`, canonical publication/coverage audit, or Gate 2
 performance evidence.
 
+Completed-child integrity reverification keeps hashing every immutable page and receipt. Those
+independent page hashes use at most 24 local workers so a safe supervisor resume does not
+serialize hundreds of thousands of small-file reads. Semantic admission, pending-page validation,
+receipt checks, deterministic error ordering, and the public REST concurrency bound are unchanged.
+
 Verify the printed root independently:
 
 ```powershell
