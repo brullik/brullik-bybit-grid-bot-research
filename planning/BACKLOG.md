@@ -39,8 +39,11 @@ This backlog describes future work; it does not authorize implementation or live
     [M4 implementation plan](M4_OUTCOME_SIMULATOR_IMPLEMENTATION_PLAN.md); implementation remains
     gated by Gate 3 and P-007/P-008 remain owner-controlled.
 20. Portfolio allocator and capital-lock model.
-21. Experiment registry and split governance.
-22. Robustness/review pack.
+21. Experiment registry and split governance. Design authority: ADR-0101 and
+    [M5 implementation plan](M5_EXPERIMENT_SELECTION_IMPLEMENTATION_PLAN.md); implementation remains
+    gated by Gate 4.
+22. Robustness/review pack under the same ADR-0101 selection/final-test authority; numeric Gate 5
+    criteria and the owner/PM decision remain unchanged.
 
 ## P3 — Release and shadow live
 
