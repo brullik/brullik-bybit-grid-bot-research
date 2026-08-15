@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0106 and the M10 implementation handoff freeze the design-only signed source-to-runtime trust
+  chain, dedicated live-only host/key profile, externally fenced single-writer active-passive
+  recovery, encrypted secret-free backup/restore, protected deployment/rollback, and operational
+  evidence without inventing Gate 10, activating production, or adding autonomous entry.
 - ADR-0105 and the M9 implementation handoff freeze the design-only controlled-scale envelope,
   atomic account-capacity reservation, one-axis evidence stages, equity high-water proof, complete
   live/shadow/model cohorts, and separately approved semi-automation without selecting P-010,

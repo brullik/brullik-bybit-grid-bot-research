@@ -920,6 +920,13 @@ intended-loss, reserve, and concentration capacity. Capacity is released only by
 non-creating rejection or independently reconciled close evidence; orphan/external/conflicting
 exposure fails closed across the account.
 
+ADR-0106 adds append-only build attestation, deployment bundle, host/key admission, execution
+epoch/writer fence, backup set, restore/failover, runbook/drill, and production-readiness contracts.
+Every runtime/request/reservation/state/audit identity binds the content-addressed deployment and
+monotonic epoch. Restore preserves nonterminal uncertainty; a new epoch cannot replay a request or
+release capacity. Backup projections exclude secrets and verify complete predecessor/schema/file
+lineage before a clean target may reach `ready_paused`.
+
 ## Audit event
 
 Defined by the structured envelope in [Observability, Audit, and Recovery](13_OBSERVABILITY_AUDIT_AND_RECOVERY.md). Audit records are append-only.

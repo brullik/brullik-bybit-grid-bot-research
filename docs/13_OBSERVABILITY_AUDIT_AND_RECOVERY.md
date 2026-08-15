@@ -58,6 +58,11 @@ comparison, tolerance/incident class, breach, pause, and rollback. Public report
 aggregate denominators and normalized classes but no symbol, raw market/account value, identity,
 path, payload, or response.
 
+ADR-0106 Phase 10 evidence additionally hash-links protected source/build/SBOM/signature, immutable
+deployment/host/key/epoch, writer fencing, backup/restore/migration, failover, runbook/role/alert,
+incident/game-day, and owner production-readiness decisions. Public projections expose only
+sanitized hashes/counts/classes and never host/account/network identities or recovery material.
+
 ## Structured event envelope
 
 Every durable audit event includes:
@@ -193,6 +198,12 @@ Back up:
 
 Backups are encrypted, integrity-checked, and restored in drills.
 
+ADR-0106 requires live backup sets to be application-consistent, immutable/versioned, client-side
+encrypted, off-host, and stored under a separate failure/credential domain. They hash-link state,
+audit/outbox, request/capacity, release/scale/deployment, emergency, and predecessor lineage while
+excluding API credentials, raw approval tokens, and secret-store values. Destination and retention
+remain explicit owner decisions.
+
 ## Recovery objectives
 
 Provisional targets:
@@ -220,6 +231,10 @@ Targets are refined after storage and deployment decisions.
 9. reconcile every managed symbol;
 10. produce recovery report;
 11. resume only through explicit owner authorization.
+
+Production failover also requires conclusive external fencing of the old mutation writer and a new
+monotonic execution epoch. If fencing cannot be proven, recovery remains read-only/paused regardless
+of host health or RTO pressure; restored nonterminal requests remain uncertain and are never replayed.
 
 ## Failure-injection programme
 

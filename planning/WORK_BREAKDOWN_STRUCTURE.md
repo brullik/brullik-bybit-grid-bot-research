@@ -108,3 +108,7 @@
 - 9.5 host hardening and monitoring;
 - 9.6 incident management;
 - 9.7 autonomy decision, if justified.
+
+ADR-0106 and the M10 production-hardening plan govern 9.3 through 9.7 after Gate 9. Production
+readiness does not require autonomy; the autonomous capability remains absent unless a separate
+owner governance decision is later justified by evidence.
