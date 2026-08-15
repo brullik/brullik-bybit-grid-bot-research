@@ -52,12 +52,15 @@ This backlog describes future work; it does not authorize implementation or live
     gated by Gate 5.
 24. Promotion/revocation/rollback registry under the same ADR-0102 append-only event authority;
     Gate 6 and explicit owner promotion remain unchanged.
-25. Slim live runtime boundary test.
-26. Current market-data gateway and rolling features.
-27. Signal/risk/state/audit/reconciliation.
-28. Telegram control plane.
-29. Failure-injection suite.
-30. 30-day/100-signal shadow run.
+25. Slim live runtime boundary test. Design authority: ADR-0103 and
+    [M7 implementation plan](M7_SHADOW_LIVE_IMPLEMENTATION_PLAN.md); implementation remains gated by
+    Gate 6 and the shadow dependency graph contains no exchange mutation capability.
+26. Current market-data gateway and rolling features under the same closed-candle watermark and
+    bounded-replay authority.
+27. Transactional exactly-once signal/risk/state/audit and read-only reconciliation.
+28. Shadow-only status/pause/reconciled-resume/emergency control plane; mutating commands unavailable.
+29. Phase 7 release/data/restart/reconciliation/control failure-injection suite.
+30. Receipt-bound 30-day/preferably-100-signal shadow run and non-promoting Gate 7 review pack.
 
 ## P4 — Manual mainnet and operations
 

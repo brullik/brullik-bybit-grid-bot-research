@@ -232,6 +232,10 @@ grid-live start --release <promoted-release-id> --mode manual-mainnet
 
 None of the live commands calls a research command as a side effect.
 
+ADR-0103 requires the Phase 7 shadow build/profile to expose only public, read-only-private, and
+explicit validate-only capabilities. It cannot import/register create/close/transfer methods or a
+generic private request escape hatch; manual-mainnet remains a later separately gated composition.
+
 ## Dependency isolation
 
 The planned packaging uses separate dependency groups or independently built artifacts:

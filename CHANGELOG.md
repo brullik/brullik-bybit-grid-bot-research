@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0103 and the M7 implementation handoff freeze the design-only mutation-free shadow
+  capability graph, multi-source closed-candle watermark, bounded rolling replay, transactional
+  exactly-once signals, read-only reconciliation/control, and post-Gate-6 delivery order without
+  authorizing Phase 7, private access, exchange mutation, or Gate 7/manual-mainnet permission.
 - ADR-0102 and the M6 implementation handoff freeze the design-only non-self-referential release
   identity, deterministic payload, dependency-light independent verifier, append-only
   promotion/revocation/rollback registry, and post-Gate-5 delivery order without authorizing Phase

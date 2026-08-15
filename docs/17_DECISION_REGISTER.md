@@ -99,6 +99,7 @@
 | D-100 | Phase 4 outcomes use exact shared grid/risk authorities and a research-only deterministic simulator after Gate 3 | accepted | Explicit future-path/policy inputs, activation boundary, ambiguity cases, exact accounting, immutable outcome/portfolio lineage, and ADR-0100; P-007/P-008 remain unresolved and implementation gated by Gate 3 |
 | D-101 | Phase 5 selection uses an immutable experiment registry, information-interval splits, and append-only final-test lifecycle after Gate 4 | accepted | Registered complete search authority, deterministic trials, purged chronological/out-of-symbol roles, full failure retention, separate Gate 5 decision, and ADR-0101; implementation remains gated by Gate 4 |
 | D-102 | Phase 6 separates deterministic release payload, independent verification, and append-only lifecycle registry after Gate 5 | accepted | Non-self-referential content identity, exact allowlist/path bounds, shared dependency-light verifier, explicit promotion/revocation/rollback IDs, risk non-weakening, and ADR-0102; implementation remains gated by Gate 5 |
+| D-103 | Phase 7 shadow uses a mutation-free capability graph and transactional exactly-once live-like decisions after Gate 6 | accepted | Explicit release epoch, multi-source closed-candle watermark, bounded kernel replay, read-only reconciliation/control, full parity/soak evidence, and ADR-0103; implementation remains gated by Gate 6 |
 
 ## Decisions requiring benchmark or owner evidence
 
