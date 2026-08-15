@@ -222,21 +222,30 @@ def _expected_item_count(total: int, page: int) -> int:
 
 
 def _announcement_text(item: Mapping[str, Any]) -> str:
-    title = item.get("title")
+    title = item.get("title", "")
     description = item.get("description", "")
     tags = item.get("tags", [])
     url = item.get("url")
-    if not isinstance(title, str) or not title.strip() or title.strip() != title:
+    if title is None:
+        title = ""
+    if description is None:
+        description = ""
+    if tags is None:
+        tags = []
+    if not isinstance(title, str):
         raise AnnouncementLifecycleCoverageError("announcement title is invalid")
     if not isinstance(description, str):
         raise AnnouncementLifecycleCoverageError("announcement description is invalid")
     if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
         raise AnnouncementLifecycleCoverageError("announcement tags are invalid")
-    if not isinstance(url, str) or not url:
+    if url is not None and (not isinstance(url, str) or not url):
         raise AnnouncementLifecycleCoverageError("announcement URL is invalid")
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname != "announcements.bybit.com":
-        raise AnnouncementLifecycleCoverageError("announcement URL is outside the official host")
+    if isinstance(url, str):
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != "https" or parsed.hostname != "announcements.bybit.com":
+            raise AnnouncementLifecycleCoverageError(
+                "announcement URL is outside the official host"
+            )
     return " ".join((title, description, *cast(list[str], tags))).upper()
 
 
@@ -293,24 +302,41 @@ def _read_archive_type(
     adjacent_date_inversion_count = sum(
         current > previous for previous, current in pairwise(date_times)
     )
+    item_hashes: list[str] = []
     urls: list[str] = []
-    missing_description_count = 0
+    blank_or_missing_description_count = 0
+    blank_or_missing_title_count = 0
     missing_tags_count = 0
+    missing_url_count = 0
     for item in items:
         _announcement_text(item)
-        urls.append(cast(str, item["url"]))
-        missing_description_count += int("description" not in item)
-        missing_tags_count += int("tags" not in item)
+        item_hashes.append(canonical_sha256(item))
+        raw_url = item.get("url")
+        if isinstance(raw_url, str):
+            urls.append(raw_url)
+        else:
+            missing_url_count += 1
+        title = item.get("title")
+        description = item.get("description")
+        blank_or_missing_title_count += int(not isinstance(title, str) or not title.strip())
+        blank_or_missing_description_count += int(
+            not isinstance(description, str) or not description.strip()
+        )
+        missing_tags_count += int(item.get("tags") is None)
+    if len(item_hashes) != len(set(item_hashes)):
+        raise AnnouncementLifecycleCoverageError("announcement archive repeats an exact item")
     if len(urls) != len(set(urls)):
         raise AnnouncementLifecycleCoverageError("announcement archive repeats a URL")
     return items, {
         "announcement_type": announcement_type,
         "adjacent_date_inversion_count": adjacent_date_inversion_count,
         "archive_result_sha256": canonical_sha256({"list": items, "total": first.total}),
+        "blank_or_missing_description_count": blank_or_missing_description_count,
+        "blank_or_missing_title_count": blank_or_missing_title_count,
         "item_count": len(items),
         "latest_date_timestamp_ms": max(date_times),
-        "missing_description_count": missing_description_count,
         "missing_tags_count": missing_tags_count,
+        "missing_url_count": missing_url_count,
         "oldest_date_timestamp_ms": min(date_times),
         "page_count": page_count,
         "total_announcements": first.total,

@@ -245,8 +245,10 @@ authorize Phase 3. See ADR-0095.
 `grid.phase2-announcement-lifecycle-coverage/v1` binds one through sixteen exact disjoint
 trade/mark campaign requests, their receipt-verified registry, and the separate exact ADR-0095
 legacy selected-set hash to a one-attempt scan of every declared official `new_crypto` and
-`delistings` page. Stable totals, exact page cardinality, source type, official HTTPS host, and
-unique URLs fail closed before matching. Exact source order is hash-bound and adjacent date
+`delistings` page. Stable totals, exact page cardinality, and source type fail closed before
+matching. Present URLs must use the official HTTPS host and remain unique. Missing or blank legacy
+title/description fields and missing tags/URLs are counted, not synthesized, while the complete
+source rows remain hash-bound. Exact source order is hash-bound and adjacent date
 inversions are counted without local sorting. A candidate requires an exact registry symbol
 or base/USDT boundary plus a derivative/perpetual/contract marker; zero candidates remains
 unmatched and multiple candidates remain ambiguous. Article text, tags, descriptions, and URLs

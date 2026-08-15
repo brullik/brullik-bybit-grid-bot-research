@@ -148,10 +148,17 @@ def _item(
 class FakeAnnouncementClient:
     transport_max_attempts = 1
 
-    def __init__(self, *, duplicate_listing: bool = False, invert_listing: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        duplicate_listing: bool = False,
+        invert_listing: bool = False,
+        legacy_optional_shape: bool = False,
+    ) -> None:
         self.calls: list[tuple[str, int]] = []
         self.duplicate_listing = duplicate_listing
         self.invert_listing = invert_listing
+        self.legacy_optional_shape = legacy_optional_shape
 
     def announcement_page(
         self,
@@ -198,6 +205,15 @@ class FakeAnnouncementClient:
                 )
             if self.invert_listing:
                 items[0], items[1] = items[1], items[0]
+            if self.legacy_optional_shape:
+                items[2] = {
+                    "dateTimestamp": 1_700_100_000_000,
+                    "description": None,
+                    "publishTime": 1_700_100_000_000,
+                    "tags": None,
+                    "title": None,
+                    "type": {"key": announcement_type, "title": "Lifecycle"},
+                }
         elif announcement_type == "delistings":
             items = [
                 _item(
@@ -303,6 +319,16 @@ def test_lifecycle_archive_order_inversion_is_visible_without_reordering(tmp_pat
     payload = _build(tmp_path, FakeAnnouncementClient(invert_listing=True))
     listing_source = payload["archive_sources"][0]
     assert listing_source["adjacent_date_inversion_count"] == 1
+
+
+def test_legacy_optional_fields_are_hash_bound_and_counted(tmp_path: Path) -> None:
+    payload = _build(tmp_path, FakeAnnouncementClient(legacy_optional_shape=True))
+    listing_source = payload["archive_sources"][0]
+    assert listing_source["blank_or_missing_title_count"] == 1
+    assert listing_source["blank_or_missing_description_count"] == 3
+    assert listing_source["missing_tags_count"] == 1
+    assert listing_source["missing_url_count"] == 1
+    assert payload["matching"]["record_matching_complete"] is True
 
 
 def test_legacy_selection_binding_fails_closed(tmp_path: Path) -> None:

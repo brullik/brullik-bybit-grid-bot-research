@@ -31,10 +31,14 @@ declared 20-item page of `new_crypto` followed by every declared page of `delist
 `en-US` and exactly one transport attempt per response.
 
 For each partition, every response must retain the first-page total, exact expected cardinality,
-requested type, official HTTPS host, and unique URL. Exact source order is preserved and adjacent
+and requested type. Every URL that is present must use the official HTTPS host and be unique.
+Legacy rows may omit or leave blank the newer title, description, tags, or URL fields; those
+omissions are counted, never synthesized, and the complete source row remains covered by the
+archive hash. Exact source order is preserved and adjacent
 `dateTimestamp` inversions are counted rather than locally sorted; a full scan does not depend on
 pagination order to derive its true minimum/maximum. Any mid-run source-total change, incomplete
-page, duplicate URL, or invalid field fails before publication. The complete validated item
+page, duplicate present URL, invalid present URL, or invalid field type fails before publication.
+The complete validated item
 sequence is represented by one canonical source hash; article titles, descriptions, tags, and
 URLs are discarded after in-memory matching.
 

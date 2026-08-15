@@ -1193,7 +1193,9 @@ private legacy registry identities whose sorted-set hash is embedded in that art
 
 The output target must not already exist. The command makes exactly one request for each declared
 20-item page of `new_crypto` and `delistings`, with no application retry. It rejects a changing
-total, incomplete page, duplicate URL, non-official host, or invalid field; source-order
+total, incomplete page, duplicate present URL, non-official present URL, or invalid field type.
+Legacy missing/blank title or description and missing tags/URL values are counted without
+synthesis, and their complete rows remain covered by the archive hash. Source-order
 inversions are hash-bound and counted without local reordering.
 Do not launch a second copy or persist response bodies for debugging; a failed run produces no
 artifact and must be reviewed before any later attempt.
