@@ -39,6 +39,9 @@ from grid_data import __version__
 from grid_data.announcement_archive_depth import (
     build_announcement_archive_depth_evidence,
 )
+from grid_data.announcement_lifecycle_coverage import (
+    build_announcement_lifecycle_coverage_evidence,
+)
 from grid_data.archive_inventory import (
     build_archive_coverage_matrix,
     build_archive_inventory,
@@ -271,6 +274,30 @@ def parser() -> argparse.ArgumentParser:
     announcement_depth.add_argument("--software-identity", required=True)
     announcement_depth.add_argument("--output", type=Path, required=True)
     announcement_depth.set_defaults(handler=_announcement_archive_depth)
+
+    announcement_lifecycle = commands.add_parser(
+        "announcement-lifecycle-coverage",
+        help="match a selected candle universe against every official lifecycle archive page",
+    )
+    announcement_lifecycle.add_argument("--instrument-registry", type=Path, required=True)
+    announcement_lifecycle.add_argument(
+        "--campaign-request",
+        action="append",
+        type=Path,
+        required=True,
+        help="disjoint selected trade/mark campaign request; repeat in source order",
+    )
+    announcement_lifecycle.add_argument("--legacy-evidence", type=Path, required=True)
+    announcement_lifecycle.add_argument(
+        "--legacy-instrument-id",
+        action="append",
+        type=int,
+        required=True,
+        help="legacy evidence registry identity; repeat without publishing identities",
+    )
+    announcement_lifecycle.add_argument("--software-identity", required=True)
+    announcement_lifecycle.add_argument("--output", type=Path, required=True)
+    announcement_lifecycle.set_defaults(handler=_announcement_lifecycle_coverage)
 
     funding_cadence_policy = commands.add_parser(
         "funding-cadence-policy-evidence",
@@ -1233,6 +1260,35 @@ def _announcement_archive_depth(args: argparse.Namespace) -> int:
         )
     )
     return 2 if payload["status"] == "blocked-insufficient-official-announcement-history" else 0
+
+
+def _announcement_lifecycle_coverage(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    client = BybitPublicClient(UrllibJsonTransport(max_attempts=1))
+    payload = build_announcement_lifecycle_coverage_evidence(
+        client,
+        instrument_registry_path=args.instrument_registry,
+        campaign_request_paths=tuple(args.campaign_request),
+        legacy_evidence_path=args.legacy_evidence,
+        legacy_instrument_ids=tuple(args.legacy_instrument_id),
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    process = payload["process"]
+    assert isinstance(process, dict)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "response_count": process["response_count"],
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0 if payload["status"] == "verified-record-matched-official-lifecycle-evidence" else 2
 
 
 def _funding_cadence_policy_evidence(args: argparse.Namespace) -> int:

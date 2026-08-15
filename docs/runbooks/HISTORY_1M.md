@@ -1173,7 +1173,41 @@ artifact, treat catalog component throughput as the end-to-end envelope, or use 
 Phase 3. Publish only the sanitized v4 pair and send it to the data-quality owner for the separate
 policy/readiness decision.
 
-## 24. Adaptive public REST pacing
+## 24. Match the selected universe to official lifecycle announcements
+
+After ADR-0096 is merged, use every exact disjoint trade/mark request that forms the retained
+current-universe selection and the already published ADR-0095 artifact. Supply the same separate
+private legacy registry identities whose sorted-set hash is embedded in that artifact:
+
+```powershell
+.venv\Scripts\grid-data.exe announcement-lifecycle-coverage `
+  --instrument-registry data\evidence\instrument-registry-current-policy-<date>.json `
+  --campaign-request data\evidence\m2-current-segment-1-<date>-request.json `
+  --campaign-request data\evidence\m2-current-segment-N-<date>-request.json `
+  --legacy-evidence benchmarks\results\m2-legacy-listing-event-evidence-<date>.json `
+  --legacy-instrument-id <id-1> `
+  --legacy-instrument-id <id-N> `
+  --software-identity git:<announcement-matcher-commit-sha> `
+  --output benchmarks\results\m2-announcement-lifecycle-coverage-<date>.json
+```
+
+The output target must not already exist. The command makes exactly one request for each declared
+20-item page of `new_crypto` and `delistings`, with no application retry. It rejects a changing
+total, incomplete page, duplicate present URL, non-official present URL, or invalid field type.
+Legacy missing/blank title or description and missing tags/URL values are counted without
+synthesis, and their complete rows remain covered by the archive hash. Source-order
+inversions are hash-bound and counted without local reordering.
+Do not launch a second copy or persist response bodies for debugging; a failed run produces no
+artifact and must be reviewed before any later attempt.
+
+Exit `0` means every in-archive lifecycle record has exactly one strict symbol/pair-plus-product
+match and the supplied legacy evidence covers the pre-archive remainder. Exit `2` preserves the
+sanitized partial result with unmatched/ambiguous counts. Neither result accepts a candle absence,
+reconstructs historical point-in-time metadata, removes a blocker, closes Gate 2, or authorizes
+Phase 3. Commit only the canonical JSON, receipt, schema, ADR, and tests; article text, URLs,
+identities, private request files, and runtime logs remain outside Git.
+
+## 25. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never
 an automatically tuned target. New Landing manifests record complete/absent/invalid Bybit header
