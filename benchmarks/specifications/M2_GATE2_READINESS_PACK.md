@@ -94,3 +94,21 @@ implementation, verifies the three fixed later artifacts, reconciles registry/le
 aggregate evidence arithmetic, and keeps funding-cadence, lifecycle, and performance dispositions
 pending. It changes no criterion or blocker, performs no network/store action, keeps Gate 2
 closed, and cannot authorize Phase 3.
+
+## Complete owner-review docket
+
+After v5 is receipt-published, build one review docket so every blocker appears in exactly one
+owner decision item:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_owner_review_docket `
+  --implementation-identity git:<merged-docket-implementation-sha> `
+  --prior-readiness-v5 data\evidence\m2-gate2-readiness-pack-v5-<date>.json `
+  --output data\evidence\m2-gate2-owner-review-docket-<date>.json
+```
+
+Exit code 2 remains required after atomic artifact/receipt publication. The docket verifies the
+exact v5 pair and implementation, then assigns all seven unchanged blockers once across four
+pending review items: deterministic repair, funding cadence, lifecycle/absence policy, and the
+performance envelope. It records no owner disposition, performs no network or retained-store
+operation, keeps Gate 2 closed, and cannot authorize Phase 3.

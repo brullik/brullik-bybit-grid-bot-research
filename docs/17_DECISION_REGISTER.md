@@ -104,6 +104,7 @@
 | D-105 | Phase 9 controlled scale uses immutable one-axis envelopes and atomic account-capacity reservations after Gate 8 | accepted | Complete live/shadow/model cohorts, aggregate/concentration risk, realized cash-flow-adjusted equity highs, separately approved semi-automation, unresolved P-010, non-promoting Gate 9 evidence, and ADR-0105 |
 | D-106 | Phase 10 production uses a signed deployment trust chain and externally fenced single-writer active-passive recovery after Gate 9 | accepted | Dedicated live-only host/key, immutable provenance/deployment/epoch, secret-free encrypted backup/clean restore, protected update/rollback, runbook/game-day evidence, no Gate 10 or autonomous-entry capability, and ADR-0106 |
 | D-107 | Campaign candle repair preparation reuses the aggregate audit and recomputes only its blocked candle children | accepted | Receipt-first request, exact aggregate child-hash reproduction, resumable private child audit/plan/result checkpoints, separate funding pipeline, no network/execution/gate change, and ADR-0107 |
+| D-108 | Gate 2 owner review assigns every current blocker exactly once in one pending decision docket | accepted | Exact v5 receipt/schema/canonical/hash/implementation verification, four explicit review items, no recorded disposition, unchanged closed gate and Phase 3 isolation, and ADR-0108 |
 
 ## Decisions requiring benchmark or owner evidence
 

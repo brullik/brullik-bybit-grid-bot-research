@@ -279,6 +279,14 @@ funding/lifecycle/performance dispositions, closed Gate 2, and false Phase 3 aut
 performs no network request, retained-store read, policy acceptance, or gate promotion. See
 ADR-0097.
 
+`grid.gate2-owner-review-docket/v1` is the final non-promoting handoff over one exact v5
+artifact/receipt. It verifies the v5 schema, canonical bytes, content/artifact hashes, merged
+implementation identity, unchanged criteria/readiness/blockers, closed gate, and pending owner
+state. The docket assigns all seven blockers exactly once to deterministic repair, funding
+cadence, lifecycle/absence, or performance-envelope review. All four dispositions remain
+`pending`; no decision, blocker removal, gate change, or Phase 3 authorization is representable in
+v1. See ADR-0108.
+
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and
 plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate

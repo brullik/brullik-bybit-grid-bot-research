@@ -1251,6 +1251,23 @@ registry/legacy binding drift, non-reconciling lifecycle counts, or an unexplain
 change. V5 is an owner-review input only: all seven blockers, pending dispositions, closed Gate 2,
 and false Phase 3 authorization remain exact constants.
 
+## 24.2 Build one complete Gate 2 owner-review docket
+
+After the v5 artifact/receipt exists, run the merged ADR-0108 implementation exactly once:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.gate2_owner_review_docket `
+  --implementation-identity git:<merged-docket-implementation-sha> `
+  --prior-readiness-v5 data\evidence\m2-gate2-readiness-pack-v5-<date>.json `
+  --output data\evidence\m2-gate2-owner-review-docket-<date>.json
+```
+
+Exit code 2 is required after the artifact and receipt are published. The command verifies v5 and
+assigns all seven blockers exactly once to four pending review items. It makes no request, reads no
+market store, records no owner decision, removes no blocker, and cannot open Gate 2 or authorize
+Phase 3. A later decision must be an explicitly authorized governance change; never edit the
+docket to simulate acceptance.
+
 ## 25. Adaptive public REST pacing
 
 Adaptive public REST pacing follows ADR-0043. The configured request RPS remains a ceiling, never

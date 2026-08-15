@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/gate2-owner-review-docket.schema.json",
+  "title": "Gate 2 non-promoting data-quality-owner review docket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assurances", "bindings", "content_sha256", "criteria", "criteria_source",
+    "decision_state", "evidence_schema", "gate_2", "generated_at_utc",
+    "readiness_counts", "review_items", "source", "status", "storage_policy"
+  ],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_seven_blockers_assigned_once": true,
+        "automatic_gate_acceptance_performed": false,
+        "blocker_removal_performed": false,
+        "gate_status_change_performed": false,
+        "market_data_or_policy_network_request_performed": false,
+        "owner_decision_recorded": false,
+        "phase3_authorized": false,
+        "private_or_live_capability_used": false,
+        "source_content_hash_verified": true,
+        "source_receipt_verified": true,
+        "source_schema_verified": true
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_identity", "prior_readiness_v5_artifact_sha256",
+        "prior_readiness_v5_content_sha256"
+      ],
+      "properties": {
+        "implementation_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "prior_readiness_v5_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "prior_readiness_v5_content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "criteria": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/criterion"}
+    },
+    "criteria_source": {
+      "const": {
+        "artifact": "14_ROADMAP_AND_GATES.md",
+        "artifact_sha256": "492458c7126bb6768dbc1b328ec5959095e67e0cdbf865b7de54b05ecc94f534",
+        "criteria_count": 6
+      }
+    },
+    "decision_state": {
+      "const": {
+        "data_quality_owner_decision_recorded": false,
+        "gate_opening_authorized": false,
+        "owner_decision_required": true,
+        "phase3_implementation_authorized": false,
+        "required_review_item_count": 4,
+        "status": "pending"
+      }
+    },
+    "evidence_schema": {"const": "grid.gate2-owner-review-docket/v1"},
+    "gate_2": {
+      "const": {
+        "automatic_phase3_authorization": false,
+        "blocker_codes": [
+          "candle-repair-source-gap-remains",
+          "eligible-funding-repair-candidate-unavailable",
+          "full-history-end-to-end-performance-envelope-unqualified",
+          "funding-cadence-policy-unresolved",
+          "historical-point-in-time-metadata-missing",
+          "official-announcement-history-insufficient",
+          "unaccepted-candle-absence-reasons"
+        ],
+        "data_quality_owner_decision_required": true,
+        "readiness": "blocked-pending-evidence-and-policy",
+        "status": "closed-pending-data-quality-owner"
+      }
+    },
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "readiness_counts": {
+      "const": {
+        "blocked_criterion_count": 3,
+        "criterion_count": 6,
+        "evidence_ready_criterion_count": 3
+      }
+    },
+    "review_items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deterministic_repair", "funding_cadence", "lifecycle_and_absence_policy",
+        "performance_envelope"
+      ],
+      "properties": {
+        "deterministic_repair": {
+          "const": {
+            "blocker_codes": [
+              "candle-repair-source-gap-remains",
+              "eligible-funding-repair-candidate-unavailable"
+            ],
+            "criterion_id": "deterministic-rerun-and-repair",
+            "evidence_classification": "measured-negative-repair-evidence",
+            "owner_decision_required": true,
+            "owner_disposition": "pending"
+          }
+        },
+        "funding_cadence": {
+          "const": {
+            "blocker_codes": ["funding-cadence-policy-unresolved"],
+            "criterion_id": "lifecycle-explains-expected-coverage",
+            "evidence_classification": "verified-official-policy-consistency",
+            "evidence_summary": {
+              "affected_series_count": 5,
+              "explained_interval_change_count": 11,
+              "unexplained_interval_change_count": 0
+            },
+            "owner_decision_required": true,
+            "owner_disposition": "pending"
+          }
+        },
+        "lifecycle_and_absence_policy": {
+          "const": {
+            "blocker_codes": [
+              "historical-point-in-time-metadata-missing",
+              "official-announcement-history-insufficient",
+              "unaccepted-candle-absence-reasons"
+            ],
+            "criterion_id": "lifecycle-explains-expected-coverage",
+            "evidence_classification": "verified-partial-official-lifecycle-evidence",
+            "evidence_summary": {
+              "delisting_ambiguous_instrument_count": 2,
+              "delisting_unmatched_instrument_count": 40,
+              "listing_ambiguous_instrument_count": 91,
+              "listing_unmatched_instrument_count": 84,
+              "record_matching_complete": false,
+              "remaining_pre_archive_listing_instrument_count": 168,
+              "selected_instrument_count": 981
+            },
+            "owner_decision_required": true,
+            "owner_disposition": "pending"
+          }
+        },
+        "performance_envelope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "blocker_codes", "criterion_id", "evidence_classification", "evidence_summary",
+            "owner_decision_required", "owner_disposition"
+          ],
+          "properties": {
+            "blocker_codes": {
+              "const": ["full-history-end-to-end-performance-envelope-unqualified"]
+            },
+            "criterion_id": {"const": "performance-within-envelope"},
+            "evidence_classification": {
+              "const": "measured-component-performance-unqualified-envelope"
+            },
+            "evidence_summary": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "catalog_deterministic_repeat_equal", "catalog_first_pass_rows_per_second",
+                "catalog_repeat_pass_rows_per_second", "end_to_end_envelope_qualified"
+              ],
+              "properties": {
+                "catalog_deterministic_repeat_equal": {"const": true},
+                "catalog_first_pass_rows_per_second": {"type": "integer", "minimum": 1},
+                "catalog_repeat_pass_rows_per_second": {"type": "integer", "minimum": 1},
+                "end_to_end_envelope_qualified": {"const": false}
+              }
+            },
+            "owner_decision_required": {"const": true},
+            "owner_disposition": {"const": "pending"}
+          }
+        }
+      }
+    },
+    "source": {"$ref": "#/$defs/sourceRecord"},
+    "status": {"const": "pending-explicit-data-quality-owner-decision"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_instrument_identities": false,
+        "evidence_contains_market_values": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_codes", "criterion_id", "criterion_text", "evidence_roles", "readiness"
+      ],
+      "properties": {
+        "blocker_codes": {
+          "type": "array", "uniqueItems": true, "items": {"type": "string"}
+        },
+        "criterion_id": {"type": "string", "minLength": 1},
+        "criterion_text": {"type": "string", "minLength": 1},
+        "evidence_roles": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string"}
+        },
+        "readiness": {"enum": ["blocked", "evidence-ready"]}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+    "sourceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "content_sha256", "contract", "status"],
+      "properties": {
+        "artifact": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.json$"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"const": "grid.gate2-readiness-pack/v5"},
+        "status": {"const": "blocked-consolidated-evidence-awaiting-owner-decision"}
+      }
+    }
+  }
+}
