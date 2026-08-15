@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0097 and `grid.gate2-readiness-pack/v5`: the future current-universe v4 result and exact
+  ADR-0094/0095/0096 evidence are consolidated offline into one receipt-bound owner-review input.
+  The builder verifies cross-bindings and aggregate arithmetic while preserving all seven blockers,
+  pending owner dispositions, closed Gate 2, and Phase 3 isolation.
 - ADR-0096 and `grid.phase2-announcement-lifecycle-coverage/v1`: every declared official
   `new_crypto`/`delistings` page is read once and strictly matched to one receipt-bound selected
   universe plus ADR-0095 legacy evidence, publishing only source hashes and aggregate

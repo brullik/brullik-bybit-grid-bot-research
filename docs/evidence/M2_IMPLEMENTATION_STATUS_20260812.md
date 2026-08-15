@@ -1458,6 +1458,22 @@ text, identity, URL, market value, account data, credential, or runtime path is 
 narrows the measured lifecycle-source deficit but does not remove a Gate 2 blocker or authorize
 Phase 3.
 
+## Consolidated Gate 2 owner-review v5 implementation
+
+ADR-0097 adds an offline v5 successor so the final owner review does not manually re-verify or
+reconcile the future v4 result and the already merged ADR-0094/0095/0096 evidence. The builder
+requires the exact merged v4 implementation, the unchanged six criteria, three/three readiness
+split, ordered seven blockers, closed Gate 2 decision, and unqualified performance envelope. It
+pins the three later artifact hashes, verifies every receipt/schema/canonical/content chain, checks
+the lifecycle-to-legacy artifact and registry bindings, and reconciles eligible/matched/unmatched/
+ambiguous/pre-archive counts plus eleven explained and zero unexplained funding cadence changes.
+
+The output contains only hashes and sanitized aggregate owner-review facts. Funding-cadence,
+lifecycle, and performance dispositions remain explicitly pending; no blocker removal or gate
+promotion is possible. The existing v4 watcher is unchanged. A single post-v4 v5 invocation will
+be installed only from the merged v5 implementation and will reuse the committed later evidence
+without any Bybit request or retained-store scan.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

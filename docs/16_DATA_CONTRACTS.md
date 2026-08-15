@@ -258,6 +258,16 @@ market timestamps/values, paths, account data, and credentials. Even complete re
 does not reconstruct historical point-in-time metadata, accept an absence, remove a blocker,
 close Gate 2, or authorize Phase 3. See ADR-0096.
 
+`grid.gate2-readiness-pack/v5` is an offline, append-only owner-review successor over the exact
+current-universe v4 result and the fixed ADR-0094, ADR-0095, and ADR-0096 artifacts. It verifies
+every receipt/schema/canonical/content/artifact chain, pins the accepted v4 implementation, checks
+that lifecycle evidence binds the exact legacy artifact and registry, and reconciles lifecycle
+match and funding-policy aggregates. The public output contains only hashes and aggregate review
+facts. It preserves all six criteria, the three/three readiness split, all seven blockers, pending
+funding/lifecycle/performance dispositions, closed Gate 2, and false Phase 3 authorization. It
+performs no network request, retained-store read, policy acceptance, or gate promotion. See
+ADR-0097.
+
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and
 plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate
