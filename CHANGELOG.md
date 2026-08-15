@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0100 and the M4 implementation handoff freeze the design-only exact grid/risk/simulator
+  boundary, future-path authority, deterministic outcome identity, explicit 1m ambiguity,
+  receipt-last outcomes, and portfolio replay order without resolving P-007/P-008, authorizing
+  Phase 4, or changing Gate 2/Gate 3/Gate 4 criteria.
 - ADR-0099 and the M3 implementation handoff freeze the design-only closed-candle decision-time,
   explicit catalog/timeline authority, shared semantic-kernel boundary, derived halo ownership,
   deterministic candidate identity, and post-Gate-2 delivery order without authorizing Phase 3 or

@@ -35,7 +35,9 @@ This backlog describes future work; it does not authorize implementation or live
 16. Batch/live parity feature-kernel fixtures.
 17. Horizontal-range candidate baseline.
 18. Candidate density/throughput benchmark.
-19. Outcome/simulator specification and adversarial cases.
+19. Outcome/simulator specification and adversarial cases. Design authority: ADR-0100 and
+    [M4 implementation plan](M4_OUTCOME_SIMULATOR_IMPLEMENTATION_PLAN.md); implementation remains
+    gated by Gate 3 and P-007/P-008 remain owner-controlled.
 20. Portfolio allocator and capital-lock model.
 21. Experiment registry and split governance.
 22. Robustness/review pack.
