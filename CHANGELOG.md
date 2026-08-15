@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0108 and `grid.gate2-owner-review-docket/v1` turn the exact v5 readiness result into one
+  four-item owner-review request that assigns all seven blockers exactly once. Every disposition
+  remains pending; the builder performs no network/store action, gate change, or Phase 3
+  authorization.
 - ADR-0107 and `prepare-history-campaign-repairs` add a private receipt-resumable handoff from an
   aggregate campaign audit to exact ordinary candle repair plans. Passed children are not
   recomputed, funding stays in its separate pipeline, ineligible blockers produce no plan, and

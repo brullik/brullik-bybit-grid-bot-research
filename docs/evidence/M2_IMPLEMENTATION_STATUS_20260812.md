@@ -1522,3 +1522,18 @@ existing plan bounds are preserved without a plan. Tests cover the one-blocked/o
 receipt-only idempotent verification, tamper failure, ineligible source reasons, funding
 delegation, CLI parsing, and all three schemas. The implementation performs no market request,
 repair execution, canonical mutation, catalog update, Gate 2 change, or Phase 3 authorization.
+
+## Complete Gate 2 owner-review docket implementation
+
+ADR-0108 closes the last manual set-reconciliation step after the v5 owner-review pack. The
+offline builder verifies one exact v5 artifact/receipt, canonical encoding, schema, content and
+artifact hashes, merged implementation identity, all six criteria, the three/three readiness
+split, seven blockers, closed Gate 2, and pending v5 owner state.
+
+The output assigns every blocker exactly once to four pending review items: deterministic repair,
+funding cadence, lifecycle/absence policy, and performance-envelope qualification. In particular,
+the two measured-negative repair blockers now have an explicit review item rather than only being
+present in the inherited criteria. The docket exposes only v5 hashes and already sanitized
+aggregate facts. It performs no network or market-store action and cannot record a decision,
+remove a blocker, open Gate 2, or authorize Phase 3. Measured publication remains pending the
+existing v5 watcher and this implementation's post-merge passive successor.

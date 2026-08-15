@@ -617,6 +617,13 @@ Gate 2 decision unchanged. Current-universe observations therefore become availa
 for owner review without repeating v3's fifteen-source build, but cannot qualify the envelope,
 accept lifecycle/cadence/absence policy, or authorize Phase 3.
 
+ADR-0097 then consolidates the exact v4 result with the already retained funding-policy and
+official lifecycle evidence. ADR-0108 adds the final decision docket over that v5 pair: every one
+of the seven unchanged blockers is assigned exactly once to four pending owner-review items,
+including the two measured-negative repair blockers that v5 did not expose as a separate
+disposition. Both steps are offline, receipt-bound, and non-promoting. They cannot remove a
+blocker, qualify the envelope, open Gate 2, or authorize Phase 3.
+
 ADR-0093 adds a bounded read-only progress observation for up to sixteen concurrent history
 campaigns. It verifies campaign and completed-child receipt-bound metadata, reconciles aggregate
 completion when present, and reports integer page-weighted progress, recent rate, ETA, and minimum
