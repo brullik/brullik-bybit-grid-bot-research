@@ -1537,3 +1537,39 @@ present in the inherited criteria. The docket exposes only v5 hashes and already
 aggregate facts. It performs no network or market-store action and cannot record a decision,
 remove a blocker, open Gate 2, or authorize Phase 3. Measured publication remains pending the
 existing v5 watcher and this implementation's post-merge passive successor.
+
+## Bounded parallel completed-page integrity hashing
+
+The active current-universe resume exposed a scale effect not represented by ADR-0059's 43,328
+completed pages: 840 receipt-complete children now bind 389,144 completed pages. A read-only sample
+of the unchanged sequential verifier sustained about 6.45 MiB/s while one campaign shard remained
+stopped after exhausting its bounded transient supervisor. No receipt, page, campaign, canonical,
+catalog, Gate 2, or live state was changed by that observation.
+
+Before changing the worker bound, four distinct receipt-complete children were swept on the
+ADR-0019 owner-qualified host (`m1-owner-measured-host-qualification-20260812.json`). The cases
+covered 2,205 pages and 163,068,624 bytes in total; every page and receipt verified, no network
+request or mutation occurred, and no runtime path or market identity is published:
+
+| Integrity workers | Pages | Bytes | Elapsed ms | MiB/s |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 585 | 43,851,684 | 837 | 49.964 |
+| 16 | 495 | 36,062,476 | 525 | 65.508 |
+| 24 | 630 | 45,047,251 | 631 | 68.083 |
+| 32 | 495 | 38,107,213 | 500 | 72.684 |
+
+The exact local sweep used the merged environment's `grid_data.history_acquisition` module and,
+for each distinct completed child, this expression with `N` set to 8, 16, 24, and 32:
+
+```powershell
+$env:GRID_HASH_WORKERS = '<8|16|24|32>'
+$env:GRID_JOB_ROOT = '<distinct-completed-child-root>'
+.venv\Scripts\python.exe -c `
+  "import os; from concurrent.futures import ThreadPoolExecutor; from pathlib import Path; from grid_data.history_acquisition import _verify_artifact_digest; root=Path(os.environ['GRID_JOB_ROOT']); pages=sorted(p for p in (root/'pages').glob('*.json') if not p.name.endswith('.receipt.json')); executor=ThreadPoolExecutor(max_workers=int(os.environ['GRID_HASH_WORKERS'])); list(executor.map(_verify_artifact_digest,pages)); executor.shutdown()"
+```
+
+Twenty-four workers are selected: the 24-to-32 gain was only 6.8% while the larger pool adds 33%
+more concurrent small-file pressure. The production verifier still hashes every page, verifies
+every page receipt, validates deterministic task/manifest facts in sequence, and preserves the
+same error ordering. Only independent immutable page reads are parallel; semantic admission,
+pending-page validation, public REST pacing, and every Gate 2 criterion remain unchanged.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from threading import Event, Lock
 from types import SimpleNamespace
 from typing import Any
 
@@ -748,6 +749,38 @@ def test_integrity_verifier_hashes_pages_without_semantic_decode(
     page.write_bytes(page.read_bytes() + b" ")
     with pytest.raises(HistoryAcquisitionError, match="receipt"):
         verify_completed_history_job_integrity(completed.job_root)
+
+
+def test_integrity_verifier_hashes_independent_pages_with_bounded_parallelism(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient())
+    original_digest = history_acquisition._verify_artifact_digest
+    release = Event()
+    lock = Lock()
+    active = 0
+    maximum_active = 0
+
+    def observed_digest(path: Path) -> str:
+        nonlocal active, maximum_active
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+            if maximum_active >= 2:
+                release.set()
+        try:
+            assert release.wait(timeout=2)
+            return original_digest(path)
+        finally:
+            with lock:
+                active -= 1
+
+    monkeypatch.setattr(history_acquisition, "_verify_artifact_digest", observed_digest)
+
+    assert verify_completed_history_job_integrity(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+    assert 2 <= maximum_active <= history_acquisition.MAX_INTEGRITY_HASH_WORKERS
 
 
 def test_series_cannot_cross_physical_month_or_bucket() -> None:
