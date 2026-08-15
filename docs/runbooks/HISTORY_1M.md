@@ -1061,9 +1061,30 @@ evidence/receipt target:
 ```
 
 Exit code 2 means the receipt-bound negative evidence was written successfully but one or more
-children remain blocked. Inspect aggregate reason counts, then reproduce only the corresponding
-private child audits when detailed repair or dated cadence evidence is needed. Never convert a
-blocked aggregate to passed by editing the output or weakening ADR-0026/ADR-0034.
+children remain blocked. Never convert a blocked aggregate to passed by editing the output or
+weakening ADR-0026/ADR-0034.
+
+Prepare exact candle repair inputs from that aggregate in one resumable offline pass:
+
+```powershell
+.venv\Scripts\grid-data.exe prepare-history-campaign-repairs `
+  --publication-root data\market-store\.publication-campaigns\m2-representative-5x24--<plan-prefix> `
+  --campaign-root data\history\.campaigns\m2-representative-5x24--<source-plan-prefix> `
+  --coverage-audit benchmarks\results\m2-history-campaign-coverage-audit-<date>.json `
+  --instrument-registry data\evidence\instrument-registry-20260813.json `
+  --capacity-evidence benchmarks\results\m1-owner-storage-review-capacity-20260812.json `
+  --store-root data\market-store `
+  --preparation-root reports\private\m2-campaign-repairs-<date> `
+  --planner-software-identity git:<campaign-repair-preparation-merge-commit-sha>
+```
+
+The command reproduces only aggregate-blocked candle children, checks their exact content hashes,
+and writes ordinary v1 plans only for eligible `rest_returned_no_data` gaps. It does not repeat
+passed children, route funding through candle repair, call Bybit, execute a plan, or change
+canonical data. Inspect every prepared private result and plan. A later
+`execute-history-repair` invocation remains a separate explicit action and re-verifies the full
+chain before any public request. Verify a completed checkpoint without another semantic scan with
+the same arguments and `verify-history-campaign-repairs` (omit the planner identity).
 
 When the semantic aggregate is already receipt-verified, classify its candle-gap topology without
 downloading history or repeating the Landing JSON/Decimal/Arrow decode:

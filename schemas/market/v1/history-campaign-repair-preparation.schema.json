@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/history-campaign-repair-preparation.schema.json",
+  "title": "History campaign repair preparation manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bindings",
+    "children",
+    "content_sha256",
+    "contract",
+    "generated_at_utc",
+    "inventory",
+    "planner_software_identity",
+    "policy",
+    "request_artifact_sha256",
+    "status"
+  ],
+  "properties": {
+    "bindings": {"$ref": "#/$defs/bindings"},
+    "children": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2880,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "aggregate_audit_content_sha256",
+          "classification",
+          "kind",
+          "preparation_result_artifact_sha256",
+          "sequence",
+          "status"
+        ],
+        "properties": {
+          "aggregate_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+          "classification": {
+            "enum": [
+              "eligible",
+              "funding-repair-separate",
+              "no-missing-minute-gap",
+              "non-gap-audit-blocker-remains",
+              "not-blocked",
+              "reason-policy-incompatible",
+              "repair-request-limit-exceeded",
+              "repair-task-limit-exceeded"
+            ]
+          },
+          "kind": {"enum": ["trade", "mark", "funding"]},
+          "preparation_result_artifact_sha256": {
+            "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+          },
+          "sequence": {"type": "integer", "minimum": 0, "maximum": 2879},
+          "status": {"enum": ["passed", "blocked"]}
+        }
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.history-campaign-repair-preparation/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocked_candle_count",
+        "blocked_funding_count",
+        "dataset_count",
+        "eligible_candle_count",
+        "gap_range_count",
+        "ineligible_candle_count",
+        "passed_count",
+        "planned_max_http_requests",
+        "repair_plan_count",
+        "task_count",
+        "total_missing_minute_count"
+      ],
+      "properties": {
+        "blocked_candle_count": {"type": "integer", "minimum": 0},
+        "blocked_funding_count": {"type": "integer", "minimum": 0},
+        "dataset_count": {"type": "integer", "minimum": 1, "maximum": 2880},
+        "eligible_candle_count": {"type": "integer", "minimum": 0},
+        "gap_range_count": {"type": "integer", "minimum": 0},
+        "ineligible_candle_count": {"type": "integer", "minimum": 0},
+        "passed_count": {"type": "integer", "minimum": 0},
+        "planned_max_http_requests": {"type": "integer", "minimum": 0},
+        "repair_plan_count": {"type": "integer", "minimum": 0},
+        "task_count": {"type": "integer", "minimum": 0},
+        "total_missing_minute_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "planner_software_identity": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    },
+    "policy": {"$ref": "#/$defs/policy"},
+    "request_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {
+      "enum": [
+        "complete-no-blocked-candle-children",
+        "complete-repair-plans-prepared",
+        "complete-with-ineligible-candle-children"
+      ]
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_coverage_audit_artifact_sha256",
+        "aggregate_coverage_audit_content_sha256",
+        "capacity_evidence_artifact_sha256",
+        "instrument_registry_artifact_sha256",
+        "publication_manifest_sha256",
+        "publication_plan_sha256",
+        "source_campaign_manifest_sha256",
+        "source_campaign_plan_sha256"
+      ],
+      "properties": {
+        "aggregate_coverage_audit_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "aggregate_coverage_audit_content_sha256": {"$ref": "#/$defs/sha256"},
+        "capacity_evidence_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "publication_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "source_campaign_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_passed_children_recomputed",
+        "blocked_candle_children_recomputed",
+        "canonical_dataset_mutated",
+        "funding_repair_delegated_to_separate_pipeline",
+        "market_requests_executed",
+        "repair_execution_performed"
+      ],
+      "properties": {
+        "aggregate_passed_children_recomputed": {"const": false},
+        "blocked_candle_children_recomputed": {"const": true},
+        "canonical_dataset_mutated": {"const": false},
+        "funding_repair_delegated_to_separate_pipeline": {"const": true},
+        "market_requests_executed": {"const": false},
+        "repair_execution_performed": {"const": false}
+      }
+    }
+  }
+}

@@ -202,6 +202,17 @@ excluding symbols, instrument/dataset IDs, market values, event timestamps, runt
 data, and credentials. The aggregate passes only when every child passes; it never changes gap or
 funding-cadence acceptance policy. See ADR-0041.
 
+`grid.history-campaign-repair-preparation-request/v1` receipt-binds one completed publication,
+its source campaign, registry/capacity inputs, one exact ADR-0041 aggregate audit, immutable
+publisher/auditor/planner identities, and the blocked-candle count before private child work.
+`grid.history-campaign-repair-preparation-child/v1` commits the exact recomputed blocked candle
+audit and either one unchanged ADR-0027 plan or a stable ineligibility classification.
+`grid.history-campaign-repair-preparation/v1` is the final ordered manifest over every aggregate
+child and all private child-result artifact hashes. Passed children are not semantically
+recomputed; blocked funding is delegated to its separate repair pipeline. Completed checkpoints
+verify/resume without another semantic scan. These private contracts execute no request, mutate no
+canonical dataset, accept no absence, and change no Gate 2 authority. See ADR-0107.
+
 `grid.phase2-candle-boundary-diagnostic/v1` binds a candle-only aggregate publication, the exact
 receipt-verified ADR-0041 semantic coverage artifact, and the same registry/source lineage. It
 reuses canonical dataset verification and scans only instrument/time columns once to classify

@@ -6,6 +6,10 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0107 and `prepare-history-campaign-repairs` add a private receipt-resumable handoff from an
+  aggregate campaign audit to exact ordinary candle repair plans. Passed children are not
+  recomputed, funding stays in its separate pipeline, ineligible blockers produce no plan, and
+  the command performs no market request, repair execution, canonical mutation, or Gate 2 change.
 - ADR-0106 and the M10 implementation handoff freeze the design-only signed source-to-runtime trust
   chain, dedicated live-only host/key profile, externally fenced single-writer active-passive
   recovery, encrypted secret-free backup/restore, protected deployment/rollback, and operational

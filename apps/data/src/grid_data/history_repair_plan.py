@@ -14,6 +14,7 @@ from grid_data.evidence import verify_evidence
 from grid_data.history_acquisition import HistoryAcquisitionError
 from grid_data.history_coverage_audit import (
     COVERAGE_AUDIT_CONTRACT,
+    CoverageAudit,
     build_completed_history_coverage_audit,
 )
 from grid_data.history_publication import SOFTWARE_IDENTITY_RE
@@ -39,6 +40,14 @@ class VerifiedRepairPlan:
     payload: dict[str, object]
     task_count: int
     planned_max_http_requests: int
+
+
+class GapRepairPlanIneligible(HistoryAcquisitionError):
+    """A verified coverage result cannot enter the bounded ordinary repair policy."""
+
+    def __init__(self, classification: str, message: str) -> None:
+        super().__init__(message)
+        self.classification = classification
 
 
 def _object(path: Path, *, name: str) -> tuple[Path, dict[str, object]]:
@@ -82,9 +91,17 @@ def _generated_at(value: str) -> str:
 
 def _assert_only_repairable_gaps(audit: dict[str, object]) -> int:
     if audit.get("contract") != COVERAGE_AUDIT_CONTRACT or audit.get("status") != "blocked":
-        raise HistoryAcquisitionError("repair planning requires a blocked v1 coverage audit")
+        raise GapRepairPlanIneligible(
+            "coverage-audit-not-blocked",
+            "repair planning requires a blocked v1 coverage audit",
+        )
     quality = _object_value(audit, "quality")
-    missing = _integer(quality, "missing_minute_count", positive=True)
+    missing = _integer(quality, "missing_minute_count")
+    if missing == 0:
+        raise GapRepairPlanIneligible(
+            "no-missing-minute-gap",
+            "repair planning requires at least one missing requested minute",
+        )
     expected_zero = (
         "conflicting_key_count",
         "duplicate_key_count",
@@ -95,8 +112,9 @@ def _assert_only_repairable_gaps(audit: dict[str, object]) -> int:
     if quality.get("canonical_source_table_equal") is not True or any(
         _integer(quality, name) != 0 for name in expected_zero
     ):
-        raise HistoryAcquisitionError(
-            "repair planning supports missing minutes only; other audit blockers remain"
+        raise GapRepairPlanIneligible(
+            "non-gap-audit-blocker-remains",
+            "repair planning supports missing minutes only; other audit blockers remain",
         )
     reason_policy = _object_value(audit, "reason_policy")
     if (
@@ -105,7 +123,10 @@ def _assert_only_repairable_gaps(audit: dict[str, object]) -> int:
         or reason_policy.get("unaccepted_reason_codes") != ["rest_returned_no_data"]
         or reason_policy.get("observed_reason_counts") != {"rest_returned_no_data": missing}
     ):
-        raise HistoryAcquisitionError("blocked audit reason policy is not repair-plan compatible")
+        raise GapRepairPlanIneligible(
+            "reason-policy-incompatible",
+            "blocked audit reason policy is not repair-plan compatible",
+        )
     return missing
 
 
@@ -138,47 +159,20 @@ def _request_payload(
     return request, page_count
 
 
-def build_gap_repair_plan(
-    coverage_audit_path: Path,
+def _build_gap_repair_plan_from_recomputed(
+    audit_path: Path,
+    stored_audit: dict[str, object],
+    recomputed: CoverageAudit,
     job_root: Path,
-    instrument_registry_path: Path,
-    capacity_evidence_path: Path,
-    store_root: Path,
     *,
     generated_at_utc: str,
     planner_software_identity: str,
 ) -> RepairPlan:
-    """Recompute a blocked audit and produce bounded standard requests for each exact gap."""
-
-    if not SOFTWARE_IDENTITY_RE.fullmatch(planner_software_identity):
-        raise HistoryAcquisitionError(
-            "planner_software_identity must be git:<40-character-lowercase-commit-sha>"
-        )
-    audit_path, stored_audit = _object(coverage_audit_path, name="coverage audit")
-    if not verify_evidence(audit_path):
-        raise HistoryAcquisitionError("coverage audit receipt does not verify")
-    publisher_identity = _object_value(stored_audit, "bindings").get("publisher_software_identity")
-    audit_identity = stored_audit.get("audit_software_identity")
-    audit_generated_at = stored_audit.get("generated_at_utc")
-    if not all(
-        isinstance(value, str) for value in (publisher_identity, audit_identity, audit_generated_at)
-    ):
-        raise HistoryAcquisitionError("coverage audit identities are invalid")
-    recomputed = build_completed_history_coverage_audit(
-        job_root,
-        instrument_registry_path,
-        capacity_evidence_path,
-        store_root,
-        publisher_software_identity=cast(str, publisher_identity),
-        audit_software_identity=cast(str, audit_identity),
-        generated_at_utc=cast(str, audit_generated_at),
-    )
-    if recomputed.payload != stored_audit:
-        raise HistoryAcquisitionError("coverage audit no longer matches verified runtime inputs")
     missing_minutes = _assert_only_repairable_gaps(stored_audit)
     if not 1 <= len(recomputed.gap_ranges) <= MAX_REPAIR_TASKS:
-        raise HistoryAcquisitionError(
-            f"repair gap count must be in [1, {MAX_REPAIR_TASKS}] for one bounded plan"
+        raise GapRepairPlanIneligible(
+            "repair-task-limit-exceeded",
+            f"repair gap count must be in [1, {MAX_REPAIR_TASKS}] for one bounded plan",
         )
 
     history_plan_path = Path(job_root).resolve() / "plan.json"
@@ -241,8 +235,9 @@ def build_gap_repair_plan(
     if total_minutes != missing_minutes:
         raise HistoryAcquisitionError("repair tasks do not account for every missing minute")
     if total_requests > MAX_REPAIR_HTTP_REQUESTS:
-        raise HistoryAcquisitionError(
-            f"repair plan exceeds {MAX_REPAIR_HTTP_REQUESTS} bounded HTTP attempts"
+        raise GapRepairPlanIneligible(
+            "repair-request-limit-exceeded",
+            f"repair plan exceeds {MAX_REPAIR_HTTP_REQUESTS} bounded HTTP attempts",
         )
 
     payload: dict[str, object] = {
@@ -280,6 +275,82 @@ def build_gap_repair_plan(
         payload=payload,
         task_count=len(tasks),
         planned_max_http_requests=total_requests,
+    )
+
+
+def build_gap_repair_plan_from_recomputed_audit(
+    coverage_audit_path: Path,
+    recomputed: CoverageAudit,
+    job_root: Path,
+    *,
+    generated_at_utc: str,
+    planner_software_identity: str,
+) -> RepairPlan:
+    """Build a plan from the exact audit result already computed by a bounded coordinator."""
+
+    if not SOFTWARE_IDENTITY_RE.fullmatch(planner_software_identity):
+        raise HistoryAcquisitionError(
+            "planner_software_identity must be git:<40-character-lowercase-commit-sha>"
+        )
+    audit_path, stored_audit = _object(coverage_audit_path, name="coverage audit")
+    if not verify_evidence(audit_path):
+        raise HistoryAcquisitionError("coverage audit receipt does not verify")
+    if recomputed.payload != stored_audit:
+        raise HistoryAcquisitionError("coverage audit no longer matches verified runtime inputs")
+    return _build_gap_repair_plan_from_recomputed(
+        audit_path,
+        stored_audit,
+        recomputed,
+        job_root,
+        generated_at_utc=generated_at_utc,
+        planner_software_identity=planner_software_identity,
+    )
+
+
+def build_gap_repair_plan(
+    coverage_audit_path: Path,
+    job_root: Path,
+    instrument_registry_path: Path,
+    capacity_evidence_path: Path,
+    store_root: Path,
+    *,
+    generated_at_utc: str,
+    planner_software_identity: str,
+) -> RepairPlan:
+    """Recompute a blocked audit and produce bounded standard requests for each exact gap."""
+
+    if not SOFTWARE_IDENTITY_RE.fullmatch(planner_software_identity):
+        raise HistoryAcquisitionError(
+            "planner_software_identity must be git:<40-character-lowercase-commit-sha>"
+        )
+    audit_path, stored_audit = _object(coverage_audit_path, name="coverage audit")
+    if not verify_evidence(audit_path):
+        raise HistoryAcquisitionError("coverage audit receipt does not verify")
+    publisher_identity = _object_value(stored_audit, "bindings").get("publisher_software_identity")
+    audit_identity = stored_audit.get("audit_software_identity")
+    audit_generated_at = stored_audit.get("generated_at_utc")
+    if not all(
+        isinstance(value, str) for value in (publisher_identity, audit_identity, audit_generated_at)
+    ):
+        raise HistoryAcquisitionError("coverage audit identities are invalid")
+    recomputed = build_completed_history_coverage_audit(
+        job_root,
+        instrument_registry_path,
+        capacity_evidence_path,
+        store_root,
+        publisher_software_identity=cast(str, publisher_identity),
+        audit_software_identity=cast(str, audit_identity),
+        generated_at_utc=cast(str, audit_generated_at),
+    )
+    if recomputed.payload != stored_audit:
+        raise HistoryAcquisitionError("coverage audit no longer matches verified runtime inputs")
+    return _build_gap_repair_plan_from_recomputed(
+        audit_path,
+        stored_audit,
+        recomputed,
+        job_root,
+        generated_at_utc=generated_at_utc,
+        planner_software_identity=planner_software_identity,
     )
 
 
