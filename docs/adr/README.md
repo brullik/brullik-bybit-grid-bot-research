@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0098 - Single-admission acquisition completion](ADR-0098-single-admission-acquisition-completion.md)
 - [ADR-0097 - Consolidated Gate 2 owner-review pack](ADR-0097-consolidated-gate2-owner-review-pack.md)
 - [ADR-0096 - Official lifecycle announcement record matching](ADR-0096-official-lifecycle-announcement-record-matching.md)
 - [ADR-0095 - Receipt-bound legacy official listing-event evidence](ADR-0095-receipt-bound-legacy-official-listing-event-evidence.md)

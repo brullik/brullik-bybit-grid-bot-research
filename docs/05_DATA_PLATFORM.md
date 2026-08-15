@@ -624,6 +624,13 @@ free bytes without opening Landing pages, making a request, or writing runtime s
 `.run-lock` remains pending. The transient output is operational guidance only; full campaign
 verification, performance evidence, coverage, Gate 2, and Phase 3 authority are unchanged.
 
+ADR-0098 removes a different within-child duplicate pass. A new candle or funding child still
+semantically validates every page before its receipt-last manifest commit. The completion return
+then hashes and verifies the immutable page/receipt/manifest/allowlist chain without decoding the
+same source rows again. Candle quarantine keys are retained from the already validated payloads;
+explicit semantic verification, publication, coverage audit, source policy, and Gate 2 remain
+unchanged. Active campaign processes are not restarted to adopt the optimization.
+
 ADR-0035 extends the same backward-compatible catalog boundary to receipt-verified canonical
 `funding_event` datasets. Funding registration reads first/last keys from
 `instrument_id, funding_time_ms`; trade/mark registration continues to use `open_time_ms`.

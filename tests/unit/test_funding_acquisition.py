@@ -272,6 +272,42 @@ def test_failed_run_resumes_only_missing_pages_and_complete_is_idempotent(
     assert never_called.calls == []
 
 
+def test_new_completion_semantically_admits_pages_once_then_reverifies_integrity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = preflight(tmp_path)
+    original = funding_acquisition._validate_page_payload
+    original_integrity = funding_acquisition.verify_completed_funding_job_integrity
+    semantic_admission_count = 0
+    integrity_verification_count = 0
+
+    def counted(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal semantic_admission_count
+        semantic_admission_count += 1
+        return original(*args, **kwargs)
+
+    def counted_integrity(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal integrity_verification_count
+        integrity_verification_count += 1
+        return original_integrity(*args, **kwargs)
+
+    monkeypatch.setattr(funding_acquisition, "_validate_page_payload", counted)
+    monkeypatch.setattr(
+        funding_acquisition,
+        "verify_completed_funding_job_integrity",
+        counted_integrity,
+    )
+
+    completed = execute(plan, FakeFundingClient())
+
+    assert semantic_admission_count == len(plan.tasks)
+    assert integrity_verification_count == 1
+    assert verify_completed_funding_job_integrity(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+
+
 def test_regional_403_aborts_funding_once_without_retrying(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
