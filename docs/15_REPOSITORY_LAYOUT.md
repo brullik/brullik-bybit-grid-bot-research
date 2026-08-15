@@ -102,6 +102,9 @@ Owns bounded current market data, signal evaluation from one promoted release, r
   it also owns receipt-last immutable publication and verification primitives. Hardware probing,
   acquisition, and publication orchestration remain in `grid-data`.
 - `feature-kernel` supports batch/live parity but has no storage or network orchestration.
+- ADR-0099 makes `feature-kernel` the dependency-light semantic authority: it also cannot depend
+  on Polars, DuckDB, market-store, application packages, simulator, release, or private/live
+  adapters. `grid-research` may accelerate batches, but must prove parity with that kernel.
 - Contracts are backward-compatible within a declared support window.
 
 ## Test ownership

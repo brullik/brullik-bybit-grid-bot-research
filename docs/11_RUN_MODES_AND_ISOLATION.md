@@ -41,6 +41,12 @@ invocation retains the standard receipt verification, RPS, workers, and per-page
 Canonical campaign publication is a second `grid-data` coordinator: it consumes only a completed
 campaign, runs the existing receipt-last writers sequentially, and has no Bybit network client.
 
+ADR-0099 prepares the next boundary without opening it. While Gate 2 is closed, `grid-research`
+remains an offline scaffold and no feature/candidate schema, kernel, CLI, or derived dataset is
+authorized. After explicit Gate 2 acceptance, feature semantics belong to a dependency-light
+shared kernel; catalog reads, batch acceleration, immutable derived stores, and evidence belong to
+`grid-research`. This design adds no dependency or startup path to `grid-live`.
+
 ## Separate startup examples
 
 Planned operator intent:

@@ -4,6 +4,14 @@
 
 Identify robust conditions and parameters for horizontal-range native futures grids without lookahead, parameter leakage, or repeated full-corpus computation.
 
+ADR-0099 freezes the design-only Phase 3 boundary while Gate 2 remains closed. A candle opened at
+`t` is available only after its close; the corresponding feature key is
+`decision_time_ns = (t + 60_000) * 1_000_000`. Builds bind explicit complete catalog datasets and
+one point-in-time timeline, never an implicit latest snapshot. The future dependency-light shared
+kernel owns semantics; `grid-research` owns read-only batch orchestration, immutable derived
+stores, and parity evidence. See the
+[M3 implementation plan](../planning/M3_FEATURE_CANDIDATE_IMPLEMENTATION_PLAN.md).
+
 ## Research stages
 
 ```mermaid
@@ -40,6 +48,11 @@ A candidate is a decision-time snapshot, not a retrospectively selected profitab
 - feature contract and parent dataset IDs.
 
 V1 requires horizontal ranges and a current price in a configurable mid-zone. Exact thresholds are research variables, not assumptions to be tuned on the final test set.
+
+Candidate identity is independent of shard/output order and binds the parent feature dataset and
+contract, category, stable instrument ID, closed-candle decision time, rule identity, and
+configuration hash. Missing warmup, source minutes, point-in-time metadata, or required quality
+evidence is an explicit rejection, never a future fill or silently eligible candidate.
 
 ## Efficient feature strategy
 

@@ -29,7 +29,9 @@ This backlog describes future work; it does not authorize implementation or live
 
 ## P2 — Research platform
 
-15. Frozen decision-time and feature contract.
+15. Frozen decision-time and feature contract. Design authority: ADR-0099 and
+    [M3 implementation plan](M3_FEATURE_CANDIDATE_IMPLEMENTATION_PLAN.md); implementation remains
+    gated by Gate 2.
 16. Batch/live parity feature-kernel fixtures.
 17. Horizontal-range candidate baseline.
 18. Candidate density/throughput benchmark.
