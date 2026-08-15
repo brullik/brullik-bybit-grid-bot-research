@@ -1443,8 +1443,20 @@ contract marker. It never picks the nearest of multiple records: zero candidates
 unmatched and multiple candidates remain ambiguous. Article text is processed in memory only;
 the schema allows only source hashes/bounds, counts, aggregate UTC-date relations, and immutable
 input bindings. Unit tests cover complete, ambiguous, legacy optional-field, order-visible,
-selection-substituted, CLI, schema, content-hash, and redaction behavior. The measured artifact remains pending
-the merged implementation identity and does not change Gate 2.
+selection-substituted, CLI, schema, content-hash, and redaction behavior.
+
+The receipt-verified measurement bound to implementation `a3ebfe9` made 108 one-attempt public
+responses and reconciled 1,692 `new_crypto` plus 460 `delistings` posts against the exact 981-
+instrument union. It uniquely matched 633 of 808 archive-eligible listings and 255 of 297
+archive-eligible delistings. Another 84 listings and 40 delistings were unmatched, while 91
+listings and 2 delistings were ambiguous. The official archive begins too late for 173 listings;
+the separate five-instrument ADR-0095 evidence leaves 168 other pre-archive instruments uncovered.
+The result is therefore `verified-partial-official-lifecycle-evidence` with six explicit blocker
+codes. It records 101 listing and 13 delisting rows with blank/missing descriptions, zero missing
+titles/tags/URLs, stable totals, exact page counts, and zero adjacent date inversions. No article
+text, identity, URL, market value, account data, credential, or runtime path is retained. This
+narrows the measured lifecycle-source deficit but does not remove a Gate 2 blocker or authorize
+Phase 3.
 
 ## Still required before Gate 2
 

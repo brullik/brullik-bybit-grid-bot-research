@@ -12,6 +12,10 @@ All notable project-governance and architecture changes are recorded here.
   matched/unmatched/ambiguous counts while retaining the historical-metadata blocker and closed
   Gate 2. Legacy archive rows may omit newer text/URL fields; omissions are explicitly counted,
   never synthesized, and remain covered by the complete source hash.
+- Receipt-verified ADR-0096 measurement bound to `a3ebfe9`: 108 one-attempt public responses cover
+  1,692 listing and 460 delisting posts for the exact 981-instrument selection. The partial result
+  uniquely matches 633/808 eligible listings and 255/297 eligible delistings, leaving explicit
+  unmatched/ambiguous and pre-archive blockers without changing Gate 2.
 - ADR-0095 and `grid.phase2-legacy-listing-event-evidence/v1`: three exact official legacy posts
   are reconciled with a fully verified oldest-five canonical publication, publishing only
   source/lineage hashes and aggregate date counts while preserving one two-date ambiguity,
