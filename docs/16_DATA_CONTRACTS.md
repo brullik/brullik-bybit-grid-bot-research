@@ -759,6 +759,11 @@ Required concepts:
 - parent market dataset ID.
 
 Every feature must document its exact lookback and whether the current closed candle is included.
+ADR-0099 defines `decision_time_ns` as `(open_time_ms + 60_000) * 1_000_000` for the just-closed
+one-minute candle. A feature dataset also binds explicit ordered market dataset IDs, catalog
+revision/content hash, point-in-time timeline hash, formula/configuration hash, derived required
+halo, shared-kernel identity, batch-adapter identity, and audit hashes. Exact v1 persisted fields
+and numeric encodings remain a post-Gate-2 append-only implementation contract.
 
 ## Range candidate
 
@@ -768,7 +773,10 @@ Primary key:
 (candidate_dataset_id, candidate_id)
 ```
 
-`candidate_id` is deterministic from instrument, decision time, candidate-rule identity, and feature version.
+`candidate_id` is deterministic from the parent feature dataset/contract, category, instrument,
+decision time, candidate-rule identity, and candidate configuration hash. ADR-0099 requires those
+fields plus the candidate contract in its canonical SHA-256 input so the ID is independent of
+shard size, worker count, file layout, and output order without colliding across source rebuilds.
 
 Fields include:
 
