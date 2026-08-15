@@ -1428,6 +1428,22 @@ body, rates, instrument identities, observed settlement timestamps, and runtime 
 of Git. Even this verified result is input to a separate owner/governance decision: it cannot
 rewrite the immutable audits, remove the current blocker, open Gate 2, or authorize Phase 3.
 
+## Official lifecycle announcement record matching implementation
+
+ADR-0096 adds a one-pass record matcher over every declared official `new_crypto` and
+`delistings` page. It binds the exact disjoint selected trade/mark campaign requests, the same
+registry, and the separate ADR-0095 artifact/private selected-set hash. Stable source totals,
+exact page cardinality, official URLs, and unique URLs fail closed before any artifact is
+published; exact source order is hash-bound and any adjacent date inversion remains visible.
+
+Matching requires an exact registry symbol or base/USDT boundary plus a derivative/perpetual/
+contract marker. It never picks the nearest of multiple records: zero candidates remains
+unmatched and multiple candidates remain ambiguous. Article text is processed in memory only;
+the schema allows only source hashes/bounds, counts, aggregate UTC-date relations, and immutable
+input bindings. Unit tests cover complete, ambiguous, order-visible, selection-substituted, CLI,
+schema, content-hash, and redaction behavior. The one-attempt measured artifact remains pending
+the merged implementation identity and does not change Gate 2.
+
 ## Still required before Gate 2
 
 - broader dated lifecycle evidence covering representative historical decision periods; the

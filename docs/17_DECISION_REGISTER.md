@@ -92,6 +92,7 @@
 | D-093 | Concurrent history-campaign progress is observed from receipt-bound metadata without page reads | accepted | One bounded read-only multi-root snapshot, integer progress/rate/ETA, active-lock undercount, explicit non-authoritative scope, and ADR-0093 |
 | D-094 | Post-2026-02-26 funding-cadence changes are reviewed against Bybit's dated automatic restoration policy | accepted | Exact official-page markers, receipt-verified audits/Landing, Decimal threshold replay, strict default-hourly-alignment state machine, sanitized aggregates, unchanged Gate 2 owner authority, and ADR-0094 |
 | D-095 | Legacy listing-event evidence binds exact official posts to a fully verified oldest-five publication | accepted | Three fixed posts and one-attempt reads, exact private selected-set mapping, aggregate first-candle date reconciliation, explicit two-date ambiguity, unchanged registry/blockers/Gate 2, and ADR-0095 |
+| D-096 | Available official lifecycle pages are matched exactly once to the selected campaign without retaining article text | accepted | Complete `new_crypto`/`delistings` page scan, stable totals, exact-order hashing/inversion counts, URL uniqueness, exact symbol-or-pair plus derivative matching, explicit unmatched/ambiguous counts, ADR-0095 binding, unchanged Gate 2 authority, and ADR-0096 |
 
 ## Decisions requiring benchmark or owner evidence
 

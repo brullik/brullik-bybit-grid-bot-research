@@ -65,6 +65,14 @@ grid-data legacy-listing-event-evidence --instrument-registry <registry.json> \
   --software-identity git:<full-commit-sha> --output <sanitized-legacy-evidence.json>
 # This verifies three exact official posts and the complete canonical receipt chain read-only.
 # It retains one two-UTC-date ambiguity and cannot remove blockers or close Gate 2.
+grid-data announcement-lifecycle-coverage --instrument-registry <registry.json> \
+  --campaign-request <selected-trade-mark-campaign-request-1.json> \
+  [--campaign-request <selected-trade-mark-campaign-request-N.json> ...] \
+  --legacy-evidence <verified-legacy-listing-evidence.json> \
+  --legacy-instrument-id <id-1> [--legacy-instrument-id <id-N> ...] \
+  --software-identity git:<full-commit-sha> --output <sanitized-lifecycle-evidence.json>
+# This reads every declared new_crypto/delistings page once, keeps article text in memory only,
+# and publishes unmatched/ambiguous aggregate counts without changing Gate 2.
 grid-data history-1m --request <request.json> --instrument-registry <registry.json> \
   --capacity-evidence <capacity.json> --staging-root <local-path>
 # Repeat with --execute only after the printed no-mutation preflight is accepted.

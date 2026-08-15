@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-announcement-lifecycle-coverage.schema.json",
+  "title": "Official Bybit lifecycle announcement record-matching evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archive_sources",
+    "bindings",
+    "blocker_codes",
+    "content_sha256",
+    "contract",
+    "generated_at_utc",
+    "legacy_evidence",
+    "limitations",
+    "matching",
+    "process",
+    "scope",
+    "source_policy",
+    "status",
+    "storage_policy"
+  ],
+  "properties": {
+    "archive_sources": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/newCryptoSource"},
+        {"$ref": "#/$defs/delistingSource"}
+      ],
+      "items": false
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_request_sources",
+        "instrument_registry_artifact_sha256",
+        "instrument_registry_content_sha256",
+        "selected_instrument_set_sha256"
+      ],
+      "properties": {
+        "campaign_request_sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifact_sha256", "content_sha256", "selected_instrument_count"],
+            "properties": {
+              "artifact_sha256": {"$ref": "#/$defs/sha256"},
+              "content_sha256": {"$ref": "#/$defs/sha256"},
+              "selected_instrument_count": {"type": "integer", "minimum": 1, "maximum": 700}
+            }
+          }
+        },
+        "instrument_registry_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_content_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_instrument_set_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "blocker_codes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "eligible-delisting-announcement-match-missing",
+          "eligible-listing-announcement-match-missing",
+          "historical-point-in-time-metadata-still-incomplete",
+          "delisting-announcement-match-ambiguous",
+          "listing-announcement-match-ambiguous",
+          "remaining-pre-archive-listing-evidence-missing"
+        ]
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.phase2-announcement-lifecycle-coverage/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "legacy_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "remaining_pre_archive_listing_instrument_count",
+        "selected_instrument_count",
+        "source",
+        "trade_event_day_match_count",
+        "trade_first_candle_before_event_day_count"
+      ],
+      "properties": {
+        "remaining_pre_archive_listing_instrument_count": {"$ref": "#/$defs/count"},
+        "selected_instrument_count": {"type": "integer", "minimum": 1, "maximum": 700},
+        "source": {"$ref": "#/$defs/sourceRecord"},
+        "trade_event_day_match_count": {"$ref": "#/$defs/count"},
+        "trade_first_candle_before_event_day_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "matching": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delisting", "listing", "record_matching_complete"],
+      "properties": {
+        "delisting": {"$ref": "#/$defs/matchSummary"},
+        "listing": {"$ref": "#/$defs/matchSummary"},
+        "record_matching_complete": {"type": "boolean"}
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "announcement_text_persisted",
+        "lifecycle_type_count",
+        "market_data_request_count",
+        "private_endpoint_request_count",
+        "response_count",
+        "software_identity",
+        "transport_max_attempts"
+      ],
+      "properties": {
+        "announcement_text_persisted": {"const": false},
+        "lifecycle_type_count": {"const": 2},
+        "market_data_request_count": {"const": 0},
+        "private_endpoint_request_count": {"const": 0},
+        "response_count": {"type": "integer", "minimum": 2, "maximum": 10000},
+        "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"},
+        "transport_max_attempts": {"const": 1}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_request_count",
+        "closed_instrument_count",
+        "delivered_instrument_count",
+        "prelaunch_instrument_count",
+        "selected_instrument_count",
+        "trading_instrument_count"
+      ],
+      "properties": {
+        "campaign_request_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "closed_instrument_count": {"$ref": "#/$defs/count"},
+        "delivered_instrument_count": {"$ref": "#/$defs/count"},
+        "prelaunch_instrument_count": {"$ref": "#/$defs/count"},
+        "selected_instrument_count": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "trading_instrument_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authentication",
+        "base_url",
+        "endpoint",
+        "lifecycle_types",
+        "locale",
+        "page_limit",
+        "query_policy",
+        "raw_announcement_bodies_persisted"
+      ],
+      "properties": {
+        "authentication": {"const": "none"},
+        "base_url": {"const": "https://api.bybit.com"},
+        "endpoint": {"const": "/v5/announcements/index"},
+        "lifecycle_types": {"const": ["new_crypto", "delistings"]},
+        "locale": {"const": "en-US"},
+        "page_limit": {"const": 20},
+        "query_policy": {"const": "every-declared-page-once-per-lifecycle-type-v1"},
+        "raw_announcement_bodies_persisted": {"const": false}
+      }
+    },
+    "status": {
+      "enum": [
+        "verified-partial-official-lifecycle-evidence",
+        "verified-record-matched-official-lifecycle-evidence"
+      ]
+    },
+    "storage_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account_data_included",
+        "announcement_text_or_urls_included",
+        "credentials_included",
+        "instrument_identities_included",
+        "market_values_included",
+        "runtime_paths_included"
+      ],
+      "properties": {
+        "account_data_included": {"const": false},
+        "announcement_text_or_urls_included": {"const": false},
+        "credentials_included": {"const": false},
+        "instrument_identities_included": {"const": false},
+        "market_values_included": {"const": false},
+        "runtime_paths_included": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "archiveSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "announcement_type",
+        "adjacent_date_inversion_count",
+        "archive_result_sha256",
+        "item_count",
+        "latest_date_timestamp_ms",
+        "missing_description_count",
+        "missing_tags_count",
+        "oldest_date_timestamp_ms",
+        "page_count",
+        "total_announcements"
+      ],
+      "properties": {
+        "announcement_type": {"enum": ["new_crypto", "delistings"]},
+        "adjacent_date_inversion_count": {"$ref": "#/$defs/count"},
+        "archive_result_sha256": {"$ref": "#/$defs/sha256"},
+        "item_count": {"type": "integer", "minimum": 1, "maximum": 10000000},
+        "latest_date_timestamp_ms": {"type": "integer", "minimum": 0},
+        "missing_description_count": {"$ref": "#/$defs/count"},
+        "missing_tags_count": {"$ref": "#/$defs/count"},
+        "oldest_date_timestamp_ms": {"type": "integer", "minimum": 0},
+        "page_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "total_announcements": {"type": "integer", "minimum": 1, "maximum": 10000000}
+      }
+    },
+    "count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+    "delistingSource": {
+      "allOf": [
+        {"$ref": "#/$defs/archiveSource"},
+        {"properties": {"announcement_type": {"const": "delistings"}}}
+      ]
+    },
+    "matchSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ambiguous_instrument_count",
+        "candidate_event_count",
+        "eligible_instrument_count",
+        "outside_archive_instrument_count",
+        "registry_relation",
+        "unique_match_instrument_count",
+        "unmatched_instrument_count"
+      ],
+      "properties": {
+        "ambiguous_instrument_count": {"$ref": "#/$defs/count"},
+        "candidate_event_count": {"$ref": "#/$defs/count"},
+        "eligible_instrument_count": {"$ref": "#/$defs/count"},
+        "outside_archive_instrument_count": {"$ref": "#/$defs/count"},
+        "registry_relation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "announcement_after_registry_date_count",
+            "announcement_before_registry_date_count",
+            "maximum_absolute_utc_date_delta_days",
+            "same_utc_date_count"
+          ],
+          "properties": {
+            "announcement_after_registry_date_count": {"$ref": "#/$defs/count"},
+            "announcement_before_registry_date_count": {"$ref": "#/$defs/count"},
+            "maximum_absolute_utc_date_delta_days": {"$ref": "#/$defs/count"},
+            "same_utc_date_count": {"$ref": "#/$defs/count"}
+          }
+        },
+        "unique_match_instrument_count": {"$ref": "#/$defs/count"},
+        "unmatched_instrument_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "newCryptoSource": {
+      "allOf": [
+        {"$ref": "#/$defs/archiveSource"},
+        {"properties": {"announcement_type": {"const": "new_crypto"}}}
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sourceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "artifact_sha256", "content_sha256", "contract", "status"],
+      "properties": {
+        "artifact": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"const": "grid.phase2-legacy-listing-event-evidence/v1"},
+        "status": {"const": "verified-four-exact-and-one-bounded-legacy-listing-event"}
+      }
+    }
+  }
+}

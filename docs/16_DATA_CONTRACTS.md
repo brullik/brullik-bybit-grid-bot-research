@@ -242,6 +242,20 @@ UTC-date matches plus one two-date lead are bounded source evidence, not exact a
 The contract cannot accept absence, rewrite the registry, remove blockers, close Gate 2, or
 authorize Phase 3. See ADR-0095.
 
+`grid.phase2-announcement-lifecycle-coverage/v1` binds one through sixteen exact disjoint
+trade/mark campaign requests, their receipt-verified registry, and the separate exact ADR-0095
+legacy selected-set hash to a one-attempt scan of every declared official `new_crypto` and
+`delistings` page. Stable totals, exact page cardinality, source type, official HTTPS host, and
+unique URLs fail closed before matching. Exact source order is hash-bound and adjacent date
+inversions are counted without local sorting. A candidate requires an exact registry symbol
+or base/USDT boundary plus a derivative/perpetual/contract marker; zero candidates remains
+unmatched and multiple candidates remain ambiguous. Article text, tags, descriptions, and URLs
+exist only in memory. The public artifact retains full-archive hashes, bounds, counts, aggregate
+UTC-date relations, and source bindings while excluding identities, announcement text/URLs,
+market timestamps/values, paths, account data, and credentials. Even complete record matching
+does not reconstruct historical point-in-time metadata, accept an absence, remove a blocker,
+close Gate 2, or authorize Phase 3. See ADR-0096.
+
 `grid.phase2-history-campaign-resume-performance/v1` is the receipt-last GitHub-safe
 qualification of a partially completed campaign resume. It binds the exact campaign request and
 plan, registry, capacity evidence, and merged implementation identity; publishes only aggregate

@@ -6,6 +6,11 @@ All notable project-governance and architecture changes are recorded here.
 
 ### Added
 
+- ADR-0096 and `grid.phase2-announcement-lifecycle-coverage/v1`: every declared official
+  `new_crypto`/`delistings` page is read once and strictly matched to one receipt-bound selected
+  universe plus ADR-0095 legacy evidence, publishing only source hashes and aggregate
+  matched/unmatched/ambiguous counts while retaining the historical-metadata blocker and closed
+  Gate 2.
 - ADR-0095 and `grid.phase2-legacy-listing-event-evidence/v1`: three exact official legacy posts
   are reconciled with a fully verified oldest-five canonical publication, publishing only
   source/lineage hashes and aggregate date counts while preserving one two-date ambiguity,
