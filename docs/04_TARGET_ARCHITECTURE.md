@@ -78,8 +78,9 @@ contracts
 feature-kernel ──> contracts
 market-store   ──> contracts
 research       ──> contracts + feature-kernel + market-store
-release        ──> contracts + research-artifact readers
-live           ──> contracts + feature-kernel + release reader + Bybit adapters
+release        ──> contracts + research-artifact readers + release-verifier
+release-verifier ──> contracts
+live           ──> contracts + feature-kernel + release-verifier + Bybit adapters
 ```
 
 Forbidden dependencies:

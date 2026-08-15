@@ -46,6 +46,7 @@ brullik-bybit-grid-bot-research/
 │   ├── strategy-core/  # candidate/ranking/parameter lookup semantics
 │   ├── simulator/      # research-only grid/outcome engine
 │   ├── risk-core/      # shared exact risk rules; no network side effects
+│   ├── release-verifier/ # bounded artifact/registry verification; no builder/research dependency
 │   └── audit/          # canonical events, receipts, evidence contracts
 ├── schemas/            # versioned machine-readable contracts
 ├── configs/
@@ -109,6 +110,10 @@ Owns bounded current market data, signal evaluation from one promoted release, r
   research and later live payload preparation. The research-only `simulator` may depend on those
   cores and stable contracts, but not on storage, network, application, private-Bybit, release, or
   live adapters; `grid-live` may never depend on `simulator` or outcome stores.
+- ADR-0102 makes `release-verifier` the dependency-light artifact/registry verification authority
+  shared by the release CLI and later live startup. It cannot depend on builder internals,
+  research, market-store, simulator, DuckDB, Polars, network, private adapters, or live
+  orchestration; build and registry mutation remain in `grid-release`.
 - Contracts are backward-compatible within a declared support window.
 
 ## Test ownership

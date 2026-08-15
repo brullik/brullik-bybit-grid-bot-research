@@ -98,6 +98,7 @@
 | D-099 | Phase 3 features and candidates use one closed-candle decision-time and shared semantic-kernel boundary after Gate 2 | accepted | Explicit catalog/timeline inputs, exact availability time, derived halos, deterministic IDs, batch/kernel parity, immutable lineage, and ADR-0099; implementation remains gated by Gate 2 |
 | D-100 | Phase 4 outcomes use exact shared grid/risk authorities and a research-only deterministic simulator after Gate 3 | accepted | Explicit future-path/policy inputs, activation boundary, ambiguity cases, exact accounting, immutable outcome/portfolio lineage, and ADR-0100; P-007/P-008 remain unresolved and implementation gated by Gate 3 |
 | D-101 | Phase 5 selection uses an immutable experiment registry, information-interval splits, and append-only final-test lifecycle after Gate 4 | accepted | Registered complete search authority, deterministic trials, purged chronological/out-of-symbol roles, full failure retention, separate Gate 5 decision, and ADR-0101; implementation remains gated by Gate 4 |
+| D-102 | Phase 6 separates deterministic release payload, independent verification, and append-only lifecycle registry after Gate 5 | accepted | Non-self-referential content identity, exact allowlist/path bounds, shared dependency-light verifier, explicit promotion/revocation/rollback IDs, risk non-weakening, and ADR-0102; implementation remains gated by Gate 5 |
 
 ## Decisions requiring benchmark or owner evidence
 

@@ -47,8 +47,11 @@ This backlog describes future work; it does not authorize implementation or live
 
 ## P3 — Release and shadow live
 
-23. Strategy release schema/builder/verifier.
-24. Promotion/revocation/rollback registry.
+23. Strategy release schema/builder/verifier. Design authority: ADR-0102 and
+    [M6 implementation plan](M6_RELEASE_REGISTRY_IMPLEMENTATION_PLAN.md); implementation remains
+    gated by Gate 5.
+24. Promotion/revocation/rollback registry under the same ADR-0102 append-only event authority;
+    Gate 6 and explicit owner promotion remain unchanged.
 25. Slim live runtime boundary test.
 26. Current market-data gateway and rolling features.
 27. Signal/risk/state/audit/reconciliation.

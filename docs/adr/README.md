@@ -13,6 +13,7 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0102 - Deterministic release, verification, and registry boundary](ADR-0102-deterministic-release-verification-registry-boundary.md)
 - [ADR-0101 - Leakage-safe experiment registry and selection boundary](ADR-0101-leakage-safe-experiment-selection-boundary.md)
 - [ADR-0100 - Exact outcome simulator and portfolio boundary](ADR-0100-exact-outcome-simulator-boundary.md)
 - [ADR-0099 - Decision-time feature and candidate boundary](ADR-0099-decision-time-feature-candidate-boundary.md)

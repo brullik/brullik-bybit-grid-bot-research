@@ -238,8 +238,10 @@ The planned packaging uses separate dependency groups or independently built art
 
 - `data`: HTTP/archive readers, Arrow/Parquet, Polars, DuckDB, checksums;
 - `research`: data plus simulation, statistics, reporting, experiment orchestration;
-- `release`: contracts, canonical serialization, hashing, signing/verification;
-- `live`: small feature kernel, contracts, current market client, state store, risk, Telegram, private Bybit adapter;
+- `release`: contracts, canonical serialization, hashing, registry, and dependency-light release
+  verification;
+- `live`: small feature kernel, contracts, dependency-light release verifier, current market client,
+  state store, risk, Telegram, private Bybit adapter;
 - `dev`: tests, linting, static analysis, documentation tooling.
 
 `grid-live` must install successfully without DuckDB, notebook tooling, parameter-search frameworks, or bulk archive clients unless a measured runtime requirement justifies an exception.
