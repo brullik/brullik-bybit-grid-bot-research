@@ -43,6 +43,13 @@ uncertain-result reconciliation. See the
 [M8 implementation/drill plan](../planning/M8_MANUAL_MAINNET_IMPLEMENTATION_PLAN.md). Gate 7 and
 separate real-action approvals remain mandatory.
 
+ADR-0105 freezes the later design-only Phase 9 controlled-scale boundary: an immutable
+owner-approved envelope and atomic account-capacity reservation govern concurrency, aggregate risk,
+universe, size, and automation. The effective ceiling remains one and P-010 remains unresolved until
+an exact evidence-bound owner decision; see the
+[M9 implementation plan](../planning/M9_CONTROLLED_SCALE_IMPLEMENTATION_PLAN.md). Gate 8 and separate
+scale/action authority remain mandatory.
+
 ## Component model
 
 ```mermaid
@@ -158,6 +165,11 @@ Hard entry blocks include:
 - rate-limit pressure above the safe threshold;
 - unavailable audit persistence.
 
+Phase 9 additionally admits a signal only after one account-level transaction reserves a capacity
+unit and exact aggregate capital/concentration under the active scale envelope. Reserved,
+awaiting-approval, requested, uncertain, active, and closing states consume capacity; unknown or
+orphan exposure blocks account-wide entry instead of being treated as spare capacity.
+
 ## Approval policy
 
 Initial real execution is manual. A signal transitions to `awaiting_approval` and receives a short-lived, single-use approval token. Approval must bind to:
@@ -175,6 +187,11 @@ ADR-0104 additionally binds environment/account fingerprint, promotion/epoch/sig
 post-quantization payload bytes, validation receipt, intended loss, one-global-bot ceiling, and
 expiry. Create approval grants one precommitted request attempt only and cannot approve close,
 retry, a different account/environment/payload, or a later mode.
+
+ADR-0105 does not relax per-create approval by default. Any later semi-automatic cohort is a
+separate immutable capability increase after a predeclared complete manual sample and explicit
+owner decision; it remains bounded by the same validation, risk, capacity, uncertainty, pause,
+expiry, and emergency controls.
 
 ## Native-grid execution adapter
 
@@ -212,6 +229,10 @@ This protects against duplicate bot creation and accidental double exposure.
 
 Phase 8 treats zero, multiple, stale, or conflicting reconciliation matches as unresolved. An empty
 first read is never proof that create/close failed and never permits resending the request.
+
+At controlled scale, uncertainty or an orphan reservation consumes account capacity until durable
+resolution. Restart restores the exact envelope and all reservations before account-wide
+reconciliation; it never creates a replacement slot or request.
 
 ## Runtime state machines
 
