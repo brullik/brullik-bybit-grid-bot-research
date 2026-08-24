@@ -23,6 +23,7 @@
     "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
     "contract": {"const": "grid.public-history-campaign-plan/v1"},
     "funding_source_boundary": {"$ref": "#/$defs/fundingSourceBoundary"},
+    "funding_source_terminal_partition": {"$ref": "#/$defs/fundingSourceTerminalPartition"},
     "instrument_evidence_sha256": {"$ref": "#/$defs/sha256"},
     "job_count": {"type": "integer", "minimum": 1, "maximum": 2880},
     "jobs": {
@@ -44,6 +45,34 @@
         "plan_sha256": {"$ref": "#/$defs/sha256"},
         "request_sha256": {"$ref": "#/$defs/sha256"},
         "software_identity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+      }
+    },
+    "fundingSourceTerminalPartition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_page_chain_sha256",
+        "boundary_plan_sha256",
+        "boundary_request_sha256",
+        "discovery_software_identity",
+        "partition_artifact_sha256",
+        "partition_content_sha256",
+        "partition_software_identity"
+      ],
+      "properties": {
+        "boundary_page_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_request_sha256": {"$ref": "#/$defs/sha256"},
+        "discovery_software_identity": {
+          "type": "string",
+          "pattern": "^git:[0-9a-f]{40}$"
+        },
+        "partition_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "partition_content_sha256": {"$ref": "#/$defs/sha256"},
+        "partition_software_identity": {
+          "type": "string",
+          "pattern": "^git:[0-9a-f]{40}$"
+        }
       }
     },
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},

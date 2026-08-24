@@ -704,6 +704,34 @@ def _fixture_v2(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     return path, manifest
 
 
+def _fixture_terminal_backed_v2(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
+    _path, manifest = _fixture_v2(tmp_path)
+    partition_path = tmp_path / cast(str, manifest["terminal_partition"])
+    partition = json.loads(partition_path.read_text(encoding="utf-8"))
+    source = cast(dict[str, Any], cast(list[Any], manifest["funding_sources"])[0])
+    landing_path = tmp_path / cast(str, source["landing_evidence"])
+    landing = json.loads(landing_path.read_text(encoding="utf-8"))
+    landing["bindings"].pop("funding_source_boundary_manifest_sha256")
+    landing["bindings"]["funding_source_terminal_boundary_page_chain_sha256"] = partition[
+        "bindings"
+    ]["boundary_page_chain_sha256"]
+    landing["bindings"]["funding_source_terminal_partition_artifact_sha256"] = sha256_file(
+        partition_path
+    )
+    landing["bindings"]["funding_source_terminal_partition_content_sha256"] = partition[
+        "content_sha256"
+    ]
+    landing.pop("content_sha256")
+    terminal_landing_path = tmp_path / "funding-a-terminal-landing.json"
+    publish_evidence(terminal_landing_path, _with_content_hash(landing))
+    source.pop("boundary_evidence")
+    source.pop("boundary_request")
+    source["landing_evidence"] = _relative(tmp_path, terminal_landing_path)
+    source["mode"] = "terminal-partition-backed"
+    path = _write_json(tmp_path / "source-manifest-terminal-v2.json", manifest)
+    return path, manifest
+
+
 def test_current_universe_funding_evidence_reconciles_exact_scope(tmp_path: Path) -> None:
     manifest_path, _manifest = _fixture(tmp_path)
     payload = build_current_universe_funding_evidence(
@@ -818,6 +846,23 @@ def test_current_universe_funding_evidence_v2_preserves_full_partition_and_block
     )
     assert published == payload
     assert verify_evidence(output)
+
+
+def test_current_universe_funding_evidence_v2_accepts_terminal_partition_backed_campaign(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _manifest = _fixture_terminal_backed_v2(tmp_path)
+    payload = build_current_universe_funding_evidence_v2(
+        source_manifest_path=manifest_path,
+        artifact_root=tmp_path,
+        generated_at_utc="2026-08-24T20:02:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+
+    assert payload["status"] == "blocked-current-universe-funding-terminal-absence"
+    assert payload["source_boundary"]["canonical_start_proven_count"] == 2
+    assert payload["source_boundary"]["event_count"] == 5
+    assert payload["source_boundary"]["source_count"] == 1
 
 
 def test_current_universe_funding_evidence_v2_rejects_scope_or_partition_substitution(
