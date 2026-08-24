@@ -1573,3 +1573,14 @@ more concurrent small-file pressure. The production verifier still hashes every 
 every page receipt, validates deterministic task/manifest facts in sequence, and preserves the
 same error ordering. Only independent immutable page reads are parallel; semantic admission,
 pending-page validation, public REST pacing, and every Gate 2 criterion remain unchanged.
+
+## Single-read semantic page verification
+
+The current-universe semantic pass also exposed three reads of each bounded canonical page: JSON
+load, canonical-byte comparison, and file hashing. Semantic verification now reads the page bytes
+once, validates the decoded object against those exact canonical bytes, and computes SHA-256 from
+the same immutable buffer before checking the receipt. The fixed page-size bound remains enforced.
+Receipt verification, semantic row admission, quarantine accounting, deterministic manifest
+checks, publication and coverage behavior, contracts, and error handling remain
+unchanged. A regression test observes the page artifact directly and requires exactly one read
+during full semantic verification.

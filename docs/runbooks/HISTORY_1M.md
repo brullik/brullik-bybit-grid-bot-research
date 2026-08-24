@@ -919,6 +919,11 @@ independent page hashes use at most 24 local workers so a safe supervisor resume
 serialize hundreds of thousands of small-file reads. Semantic admission, pending-page validation,
 receipt checks, deterministic error ordering, and the public REST concurrency bound are unchanged.
 
+Full semantic verification still decodes and validates every source row. For each bounded page it
+reads the canonical bytes once, compares the decoded object with those same canonical bytes, and
+computes the receipt SHA-256 from that buffer. Do not split these checks or replace the semantic
+path with integrity-only verification for initial publication or coverage auditing.
+
 Verify the printed root independently:
 
 ```powershell

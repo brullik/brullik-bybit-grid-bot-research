@@ -751,6 +751,32 @@ def test_integrity_verifier_hashes_pages_without_semantic_decode(
         verify_completed_history_job_integrity(completed.job_root)
 
 
+def test_semantic_verifier_reads_each_page_artifact_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    completed = execute(preflight(tmp_path), FakeKlineClient())
+    page = next(
+        path
+        for path in (completed.job_root / "pages").glob("*.json")
+        if not path.name.endswith(".receipt.json")
+    )
+    original_read_bytes = Path.read_bytes
+    page_read_count = 0
+
+    def observed_read_bytes(path: Path) -> bytes:
+        nonlocal page_read_count
+        if path == page:
+            page_read_count += 1
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", observed_read_bytes)
+
+    assert verify_completed_history_job(completed.job_root).manifest_sha256 == (
+        completed.manifest_sha256
+    )
+    assert page_read_count == 1
+
+
 def test_integrity_verifier_hashes_independent_pages_with_bounded_parallelism(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
