@@ -121,6 +121,10 @@ from grid_data.funding_source_boundary import (
 from grid_data.funding_source_boundary_evidence import (
     build_funding_source_boundary_evidence,
 )
+from grid_data.funding_source_boundary_terminal_evidence import (
+    build_terminal_funding_boundary_evidence,
+    build_terminal_funding_boundary_partition,
+)
 from grid_data.history_acquisition import (
     execute_history_job,
     preflight_history_job,
@@ -667,6 +671,25 @@ def parser() -> argparse.ArgumentParser:
     funding_boundary_evidence.add_argument("--software-identity", required=True)
     funding_boundary_evidence.add_argument("--output", type=Path, required=True)
     funding_boundary_evidence.set_defaults(handler=_funding_source_boundary_evidence)
+
+    terminal_partition = commands.add_parser(
+        "funding-source-boundary-terminal-partition",
+        help="publish a private receipt-bound partition for a fully terminal incomplete boundary",
+    )
+    terminal_partition.add_argument("--job-root", type=Path, required=True)
+    terminal_partition.add_argument("--software-identity", required=True)
+    terminal_partition.add_argument("--output", type=Path, required=True)
+    terminal_partition.set_defaults(handler=_funding_source_boundary_terminal_partition)
+
+    terminal_evidence = commands.add_parser(
+        "funding-source-boundary-terminal-evidence",
+        help="publish a GitHub-safe terminal funding boundary partition summary",
+    )
+    terminal_evidence.add_argument("--partition", type=Path, required=True)
+    terminal_evidence.add_argument("--job-root", type=Path, required=True)
+    terminal_evidence.add_argument("--software-identity", required=True)
+    terminal_evidence.add_argument("--output", type=Path, required=True)
+    terminal_evidence.set_defaults(handler=_funding_source_boundary_terminal_evidence)
 
     funding = commands.add_parser(
         "funding-history",
@@ -1655,6 +1678,49 @@ def _verify_funding_source_boundary(args: argparse.Namespace) -> int:
 def _funding_source_boundary_evidence(args: argparse.Namespace) -> int:
     output, _receipt = preflight_evidence(args.output)
     payload = build_funding_source_boundary_evidence(
+        args.job_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _funding_source_boundary_terminal_partition(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_terminal_funding_boundary_partition(
+        args.job_root,
+        generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        software_identity=args.software_identity,
+    )
+    artifact, receipt = publish_evidence(output, payload)
+    print(
+        json.dumps(
+            {
+                "artifact": str(artifact),
+                "content_sha256": payload["content_sha256"],
+                "receipt": str(receipt),
+                "status": payload["status"],
+            }
+        )
+    )
+    return 0
+
+
+def _funding_source_boundary_terminal_evidence(args: argparse.Namespace) -> int:
+    output, _receipt = preflight_evidence(args.output)
+    payload = build_terminal_funding_boundary_evidence(
+        args.partition,
         args.job_root,
         generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         software_identity=args.software_identity,

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/evidence/v1/phase2-funding-source-boundary-terminal-partition.schema.json",
+  "title": "Sanitized terminal funding source-boundary partition evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assurances", "bindings", "content_sha256", "evidence_schema", "generated_at_utc", "limitations", "process", "result", "scope", "source_policy", "status", "storage_policy"],
+  "properties": {
+    "assurances": {
+      "const": {
+        "all_series_terminal": true,
+        "automatic_gate_acceptance_performed": false,
+        "network_request_performed": false,
+        "page_receipts_verified": true,
+        "phase3_authorized": false,
+        "private_or_live_capability_used": false
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary_page_chain_sha256", "boundary_plan_sha256", "boundary_request_sha256", "instrument_registry_sha256", "terminal_partition_artifact_sha256", "terminal_partition_content_sha256"],
+      "properties": {
+        "boundary_page_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_request_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_partition_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal_partition_content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_schema": {"const": "grid.phase2-funding-source-boundary-terminal-partition/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "limitations": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["discovery_software_identity", "evidence_software_identity", "partition_software_identity", "private_partition_reproduced"],
+      "properties": {
+        "discovery_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "evidence_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "partition_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "private_partition_reproduced": {"const": true}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "funding_coverage_complete", "http_attempt_count", "page_count", "predecessor_proven_count", "terminal_insufficient_one_count", "terminal_insufficient_zero_count"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 0, "maximum": 71680000},
+        "funding_coverage_complete": {"const": false},
+        "http_attempt_count": {"type": "integer", "minimum": 1, "maximum": 1792000},
+        "page_count": {"type": "integer", "minimum": 1, "maximum": 358400},
+        "predecessor_proven_count": {"type": "integer", "minimum": 0, "maximum": 700},
+        "terminal_insufficient_one_count": {"type": "integer", "minimum": 0, "maximum": 700},
+        "terminal_insufficient_zero_count": {"type": "integer", "minimum": 0, "maximum": 700}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["end_ms", "start_ms", "symbol_count"],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "source_policy": {
+      "const": {
+        "authentication": "none",
+        "base_url": "https://api.bybit.com",
+        "endpoint": "/v5/market/funding/history",
+        "private_endpoints_called": false,
+        "retained_source_fields": ["fundingRateTimestamp"],
+        "source_rates_validated_not_retained": true
+      }
+    },
+    "status": {"const": "verified-terminal-funding-source-partition"},
+    "storage_policy": {
+      "const": {
+        "evidence_contains_account_data": false,
+        "evidence_contains_funding_rates": false,
+        "evidence_contains_instrument_identifiers": false,
+        "evidence_contains_observed_settlement_timestamps": false,
+        "evidence_contains_runtime_paths": false,
+        "runtime_market_artifacts_committed_to_git": false
+      }
+    }
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}

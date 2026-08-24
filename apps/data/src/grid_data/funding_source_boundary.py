@@ -174,6 +174,41 @@ class CompletedFundingBoundary:
     results: tuple[FundingBoundaryResult, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class TerminalFundingBoundaryResult:
+    canonical_start_ms: int | None
+    classification: Literal[
+        "predecessor-proven",
+        "terminal-insufficient-one",
+        "terminal-insufficient-zero",
+    ]
+    event_count: int
+    first_observed_settlement_ms: int | None
+    instrument_id: int
+    page_count: int
+    symbol: str
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedTerminalFundingBoundary:
+    job_root: Path
+    plan_sha256: str
+    request_sha256: str
+    registry_sha256: str
+    software_identity: str
+    scan_start_ms: int
+    scan_end_ms: int
+    symbol_count: int
+    page_count: int
+    event_count: int
+    http_attempt_count: int
+    page_chain_sha256: str
+    predecessor_proven_count: int
+    terminal_insufficient_one_count: int
+    terminal_insufficient_zero_count: int
+    results: tuple[TerminalFundingBoundaryResult, ...]
+
+
 def _integer(name: str, value: object, *, minimum: int, maximum: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise FundingSourceBoundaryError(f"{name} must be an integer in [{minimum}, {maximum}]")
@@ -938,4 +973,105 @@ def verify_completed_funding_source_boundary(job_root: Path) -> CompletedFunding
             )
             for item in results
         ),
+    )
+
+
+def verify_terminal_funding_source_boundary(job_root: Path) -> VerifiedTerminalFundingBoundary:
+    """Verify a fully terminal page chain that intentionally has no v1 completion marker."""
+
+    root = job_root.resolve()
+    if not root.is_dir() or root.is_symlink() or (root / ".run-lock").exists():
+        raise FundingSourceBoundaryError(
+            "terminal funding boundary root is missing, unsafe, or active"
+        )
+    if (root / "manifest.json").exists() or (root / "completion-receipt.json").exists():
+        raise FundingSourceBoundaryError("terminal funding boundary must not replace v1 completion")
+    plan, plan_sha = _verify_artifact(root / "plan.json")
+    series, page_limit, _target_rps, max_attempts, max_pages = _verified_plan(plan)
+    if root.name != f"{plan.get('discovery_id')}--{plan_sha[:16]}":
+        raise FundingSourceBoundaryError("terminal funding boundary root does not bind plan")
+
+    pages: list[dict[str, object]] = []
+    results: list[TerminalFundingBoundaryResult] = []
+    total_events = 0
+    total_attempts = 0
+    predecessor_proven_count = 0
+    insufficient_one_count = 0
+    insufficient_zero_count = 0
+    expected_files = {"plan.json", "plan.receipt.json"}
+    for item in series:
+        entries, timestamps, _end, attempts, terminal = _load_progress(
+            root,
+            item,
+            page_limit=page_limit,
+            max_attempts=max_attempts,
+            max_pages_per_symbol=max_pages,
+        )
+        if not terminal:
+            raise FundingSourceBoundaryError("terminal funding boundary has a nonterminal series")
+        ordered = sorted(timestamps)
+        pages.extend(entries)
+        total_events += len(ordered)
+        total_attempts += attempts
+        if len(ordered) >= 2:
+            classification: Literal[
+                "predecessor-proven",
+                "terminal-insufficient-one",
+                "terminal-insufficient-zero",
+            ] = "predecessor-proven"
+            canonical_start_ms: int | None = ordered[1]
+            predecessor_proven_count += 1
+        elif ordered:
+            classification = "terminal-insufficient-one"
+            canonical_start_ms = None
+            insufficient_one_count += 1
+        else:
+            classification = "terminal-insufficient-zero"
+            canonical_start_ms = None
+            insufficient_zero_count += 1
+        results.append(
+            TerminalFundingBoundaryResult(
+                canonical_start_ms=canonical_start_ms,
+                classification=classification,
+                event_count=len(ordered),
+                first_observed_settlement_ms=ordered[0] if ordered else None,
+                instrument_id=item.instrument_id,
+                page_count=len(entries),
+                symbol=item.symbol,
+            )
+        )
+        for entry in entries:
+            name = cast(str, entry["artifact"])
+            expected_files.update((name, f"{name[:-5]}.receipt.json"))
+
+    actual_files = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
+    if actual_files != expected_files or any(path.is_symlink() for path in root.rglob("*")):
+        raise FundingSourceBoundaryError(
+            "terminal funding boundary contains orphan or missing files"
+        )
+    if {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_dir()} != {
+        "pages"
+    }:
+        raise FundingSourceBoundaryError("terminal funding boundary directory inventory is invalid")
+    if predecessor_proven_count + insufficient_one_count + insufficient_zero_count != len(series):
+        raise FundingSourceBoundaryError("terminal funding boundary partition does not reconcile")
+
+    request = cast(dict[str, object], plan["request"])
+    return VerifiedTerminalFundingBoundary(
+        job_root=root,
+        plan_sha256=plan_sha,
+        request_sha256=cast(str, plan["request_sha256"]),
+        registry_sha256=cast(str, plan["registry_sha256"]),
+        software_identity=cast(str, plan["software_identity"]),
+        scan_start_ms=cast(int, request["start_ms"]),
+        scan_end_ms=cast(int, request["end_ms"]),
+        symbol_count=len(series),
+        page_count=len(pages),
+        event_count=total_events,
+        http_attempt_count=total_attempts,
+        page_chain_sha256=canonical_sha256(pages),
+        predecessor_proven_count=predecessor_proven_count,
+        terminal_insufficient_one_count=insufficient_one_count,
+        terminal_insufficient_zero_count=insufficient_zero_count,
+        results=tuple(results),
     )
