@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -386,23 +387,29 @@ def _publish_artifact(path: Path, payload: Mapping[str, object]) -> str:
     return digest
 
 
-def _load_object(path: Path) -> dict[str, object]:
+def _load_object_bytes(path: Path) -> tuple[dict[str, object], bytes]:
     try:
-        raw = json.loads(path.read_bytes())
+        data = path.read_bytes()
+        raw = json.loads(data)
     except (OSError, json.JSONDecodeError) as error:
         raise HistoryAcquisitionError(f"cannot load acquisition JSON: {path}") from error
-    if not isinstance(raw, dict) or canonical_json_bytes(raw) != path.read_bytes():
+    if not isinstance(raw, dict) or canonical_json_bytes(raw) != data:
         raise HistoryAcquisitionError(f"acquisition JSON is not a canonical object: {path}")
-    return cast(dict[str, object], raw)
+    return cast(dict[str, object], raw), data
+
+
+def _load_object(path: Path) -> dict[str, object]:
+    payload, _data = _load_object_bytes(path)
+    return payload
 
 
 def _verify_artifact(path: Path) -> tuple[dict[str, object], str]:
     receipt_path = path.with_suffix(".receipt.json")
     if not path.is_file() or not receipt_path.is_file():
         raise HistoryAcquisitionError(f"artifact/receipt pair is incomplete: {path}")
-    payload = _load_object(path)
+    payload, data = _load_object_bytes(path)
     receipt = _load_object(receipt_path)
-    digest = sha256_file(path)
+    digest = hashlib.sha256(data).hexdigest()
     if receipt != _receipt_payload(path.name, digest):
         raise HistoryAcquisitionError(f"artifact receipt does not verify: {path}")
     if path.parent.name == "pages" and path.stat().st_size > MAX_PAGE_ARTIFACT_BYTES:
