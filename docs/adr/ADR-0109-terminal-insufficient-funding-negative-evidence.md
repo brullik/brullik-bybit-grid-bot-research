@@ -1,6 +1,6 @@
 # ADR-0109: Terminal-insufficient funding negative evidence
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-08-24
 - Extends: ADR-0048, ADR-0090, ADR-0092, ADR-0097, and ADR-0108
 - Preserves: immutable v1 evidence, the full candle universe, seven Gate 2 blocker codes, closed Gate 2, and owner authority
