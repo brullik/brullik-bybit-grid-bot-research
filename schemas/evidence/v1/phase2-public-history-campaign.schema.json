@@ -84,6 +84,9 @@
         "campaign_request_sha256": {"$ref": "#/$defs/sha256"},
         "capacity_evidence_sha256": {"$ref": "#/$defs/sha256"},
         "funding_source_boundary_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_source_terminal_boundary_page_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_source_terminal_partition_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "funding_source_terminal_partition_content_sha256": {"$ref": "#/$defs/sha256"},
         "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
       }
     },

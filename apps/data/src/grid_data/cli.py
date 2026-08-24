@@ -460,6 +460,14 @@ def parser() -> argparse.ArgumentParser:
         ),
     )
     history_campaign.add_argument(
+        "--funding-source-terminal-partition",
+        type=Path,
+        help=(
+            "optional receipt-verified terminal partition; when supplied, the boundary root "
+            "must be its terminal source and only predecessor-proven funding is admitted"
+        ),
+    )
+    history_campaign.add_argument(
         "--execute",
         action="store_true",
         help="write campaign/child receipts and call public endpoints; omitted means preflight",
@@ -480,6 +488,14 @@ def parser() -> argparse.ArgumentParser:
         help=(
             "optional completed receipt-verified source-boundary root used to clip and bind "
             "funding starts"
+        ),
+    )
+    supervised_campaign.add_argument(
+        "--funding-source-terminal-partition",
+        type=Path,
+        help=(
+            "optional receipt-verified terminal partition; when supplied, the boundary root "
+            "must be its terminal source and only predecessor-proven funding is admitted"
         ),
     )
     supervised_campaign.add_argument("--max-invocations", type=int, default=8)
@@ -1478,6 +1494,7 @@ def _history_campaign(args: argparse.Namespace) -> int:
         now_ms=now_ms,
         closed_before_ms=closed_before_now_ms(now_ms),
         funding_source_boundary_root=args.funding_source_boundary_root,
+        funding_source_terminal_partition_path=args.funding_source_terminal_partition,
     )
     preflight_elapsed_ms = max(
         1,
@@ -1509,6 +1526,10 @@ def _history_campaign(args: argparse.Namespace) -> int:
     }
     if "funding_source_boundary" in plan.plan_payload:
         summary["funding_source_boundary"] = plan.plan_payload["funding_source_boundary"]
+    if "funding_source_terminal_partition" in plan.plan_payload:
+        summary["funding_source_terminal_partition"] = plan.plan_payload[
+            "funding_source_terminal_partition"
+        ]
     if not args.execute:
         print(json.dumps(summary))
         return 0

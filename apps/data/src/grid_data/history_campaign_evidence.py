@@ -458,6 +458,29 @@ def build_history_campaign_evidence(
         cast(dict[str, object], payload["bindings"])["funding_source_boundary_manifest_sha256"] = (
             raw_boundary_binding["manifest_sha256"]
         )
+    raw_terminal_binding = plan.get("funding_source_terminal_partition")
+    if raw_terminal_binding is not None:
+        if not isinstance(raw_terminal_binding, dict):
+            raise HistoryCampaignError("campaign terminal funding partition binding is invalid")
+        evidence_bindings = cast(dict[str, object], payload["bindings"])
+        for source_name, evidence_name in (
+            (
+                "boundary_page_chain_sha256",
+                "funding_source_terminal_boundary_page_chain_sha256",
+            ),
+            (
+                "partition_artifact_sha256",
+                "funding_source_terminal_partition_artifact_sha256",
+            ),
+            (
+                "partition_content_sha256",
+                "funding_source_terminal_partition_content_sha256",
+            ),
+        ):
+            value = raw_terminal_binding.get(source_name)
+            if not isinstance(value, str):
+                raise HistoryCampaignError("campaign terminal funding partition binding is invalid")
+            evidence_bindings[evidence_name] = value
     if adaptive is not None:
         payload["adaptive_throttling"] = adaptive
     if timing is not None:

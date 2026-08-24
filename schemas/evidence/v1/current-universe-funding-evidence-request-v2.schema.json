@@ -32,7 +32,8 @@
       "items": {
         "oneOf": [
           {"$ref": "#/$defs/boundaryFundingSource"},
-          {"$ref": "#/$defs/reusedFundingSource"}
+          {"$ref": "#/$defs/reusedFundingSource"},
+          {"$ref": "#/$defs/terminalPartitionFundingSource"}
         ]
       }
     },
@@ -93,6 +94,24 @@
         "coverage_evidence": {"$ref": "#/$defs/path"},
         "landing_evidence": {"$ref": "#/$defs/path"},
         "mode": {"const": "reused-bounded"},
+        "publication_evidence": {"$ref": "#/$defs/path"},
+        "request": {"$ref": "#/$defs/path"}
+      }
+    },
+    "terminalPartitionFundingSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_evidence",
+        "landing_evidence",
+        "mode",
+        "publication_evidence",
+        "request"
+      ],
+      "properties": {
+        "coverage_evidence": {"$ref": "#/$defs/path"},
+        "landing_evidence": {"$ref": "#/$defs/path"},
+        "mode": {"const": "terminal-partition-backed"},
         "publication_evidence": {"$ref": "#/$defs/path"},
         "request": {"$ref": "#/$defs/path"}
       }

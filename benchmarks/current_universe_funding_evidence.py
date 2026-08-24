@@ -366,7 +366,7 @@ def _verify_terminal_partition_chain(
     evidence_path: Path,
     target_symbols: set[str],
     registry_hash: str,
-) -> tuple[set[str], set[str], dict[str, str], dict[str, int]]:
+) -> tuple[set[str], set[str], dict[str, str], dict[str, int], dict[str, int]]:
     partition = _load_verified_terminal_partition(partition_path)
     evidence = _load_verified_evidence(
         evidence_path,
@@ -475,7 +475,16 @@ def _verify_terminal_partition_chain(
         **expected_counts,
         "symbol_count": len(series),
     }
-    return proven, insufficient, bindings, counts
+    http_attempt_count = _integer(partition_result, "http_attempt_count", minimum=1)
+    page_count = _integer(partition_result, "page_count", minimum=1)
+    boundary_totals = {
+        "event_count": _integer(partition_result, "event_count", minimum=2),
+        "http_attempt_count": http_attempt_count,
+        "page_count": page_count,
+        "retry_count": http_attempt_count - page_count,
+    }
+    _require(boundary_totals["retry_count"] >= 0, "terminal partition attempts are invalid")
+    return proven, insufficient, bindings, counts, boundary_totals
 
 
 def _load_campaign_evidence_triplet(
@@ -680,16 +689,21 @@ def _build_current_universe_funding_evidence(
     terminal_insufficient: set[str] | None = None
     terminal_bindings: dict[str, str] | None = None
     terminal_counts: dict[str, int] | None = None
+    terminal_boundary_totals: dict[str, int] | None = None
     if terminal_partition_mode:
         partition_path = _resolve_path(root, manifest.get("terminal_partition"))
         partition_evidence_path = _resolve_path(root, manifest.get("terminal_partition_evidence"))
-        terminal_proven, terminal_insufficient, terminal_bindings, terminal_counts = (
-            _verify_terminal_partition_chain(
-                partition_path=partition_path,
-                evidence_path=partition_evidence_path,
-                target_symbols=set(normalized_targets),
-                registry_hash=cast(str, registry_hash),
-            )
+        (
+            terminal_proven,
+            terminal_insufficient,
+            terminal_bindings,
+            terminal_counts,
+            terminal_boundary_totals,
+        ) = _verify_terminal_partition_chain(
+            partition_path=partition_path,
+            evidence_path=partition_evidence_path,
+            target_symbols=set(normalized_targets),
+            registry_hash=cast(str, registry_hash),
         )
 
     funding_intervals: dict[str, list[tuple[int, int]]] = {}
@@ -731,11 +745,15 @@ def _build_current_universe_funding_evidence(
 
     funding_sources = _array(manifest, "funding_sources")
     _require(bool(funding_sources), "funding source list is empty")
+    terminal_backed_source_count = 0
     for source_raw in funding_sources:
         _require(isinstance(source_raw, dict), "funding source must be an object")
         source = cast(dict[str, Any], source_raw)
         mode = source.get("mode")
-        _require(mode in {"boundary-backed", "reused-bounded"}, "funding source mode differs")
+        _require(
+            mode in {"boundary-backed", "reused-bounded", "terminal-partition-backed"},
+            "funding source mode differs",
+        )
         request_path = _resolve_path(root, source.get("request"))
         landing_path = _resolve_path(root, source.get("landing_evidence"))
         publication_path = _resolve_path(root, source.get("publication_evidence"))
@@ -970,6 +988,40 @@ def _build_current_universe_funding_evidence(
                 boundary_evidence_path
             )
             source_binding["boundary_request_content_sha256"] = canonical_sha256(boundary_request)
+        elif mode == "terminal-partition-backed":
+            terminal_backed_source_count += 1
+            _require(
+                terminal_partition_mode
+                and terminal_bindings is not None
+                and terminal_backed_source_count == 1
+                and set(_array(request, "kinds")) == {"funding"},
+                "terminal-partition-backed source is not an admitted funding-only v2 source",
+            )
+            assert terminal_bindings is not None
+            _require(
+                "boundary_request" not in source and "boundary_evidence" not in source,
+                "terminal-partition-backed source unexpectedly carries ordinary boundary inputs",
+            )
+            _require(
+                landing_bindings.get("funding_source_terminal_partition_artifact_sha256")
+                == terminal_bindings["terminal_partition_artifact_sha256"]
+                and landing_bindings.get("funding_source_terminal_partition_content_sha256")
+                == terminal_bindings["terminal_partition_content_sha256"],
+                "funding campaign does not bind the verified terminal partition",
+            )
+            source_binding["terminal_partition_artifact_sha256"] = terminal_bindings[
+                "terminal_partition_artifact_sha256"
+            ]
+            source_binding["terminal_partition_content_sha256"] = terminal_bindings[
+                "terminal_partition_content_sha256"
+            ]
+            symbol_count = len(_array(request, "symbols"))
+            source_boundary_totals["source_count"] += 1
+            source_boundary_totals["canonical_start_proven_count"] += symbol_count
+            source_boundary_totals["predecessor_proven_count"] += symbol_count
+            assert terminal_boundary_totals is not None
+            for key in ("event_count", "http_attempt_count", "page_count", "retry_count"):
+                source_boundary_totals[key] += terminal_boundary_totals[key]
         else:
             _require(
                 "boundary_request" not in source and "boundary_evidence" not in source,

@@ -141,14 +141,11 @@ def _load_verified_partition(path: Path) -> dict[str, object]:
     return payload
 
 
-def build_terminal_funding_boundary_evidence(
+def verify_terminal_funding_boundary_partition(
     partition_path: Path,
     job_root: Path,
-    *,
-    generated_at_utc: str,
-    software_identity: str,
 ) -> dict[str, object]:
-    """Rebuild the private partition and emit only aggregate GitHub-safe facts."""
+    """Verify a private partition receipt and reproduce it from the terminal page chain."""
 
     partition = _load_verified_partition(partition_path)
     process = partition.get("process")
@@ -161,6 +158,21 @@ def build_terminal_funding_boundary_evidence(
     )
     if partition != expected:
         raise FundingSourceBoundaryError("terminal funding partition does not reproduce")
+    return partition
+
+
+def build_terminal_funding_boundary_evidence(
+    partition_path: Path,
+    job_root: Path,
+    *,
+    generated_at_utc: str,
+    software_identity: str,
+) -> dict[str, object]:
+    """Rebuild the private partition and emit only aggregate GitHub-safe facts."""
+
+    partition = verify_terminal_funding_boundary_partition(partition_path, job_root)
+    process = partition["process"]
+    assert isinstance(process, dict)
     bindings = partition["bindings"]
     result = partition["result"]
     scope = partition["scope"]
