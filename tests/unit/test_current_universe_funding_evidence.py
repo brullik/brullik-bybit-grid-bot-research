@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from grid_contracts.canonical import canonical_json_bytes, canonical_sha256
+from grid_contracts.canonical import canonical_json_bytes, canonical_sha256, sha256_file
 from grid_data.evidence import publish_evidence, verify_evidence
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 
@@ -16,7 +16,9 @@ from benchmarks.current_universe_candle_evidence import (
 from benchmarks.current_universe_funding_evidence import (
     CurrentUniverseFundingEvidenceError,
     build_current_universe_funding_evidence,
+    build_current_universe_funding_evidence_v2,
     publish_current_universe_funding_evidence,
+    publish_current_universe_funding_evidence_v2,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -585,6 +587,123 @@ def _fixture(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     return manifest_path, manifest
 
 
+def _publish_terminal_partition_pair(tmp_path: Path) -> tuple[Path, Path]:
+    partition: dict[str, Any] = {
+        "bindings": {
+            "boundary_page_chain_sha256": _sha("terminal-pages"),
+            "boundary_plan_sha256": _sha("terminal-plan"),
+            "boundary_request_sha256": _sha("terminal-request"),
+            "instrument_registry_sha256": _sha("registry"),
+        },
+        "contract": "grid.bybit-funding-source-boundary-terminal-partition/v1",
+        "generated_at_utc": "2026-08-24T20:00:00Z",
+        "process": {
+            "all_series_terminal": True,
+            "discovery_software_identity": SOFTWARE_IDENTITY,
+            "page_receipts_verified": True,
+            "partition_software_identity": SOFTWARE_IDENTITY,
+        },
+        "result": {
+            "event_count": 5,
+            "http_attempt_count": 3,
+            "page_count": 3,
+            "predecessor_proven_count": 2,
+            "terminal_insufficient_one_count": 1,
+            "terminal_insufficient_zero_count": 0,
+        },
+        "scope": {"end_ms": END_MS, "start_ms": START_MS, "symbol_count": 3},
+        "series": [
+            {
+                "canonical_start_ms": 60_000,
+                "classification": "predecessor-proven",
+                "event_count": 2,
+                "first_observed_settlement_ms": 0,
+                "instrument_id": 1,
+                "page_count": 1,
+                "symbol": "AAA",
+            },
+            {
+                "canonical_start_ms": None,
+                "classification": "terminal-insufficient-one",
+                "event_count": 1,
+                "first_observed_settlement_ms": 0,
+                "instrument_id": 2,
+                "page_count": 1,
+                "symbol": "BBB",
+            },
+            {
+                "canonical_start_ms": 60_000,
+                "classification": "predecessor-proven",
+                "event_count": 2,
+                "first_observed_settlement_ms": 0,
+                "instrument_id": 3,
+                "page_count": 1,
+                "symbol": "CCC",
+            },
+        ],
+        "status": "terminal-partition-complete",
+    }
+    partition_path = tmp_path / "terminal-partition.json"
+    publish_evidence(partition_path, _with_content_hash(partition))
+    evidence: dict[str, Any] = {
+        "assurances": {
+            "all_series_terminal": True,
+            "automatic_gate_acceptance_performed": False,
+            "network_request_performed": False,
+            "page_receipts_verified": True,
+            "phase3_authorized": False,
+            "private_or_live_capability_used": False,
+        },
+        "bindings": {
+            **partition["bindings"],
+            "terminal_partition_artifact_sha256": sha256_file(partition_path),
+            "terminal_partition_content_sha256": partition["content_sha256"],
+        },
+        "evidence_schema": "grid.phase2-funding-source-boundary-terminal-partition/v1",
+        "generated_at_utc": "2026-08-24T20:01:00Z",
+        "limitations": ["a", "b", "c", "d"],
+        "process": {
+            "discovery_software_identity": SOFTWARE_IDENTITY,
+            "evidence_software_identity": SOFTWARE_IDENTITY,
+            "partition_software_identity": SOFTWARE_IDENTITY,
+            "private_partition_reproduced": True,
+        },
+        "result": {**partition["result"], "funding_coverage_complete": False},
+        "scope": partition["scope"],
+        "source_policy": {
+            "authentication": "none",
+            "base_url": "https://api.bybit.com",
+            "endpoint": "/v5/market/funding/history",
+            "private_endpoints_called": False,
+            "retained_source_fields": ["fundingRateTimestamp"],
+            "source_rates_validated_not_retained": True,
+        },
+        "status": "verified-terminal-funding-source-partition",
+        "storage_policy": {
+            "evidence_contains_account_data": False,
+            "evidence_contains_funding_rates": False,
+            "evidence_contains_instrument_identifiers": False,
+            "evidence_contains_observed_settlement_timestamps": False,
+            "evidence_contains_runtime_paths": False,
+            "runtime_market_artifacts_committed_to_git": False,
+        },
+    }
+    evidence_path = tmp_path / "terminal-partition-evidence.json"
+    publish_evidence(evidence_path, _with_content_hash(evidence))
+    return partition_path, evidence_path
+
+
+def _fixture_v2(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
+    _manifest_path, manifest = _fixture(tmp_path)
+    partition_path, evidence_path = _publish_terminal_partition_pair(tmp_path)
+    manifest["contract"] = "grid.current-universe-funding-evidence-request/v2"
+    manifest["funding_sources"] = manifest["funding_sources"][:1]
+    manifest["terminal_partition"] = _relative(tmp_path, partition_path)
+    manifest["terminal_partition_evidence"] = _relative(tmp_path, evidence_path)
+    path = _write_json(tmp_path / "source-manifest-v2.json", manifest)
+    return path, manifest
+
+
 def test_current_universe_funding_evidence_reconciles_exact_scope(tmp_path: Path) -> None:
     manifest_path, _manifest = _fixture(tmp_path)
     payload = build_current_universe_funding_evidence(
@@ -648,6 +767,102 @@ def test_current_universe_funding_evidence_publishes_receipt(tmp_path: Path) -> 
     assert verify_evidence(output)
     assert payload["assurances"]["network_request_performed"] is False
     assert payload["assurances"]["phase3_authorized"] is False
+
+
+def test_current_universe_funding_evidence_v2_preserves_full_partition_and_blocks(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _manifest = _fixture_v2(tmp_path)
+    payload = build_current_universe_funding_evidence_v2(
+        source_manifest_path=manifest_path,
+        artifact_root=tmp_path,
+        generated_at_utc="2026-08-24T20:02:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+
+    assert payload["status"] == "blocked-current-universe-funding-terminal-absence"
+    assert payload["quality"]["coverage_status"] == "blocked"
+    assert payload["universe"] == {
+        "candle_source_count": 2,
+        "candle_symbol_count": 3,
+        "full_scope_exact": False,
+        "funding_source_count": 1,
+        "funding_symbol_count": 2,
+        "predecessor_partition_exact": True,
+        "terminal_insufficient_symbol_count": 1,
+    }
+    assert payload["terminal_partition"]["predecessor_proven_count"] == 2
+    assert payload["terminal_partition"]["terminal_insufficient_one_count"] == 1
+    assert payload["assurances"]["automatic_gate_acceptance_performed"] is False
+    assert payload["assurances"]["phase3_authorized"] is False
+    rendered = json.dumps(payload, sort_keys=True).lower()
+    for forbidden in (
+        '"aaa"',
+        '"bbb"',
+        '"ccc"',
+        '"symbol"',
+        '"instrument_id"',
+        '"funding_time_ms"',
+        "c:\\",
+        "/home/",
+    ):
+        assert forbidden not in rendered
+
+    output = tmp_path / "funding-evidence-v2.json"
+    published = publish_current_universe_funding_evidence_v2(
+        source_manifest_path=manifest_path,
+        artifact_root=tmp_path,
+        generated_at_utc="2026-08-24T20:02:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+        output=output,
+    )
+    assert published == payload
+    assert verify_evidence(output)
+
+
+def test_current_universe_funding_evidence_v2_rejects_scope_or_partition_substitution(
+    tmp_path: Path,
+) -> None:
+    scope_root = tmp_path / "scope"
+    manifest_path, manifest = _fixture_v2(scope_root)
+    manifest["funding_sources"].append(
+        {
+            "coverage_evidence": "funding-b-coverage.json",
+            "landing_evidence": "funding-b-landing.json",
+            "mode": "reused-bounded",
+            "publication_evidence": "funding-b-publication.json",
+            "request": "funding-b-request.json",
+        }
+    )
+    _write_json(manifest_path, manifest)
+    with pytest.raises(
+        CurrentUniverseFundingEvidenceError,
+        match="predecessor-proven partition",
+    ):
+        build_current_universe_funding_evidence_v2(
+            source_manifest_path=manifest_path,
+            artifact_root=scope_root,
+            generated_at_utc="2026-08-24T20:02:00Z",
+            software_identity=SOFTWARE_IDENTITY,
+        )
+
+    partition_root = tmp_path / "partition"
+    manifest_path, manifest = _fixture_v2(partition_root)
+    evidence_path = partition_root / cast(str, manifest["terminal_partition_evidence"])
+    evidence = cast(dict[str, Any], json.loads(evidence_path.read_text(encoding="utf-8")))
+    evidence.pop("content_sha256")
+    evidence["result"]["terminal_insufficient_one_count"] = 0
+    replacement = partition_root / "substituted-terminal-evidence.json"
+    publish_evidence(replacement, _with_content_hash(evidence))
+    manifest["terminal_partition_evidence"] = _relative(partition_root, replacement)
+    _write_json(manifest_path, manifest)
+    with pytest.raises(CurrentUniverseFundingEvidenceError, match="public result differs"):
+        build_current_universe_funding_evidence_v2(
+            source_manifest_path=manifest_path,
+            artifact_root=partition_root,
+            generated_at_utc="2026-08-24T20:02:00Z",
+            software_identity=SOFTWARE_IDENTITY,
+        )
 
 
 def test_current_universe_funding_evidence_rejects_incomplete_scope(tmp_path: Path) -> None:
