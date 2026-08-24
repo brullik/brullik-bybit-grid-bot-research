@@ -105,6 +105,7 @@
 | D-106 | Phase 10 production uses a signed deployment trust chain and externally fenced single-writer active-passive recovery after Gate 9 | accepted | Dedicated live-only host/key, immutable provenance/deployment/epoch, secret-free encrypted backup/clean restore, protected update/rollback, runbook/game-day evidence, no Gate 10 or autonomous-entry capability, and ADR-0106 |
 | D-107 | Campaign candle repair preparation reuses the aggregate audit and recomputes only its blocked candle children | accepted | Receipt-first request, exact aggregate child-hash reproduction, resumable private child audit/plan/result checkpoints, separate funding pipeline, no network/execution/gate change, and ADR-0107 |
 | D-108 | Gate 2 owner review assigns every current blocker exactly once in one pending decision docket | accepted | Exact v5 receipt/schema/canonical/hash/implementation verification, four explicit review items, no recorded disposition, unchanged closed gate and Phase 3 isolation, and ADR-0108 |
+| D-109 | Terminal-insufficient public funding series are preserved as receipt-bound negative evidence while only the exact predecessor-proven partition may acquire | accepted | Full candle universe, immutable v1 contracts, exact private/public terminal partition, successor funding/readiness/docket evidence, unchanged seven blockers, closed Gate 2, and ADR-0109 |
 
 ## Decisions requiring benchmark or owner evidence
 
