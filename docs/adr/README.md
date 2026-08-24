@@ -13,6 +13,8 @@ An ADR is immutable after acceptance except for status/supersession references a
 
 ## Index
 
+- [ADR-0109 - Terminal-insufficient funding negative evidence](ADR-0109-terminal-insufficient-funding-negative-evidence.md)
+- [ADR-0108 - Complete Gate 2 owner-review docket](ADR-0108-complete-gate2-owner-review-docket.md)
 - [ADR-0107 - Receipt-resumable campaign repair preparation](ADR-0107-receipt-resumable-campaign-repair-preparation.md)
 - [ADR-0106 - Fenced production runtime and recovery boundary](ADR-0106-fenced-production-runtime-and-recovery-boundary.md)
 - [ADR-0105 - Evidence-bound controlled-scale boundary](ADR-0105-evidence-bound-controlled-scale-boundary.md)
