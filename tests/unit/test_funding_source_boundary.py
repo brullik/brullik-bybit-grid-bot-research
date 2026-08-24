@@ -19,6 +19,10 @@ from grid_data.funding_source_boundary import (
 from grid_data.funding_source_boundary_evidence import (
     build_funding_source_boundary_evidence,
 )
+from grid_data.funding_source_boundary_terminal_evidence import (
+    build_terminal_funding_boundary_evidence,
+    build_terminal_funding_boundary_partition,
+)
 from grid_data.instrument_registry import build_instrument_registry
 from grid_market_store import HostSnapshot
 from jsonschema import Draft202012Validator
@@ -271,6 +275,66 @@ def test_boundary_discovery_rejects_missing_second_settlement(tmp_path: Path) ->
     assert verified.results[0].canonical_start_ms is None
     assert verified.results[0].first_observed_settlement_ms == EVENTS[0]
 
+    partition = build_terminal_funding_boundary_partition(
+        plan.job_root,
+        generated_at_utc="2026-08-24T20:00:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    partition_path, _receipt = publish_evidence(tmp_path / "private-partition.json", partition)
+    private_schema = json.loads(
+        (
+            ROOT / "schemas/market/v1/funding-source-boundary-terminal-partition.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(private_schema).validate(partition)
+    assert partition["series"] == [
+        {
+            "canonical_start_ms": None,
+            "classification": "terminal-insufficient-one",
+            "event_count": 1,
+            "first_observed_settlement_ms": EVENTS[0],
+            "instrument_id": 1,
+            "page_count": 2,
+            "symbol": "AAAUSDT",
+        }
+    ]
+
+    evidence = build_terminal_funding_boundary_evidence(
+        partition_path,
+        plan.job_root,
+        generated_at_utc="2026-08-24T20:01:00Z",
+        software_identity=SOFTWARE_IDENTITY,
+    )
+    public_schema = json.loads(
+        (
+            ROOT
+            / "schemas/evidence/v1/phase2-funding-source-boundary-terminal-partition.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    Draft202012Validator(public_schema).validate(evidence)
+    assert evidence["result"] == {
+        "event_count": 1,
+        "funding_coverage_complete": False,
+        "http_attempt_count": 2,
+        "page_count": 2,
+        "predecessor_proven_count": 0,
+        "terminal_insufficient_one_count": 1,
+        "terminal_insufficient_zero_count": 0,
+    }
+    rendered = json.dumps(evidence)
+    assert "AAAUSDT" not in rendered
+    assert str(EVENTS[0]) not in rendered
+    assert str(plan.job_root) not in rendered
+
+    partition_path.write_bytes(partition_path.read_bytes() + b" ")
+    with pytest.raises(FundingSourceBoundaryError, match="receipt"):
+        build_terminal_funding_boundary_evidence(
+            partition_path,
+            plan.job_root,
+            generated_at_utc="2026-08-24T20:01:00Z",
+            software_identity=SOFTWARE_IDENTITY,
+        )
+
 
 def test_terminal_boundary_verifier_rejects_nonterminal_or_orphaned_roots(tmp_path: Path) -> None:
     plan = preflight(tmp_path)
@@ -345,9 +409,35 @@ def test_boundary_discovery_cli_exposes_execute_and_independent_verify() -> None
             "evidence.json",
         ]
     )
+    partition_args = command_parser.parse_args(
+        [
+            "funding-source-boundary-terminal-partition",
+            "--job-root",
+            "boundary/job",
+            "--software-identity",
+            SOFTWARE_IDENTITY,
+            "--output",
+            "private.json",
+        ]
+    )
+    terminal_evidence_args = command_parser.parse_args(
+        [
+            "funding-source-boundary-terminal-evidence",
+            "--partition",
+            "private.json",
+            "--job-root",
+            "boundary/job",
+            "--software-identity",
+            SOFTWARE_IDENTITY,
+            "--output",
+            "terminal-evidence.json",
+        ]
+    )
     assert execute_args.execute is True
     assert verify_args.job_root == Path("boundary/job")
     assert evidence_args.output == Path("evidence.json")
+    assert partition_args.output == Path("private.json")
+    assert terminal_evidence_args.output == Path("terminal-evidence.json")
 
 
 def test_boundary_evidence_is_schema_valid_hash_bound_and_redacted(tmp_path: Path) -> None:

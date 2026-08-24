@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brullik/brullik-bybit-grid-bot-research/schemas/market/v1/funding-source-boundary-terminal-partition.schema.json",
+  "title": "Private terminal funding source-boundary partition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bindings", "content_sha256", "contract", "generated_at_utc", "process", "result", "scope", "series", "status"],
+  "properties": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary_page_chain_sha256", "boundary_plan_sha256", "boundary_request_sha256", "instrument_registry_sha256"],
+      "properties": {
+        "boundary_page_chain_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "boundary_request_sha256": {"$ref": "#/$defs/sha256"},
+        "instrument_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "contract": {"const": "grid.bybit-funding-source-boundary-terminal-partition/v1"},
+    "generated_at_utc": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_series_terminal", "discovery_software_identity", "page_receipts_verified", "partition_software_identity"],
+      "properties": {
+        "all_series_terminal": {"const": true},
+        "discovery_software_identity": {"$ref": "#/$defs/softwareIdentity"},
+        "page_receipts_verified": {"const": true},
+        "partition_software_identity": {"$ref": "#/$defs/softwareIdentity"}
+      }
+    },
+    "result": {"$ref": "#/$defs/result"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 700,
+      "items": {"$ref": "#/$defs/seriesResult"}
+    },
+    "status": {"const": "terminal-partition-complete"}
+  },
+  "$defs": {
+    "minute": {"type": "integer", "minimum": 0, "multipleOf": 60000},
+    "nullableMinute": {"type": ["integer", "null"], "minimum": 0, "multipleOf": 60000},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "http_attempt_count", "page_count", "predecessor_proven_count", "terminal_insufficient_one_count", "terminal_insufficient_zero_count"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 0, "maximum": 71680000},
+        "http_attempt_count": {"type": "integer", "minimum": 1, "maximum": 1792000},
+        "page_count": {"type": "integer", "minimum": 1, "maximum": 358400},
+        "predecessor_proven_count": {"type": "integer", "minimum": 0, "maximum": 700},
+        "terminal_insufficient_one_count": {"type": "integer", "minimum": 0, "maximum": 700},
+        "terminal_insufficient_zero_count": {"type": "integer", "minimum": 0, "maximum": 700}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["end_ms", "start_ms", "symbol_count"],
+      "properties": {
+        "end_ms": {"$ref": "#/$defs/minute"},
+        "start_ms": {"$ref": "#/$defs/minute"},
+        "symbol_count": {"type": "integer", "minimum": 1, "maximum": 700}
+      }
+    },
+    "seriesResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_start_ms", "classification", "event_count", "first_observed_settlement_ms", "instrument_id", "page_count", "symbol"],
+      "properties": {
+        "canonical_start_ms": {"$ref": "#/$defs/nullableMinute"},
+        "classification": {"enum": ["predecessor-proven", "terminal-insufficient-one", "terminal-insufficient-zero"]},
+        "event_count": {"type": "integer", "minimum": 0, "maximum": 71680000},
+        "first_observed_settlement_ms": {"$ref": "#/$defs/nullableMinute"},
+        "instrument_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "page_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9]+$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"classification": {"const": "predecessor-proven"}}},
+          "then": {"properties": {"canonical_start_ms": {"$ref": "#/$defs/minute"}, "event_count": {"minimum": 2}, "first_observed_settlement_ms": {"$ref": "#/$defs/minute"}}}
+        },
+        {
+          "if": {"properties": {"classification": {"const": "terminal-insufficient-one"}}},
+          "then": {"properties": {"canonical_start_ms": {"type": "null"}, "event_count": {"const": 1}, "first_observed_settlement_ms": {"$ref": "#/$defs/minute"}}}
+        },
+        {
+          "if": {"properties": {"classification": {"const": "terminal-insufficient-zero"}}},
+          "then": {"properties": {"canonical_start_ms": {"type": "null"}, "event_count": {"const": 0}, "first_observed_settlement_ms": {"type": "null"}}}
+        }
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "softwareIdentity": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}
+  }
+}
