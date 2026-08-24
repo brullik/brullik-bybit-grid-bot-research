@@ -17,6 +17,10 @@ from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[impor
 ROOT: Final = Path(__file__).resolve().parents[1]
 REQUEST_CONTRACT: Final = "grid.current-universe-funding-evidence-request/v1"
 EVIDENCE_CONTRACT: Final = "grid.phase2-current-universe-funding-evidence/v1"
+REQUEST_CONTRACT_V2: Final = "grid.current-universe-funding-evidence-request/v2"
+EVIDENCE_CONTRACT_V2: Final = "grid.phase2-current-universe-funding-evidence/v2"
+TERMINAL_PARTITION_CONTRACT: Final = "grid.bybit-funding-source-boundary-terminal-partition/v1"
+TERMINAL_EVIDENCE_CONTRACT: Final = "grid.phase2-funding-source-boundary-terminal-partition/v1"
 CANDLE_BUNDLE_REQUEST_CONTRACT: Final = "grid.canonical-catalog-selection-bundle-request/v1"
 CANDLE_BUNDLE_CONTRACT: Final = "grid.phase2-catalog-selection-bundle/v1"
 CANDLE_EVIDENCE_CONTRACT: Final = "grid.phase2-current-universe-candle-evidence/v1"
@@ -298,9 +302,14 @@ def _normalized_intervals(
     return result
 
 
-def _load_source_manifest(path: Path) -> dict[str, Any]:
+def _load_source_manifest(
+    path: Path,
+    *,
+    contract: str = REQUEST_CONTRACT,
+    schema_name: str = "current-universe-funding-evidence-request.schema.json",
+) -> dict[str, Any]:
     payload = _load_json(path)
-    _require(payload.get("contract") == REQUEST_CONTRACT, "source manifest contract differs")
+    _require(payload.get("contract") == contract, "source manifest contract differs")
     try:
         artifact_bytes = path.read_bytes()
     except OSError as error:
@@ -311,10 +320,162 @@ def _load_source_manifest(path: Path) -> dict[str, Any]:
     )
     _validate_schema(
         payload,
-        ROOT / "schemas/evidence/v1/current-universe-funding-evidence-request.schema.json",
+        ROOT / "schemas/evidence/v1" / schema_name,
         label="source manifest",
     )
     return payload
+
+
+def _load_verified_terminal_partition(path: Path) -> dict[str, Any]:
+    supplied = path.resolve()
+    _require(verify_evidence(supplied), "terminal partition receipt does not verify")
+    payload = _load_json(supplied)
+    try:
+        artifact_bytes = supplied.read_bytes()
+    except OSError as error:
+        raise CurrentUniverseFundingEvidenceError("cannot read terminal partition bytes") from error
+    _require(
+        artifact_bytes == canonical_json_bytes(payload) + b"\n",
+        "terminal partition is not canonical JSON plus LF",
+    )
+    _require(
+        payload.get("contract") == TERMINAL_PARTITION_CONTRACT,
+        "terminal partition contract differs",
+    )
+    _require(
+        payload.get("status") == "terminal-partition-complete",
+        "terminal partition status differs",
+    )
+    hash_input = dict(payload)
+    embedded_hash = hash_input.pop("content_sha256", None)
+    _require(
+        embedded_hash == canonical_sha256(hash_input),
+        "terminal partition content hash does not verify",
+    )
+    _validate_schema(
+        payload,
+        ROOT / "schemas/market/v1/funding-source-boundary-terminal-partition.schema.json",
+        label="terminal partition",
+    )
+    return payload
+
+
+def _verify_terminal_partition_chain(
+    *,
+    partition_path: Path,
+    evidence_path: Path,
+    target_symbols: set[str],
+    registry_hash: str,
+) -> tuple[set[str], set[str], dict[str, str], dict[str, int]]:
+    partition = _load_verified_terminal_partition(partition_path)
+    evidence = _load_verified_evidence(
+        evidence_path,
+        schema_name="phase2-funding-source-boundary-terminal-partition.schema.json",
+        contract_key="evidence_schema",
+        contract=TERMINAL_EVIDENCE_CONTRACT,
+        statuses={"verified-terminal-funding-source-partition"},
+    )
+    series_values = _array(partition, "series")
+    series: list[dict[str, Any]] = []
+    symbols: list[str] = []
+    for raw in series_values:
+        _require(isinstance(raw, dict), "terminal partition series item must be an object")
+        item = cast(dict[str, Any], raw)
+        symbol = item.get("symbol")
+        if not isinstance(symbol, str):
+            raise CurrentUniverseFundingEvidenceError("terminal partition symbol is invalid")
+        symbols.append(symbol)
+        series.append(item)
+    _require(len(symbols) == len(set(symbols)), "terminal partition repeats a symbol")
+    _require(set(symbols) == target_symbols, "terminal partition does not cover candle symbols")
+
+    proven = {
+        cast(str, item["symbol"])
+        for item in series
+        if item.get("classification") == "predecessor-proven"
+    }
+    insufficient = set(symbols) - proven
+    _require(bool(proven), "terminal partition has no predecessor-proven symbols")
+    _require(bool(insufficient), "terminal partition has no predecessor-insufficient symbols")
+    one_count = sum(item.get("classification") == "terminal-insufficient-one" for item in series)
+    zero_count = sum(item.get("classification") == "terminal-insufficient-zero" for item in series)
+    _require(
+        len(proven) + one_count + zero_count == len(series),
+        "terminal partition classifications do not reconcile",
+    )
+    partition_result = _mapping(partition, "result")
+    expected_counts = {
+        "predecessor_proven_count": len(proven),
+        "terminal_insufficient_one_count": one_count,
+        "terminal_insufficient_zero_count": zero_count,
+    }
+    for key, expected in expected_counts.items():
+        _require(
+            _integer(partition_result, key) == expected,
+            f"terminal partition count differs: {key}",
+        )
+    _require(
+        _integer(partition_result, "event_count")
+        == sum(_integer(item, "event_count") for item in series),
+        "terminal partition event count differs",
+    )
+    _require(
+        _integer(partition_result, "page_count", minimum=1)
+        == sum(_integer(item, "page_count", minimum=1) for item in series),
+        "terminal partition page count differs",
+    )
+
+    partition_bindings = _mapping(partition, "bindings")
+    evidence_bindings = _mapping(evidence, "bindings")
+    _require(
+        _sha(partition_bindings, "instrument_registry_sha256") == registry_hash,
+        "terminal partition registry differs",
+    )
+    for key in (
+        "boundary_page_chain_sha256",
+        "boundary_plan_sha256",
+        "boundary_request_sha256",
+        "instrument_registry_sha256",
+    ):
+        _require(
+            _sha(partition_bindings, key) == _sha(evidence_bindings, key),
+            f"terminal partition/evidence binding differs: {key}",
+        )
+    _require(
+        _sha(evidence_bindings, "terminal_partition_artifact_sha256")
+        == sha256_file(partition_path.resolve()),
+        "terminal evidence binds another partition artifact",
+    )
+    _require(
+        _sha(evidence_bindings, "terminal_partition_content_sha256")
+        == _sha(partition, "content_sha256"),
+        "terminal evidence binds another partition content hash",
+    )
+    evidence_result = _mapping(evidence, "result")
+    _require(
+        evidence_result.get("funding_coverage_complete") is False,
+        "terminal evidence claims complete funding coverage",
+    )
+    for key, value in partition_result.items():
+        _require(evidence_result.get(key) == value, f"terminal public result differs: {key}")
+    _require(
+        _mapping(evidence, "scope") == _mapping(partition, "scope"),
+        "terminal public scope differs",
+    )
+
+    anomaly_items = [item for item in series if item.get("classification") != "predecessor-proven"]
+    bindings = {
+        "private_anomaly_sha256": canonical_sha256(anomaly_items),
+        "terminal_partition_artifact_sha256": sha256_file(partition_path.resolve()),
+        "terminal_partition_content_sha256": _sha(partition, "content_sha256"),
+        "terminal_partition_evidence_artifact_sha256": sha256_file(evidence_path.resolve()),
+        "terminal_partition_evidence_content_sha256": _sha(evidence, "content_sha256"),
+    }
+    counts = {
+        **expected_counts,
+        "symbol_count": len(series),
+    }
+    return proven, insufficient, bindings, counts
 
 
 def _load_campaign_evidence_triplet(
@@ -345,21 +506,30 @@ def _load_campaign_evidence_triplet(
     return landing, publication, coverage
 
 
-def build_current_universe_funding_evidence(
+def _build_current_universe_funding_evidence(
     *,
     source_manifest_path: Path,
     artifact_root: Path,
     generated_at_utc: str,
     software_identity: str,
+    terminal_partition_mode: bool,
 ) -> dict[str, Any]:
-    """Verify exact candle/funding scope parity and aggregate funding evidence."""
+    """Verify ordinary sources and either exact or terminal-partition funding scope."""
 
     _verify_generated_at(generated_at_utc)
     _require(
         SOFTWARE_IDENTITY_RE.fullmatch(software_identity) is not None,
         "software identity must be an immutable Git SHA",
     )
-    manifest = _load_source_manifest(source_manifest_path)
+    manifest = _load_source_manifest(
+        source_manifest_path,
+        contract=REQUEST_CONTRACT_V2 if terminal_partition_mode else REQUEST_CONTRACT,
+        schema_name=(
+            "current-universe-funding-evidence-request-v2.schema.json"
+            if terminal_partition_mode
+            else "current-universe-funding-evidence-request.schema.json"
+        ),
+    )
     root = artifact_root.resolve()
     _require(root.is_dir(), "artifact root must be a directory")
 
@@ -505,6 +675,22 @@ def build_current_universe_funding_evidence(
         == _integer(_mapping(candle_evidence, "inventory"), "instrument_count", minimum=1),
         "current-universe instrument count differs",
     )
+
+    terminal_proven: set[str] | None = None
+    terminal_insufficient: set[str] | None = None
+    terminal_bindings: dict[str, str] | None = None
+    terminal_counts: dict[str, int] | None = None
+    if terminal_partition_mode:
+        partition_path = _resolve_path(root, manifest.get("terminal_partition"))
+        partition_evidence_path = _resolve_path(root, manifest.get("terminal_partition_evidence"))
+        terminal_proven, terminal_insufficient, terminal_bindings, terminal_counts = (
+            _verify_terminal_partition_chain(
+                partition_path=partition_path,
+                evidence_path=partition_evidence_path,
+                target_symbols=set(normalized_targets),
+                registry_hash=cast(str, registry_hash),
+            )
+        )
 
     funding_intervals: dict[str, list[tuple[int, int]]] = {}
     funding_artifact_chain: list[dict[str, Any]] = []
@@ -792,11 +978,32 @@ def build_current_universe_funding_evidence(
         funding_artifact_chain.append(source_binding)
 
     normalized_funding = _normalized_intervals(funding_intervals, label="funding source")
-    _require(
-        normalized_funding == normalized_targets,
-        "funding source intervals do not exactly cover the candle universe",
-    )
-    _require(inventory["symbol_count"] == len(normalized_funding), "funding symbol count differs")
+    if terminal_partition_mode:
+        assert terminal_proven is not None
+        assert terminal_insufficient is not None
+        expected_funding = {
+            symbol: intervals
+            for symbol, intervals in normalized_targets.items()
+            if symbol in terminal_proven
+        }
+        _require(
+            normalized_funding == expected_funding,
+            "funding sources do not exactly cover the predecessor-proven partition",
+        )
+        _require(
+            not (set(normalized_funding) & terminal_insufficient),
+            "funding sources include a predecessor-insufficient symbol",
+        )
+        inventory["symbol_count"] = len(normalized_funding)
+    else:
+        _require(
+            normalized_funding == normalized_targets,
+            "funding source intervals do not exactly cover the candle universe",
+        )
+        _require(
+            inventory["symbol_count"] == len(normalized_funding),
+            "funding symbol count differs",
+        )
 
     timed_publication_count = len(publication_starts)
     payload: dict[str, Any] = {
@@ -885,13 +1092,95 @@ def build_current_universe_funding_evidence(
             "symbol_count": target_symbol_count,
         },
     }
+    schema_name = "phase2-current-universe-funding-evidence.schema.json"
+    if terminal_partition_mode:
+        assert terminal_bindings is not None
+        assert terminal_counts is not None
+        assert terminal_proven is not None
+        assert terminal_insufficient is not None
+        payload["assurances"] = {
+            **cast(dict[str, Any], payload["assurances"]),
+            "candle_and_funding_scope_exactly_equal": False,
+            "funding_scope_equals_predecessor_proven_partition": True,
+            "terminal_partition_complete": True,
+        }
+        payload["bindings"] = {
+            **cast(dict[str, Any], payload["bindings"]),
+            **terminal_bindings,
+        }
+        payload["evidence_schema"] = EVIDENCE_CONTRACT_V2
+        payload["limitations"] = [
+            "The full candle universe is preserved while funding is available only for the "
+            "receipt-proven partition.",
+            "Terminal source absence is negative evidence and is not complete funding coverage.",
+            "No predecessor is synthesized and no predecessor-insufficient series is acquired.",
+            "Observed cadence changes and empty source windows remain unaccepted unless separate "
+            "dated evidence or owner policy resolves them.",
+            "Catalog registration and deterministic funding selection remain separate evidence.",
+            "Measured timings are not an owner-reviewed end-to-end performance envelope.",
+            "This blocked evidence cannot close Gate 2, authorize Phase 3, promote research data, "
+            "or enable live execution.",
+        ]
+        cast(dict[str, Any], payload["quality"])["coverage_status"] = "blocked"
+        payload["status"] = "blocked-current-universe-funding-terminal-absence"
+        payload["terminal_partition"] = {
+            **terminal_counts,
+            "funding_coverage_complete": False,
+            "private_anomaly_sha256": terminal_bindings["private_anomaly_sha256"],
+        }
+        payload["universe"] = {
+            "candle_source_count": len(candle_sources),
+            "candle_symbol_count": target_symbol_count,
+            "full_scope_exact": False,
+            "funding_source_count": len(funding_sources),
+            "funding_symbol_count": len(normalized_funding),
+            "predecessor_partition_exact": True,
+            "terminal_insufficient_symbol_count": len(terminal_insufficient),
+        }
+        schema_name = "phase2-current-universe-funding-evidence-v2.schema.json"
     payload["content_sha256"] = canonical_sha256(payload)
     _validate_schema(
         payload,
-        ROOT / "schemas/evidence/v1/phase2-current-universe-funding-evidence.schema.json",
+        ROOT / "schemas/evidence/v1" / schema_name,
         label="current-universe funding evidence",
     )
     return payload
+
+
+def build_current_universe_funding_evidence(
+    *,
+    source_manifest_path: Path,
+    artifact_root: Path,
+    generated_at_utc: str,
+    software_identity: str,
+) -> dict[str, Any]:
+    """Verify exact candle/funding scope parity and aggregate v1 evidence."""
+
+    return _build_current_universe_funding_evidence(
+        source_manifest_path=source_manifest_path,
+        artifact_root=artifact_root,
+        generated_at_utc=generated_at_utc,
+        software_identity=software_identity,
+        terminal_partition_mode=False,
+    )
+
+
+def build_current_universe_funding_evidence_v2(
+    *,
+    source_manifest_path: Path,
+    artifact_root: Path,
+    generated_at_utc: str,
+    software_identity: str,
+) -> dict[str, Any]:
+    """Verify a complete terminal partition and publish blocked aggregate-only v2 evidence."""
+
+    return _build_current_universe_funding_evidence(
+        source_manifest_path=source_manifest_path,
+        artifact_root=artifact_root,
+        generated_at_utc=generated_at_utc,
+        software_identity=software_identity,
+        terminal_partition_mode=True,
+    )
 
 
 def publish_current_universe_funding_evidence(
@@ -913,14 +1202,41 @@ def publish_current_universe_funding_evidence(
     return payload
 
 
+def publish_current_universe_funding_evidence_v2(
+    *,
+    source_manifest_path: Path,
+    artifact_root: Path,
+    generated_at_utc: str,
+    software_identity: str,
+    output: Path,
+) -> dict[str, Any]:
+    """Publish receipt-last blocked v2 evidence for a complete terminal partition."""
+
+    target, _receipt = preflight_evidence(output)
+    payload = build_current_universe_funding_evidence_v2(
+        source_manifest_path=source_manifest_path,
+        artifact_root=artifact_root,
+        generated_at_utc=generated_at_utc,
+        software_identity=software_identity,
+    )
+    publish_evidence(target, payload)
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-manifest", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, default=ROOT)
     parser.add_argument("--software-identity", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--terminal-partition-mode", action="store_true")
     args = parser.parse_args()
-    payload = publish_current_universe_funding_evidence(
+    publisher = (
+        publish_current_universe_funding_evidence_v2
+        if args.terminal_partition_mode
+        else publish_current_universe_funding_evidence
+    )
+    payload = publisher(
         source_manifest_path=args.source_manifest,
         artifact_root=args.artifact_root,
         generated_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
