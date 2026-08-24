@@ -1053,9 +1053,7 @@ def verify_terminal_funding_source_boundary(job_root: Path) -> VerifiedTerminalF
         "pages"
     }:
         raise FundingSourceBoundaryError("terminal funding boundary directory inventory is invalid")
-    if (
-        predecessor_proven_count + insufficient_one_count + insufficient_zero_count != len(series)
-    ):
+    if predecessor_proven_count + insufficient_one_count + insufficient_zero_count != len(series):
         raise FundingSourceBoundaryError("terminal funding boundary partition does not reconcile")
 
     request = cast(dict[str, object], plan["request"])
